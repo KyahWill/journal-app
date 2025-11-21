@@ -34,6 +34,7 @@ export interface ChatMessage {
 export interface ChatSession {
   id: string
   user_id: string
+  title?: string
   messages: ChatMessage[]
   created_at: string | Date
   updated_at: string | Date
@@ -260,6 +261,13 @@ class ApiClient {
   async deleteChatSession(id: string): Promise<{ success: boolean; message: string }> {
     return this.request(`/chat/session/${id}`, {
       method: 'DELETE',
+    })
+  }
+
+  async updateChatSessionTitle(id: string, title: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/chat/session/${id}/title`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title }),
     })
   }
 

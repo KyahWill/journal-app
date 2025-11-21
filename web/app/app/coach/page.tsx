@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { useChat } from '@/lib/hooks/useChat'
+import { useChat, useChatSessions } from '@/lib/hooks/useChat'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
@@ -9,17 +9,30 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Send, RefreshCw, Loader2, Sparkles, Lightbulb } from 'lucide-react'
 import { useState } from 'react'
+import { CoachSessionsSidebar } from '@/components/coach-sessions-sidebar'
+import { ChatSession } from '@/lib/api/client'
 
 export default function CoachChatPage() {
   const {
     messages,
+    sessionId,
     loading,
     error,
     sendMessage,
+    loadSession,
     clearChat,
     getInsights,
     getSuggestedPrompts,
   } = useChat()
+  
+  const {
+    sessions,
+    loading: sessionsLoading,
+    error: sessionsError,
+    fetchSessions,
+    deleteSession,
+    updateSessionTitle,
+  } = useChatSessions()
   
   const [input, setInput] = useState('')
   const [showInsights, setShowInsights] = useState(false)
@@ -38,10 +51,11 @@ export default function CoachChatPage() {
     scrollToBottom()
   }, [messages])
 
-  // Load suggested prompts on mount and track client-side mount
+  // Load suggested prompts and sessions on mount and track client-side mount
   useEffect(() => {
     setIsMounted(true)
     loadPrompts()
+    fetchSessions()
   }, [])
 
   async function loadPrompts() {
@@ -99,8 +113,58 @@ export default function CoachChatPage() {
     setShowInsights(false)
   }
 
+  async function handleSessionSelect(session: ChatSession) {
+    try {
+      await loadSession(session.id)
+      setInsights(null)
+      setShowInsights(false)
+    } catch (err) {
+      console.error('Failed to load session:', err)
+    }
+  }
+
+  function handleNewSession() {
+    clearChat()
+    setInsights(null)
+    setShowInsights(false)
+  }
+
+  async function handleDeleteSession(sessionId: string) {
+    try {
+      await deleteSession(sessionId)
+      // If we deleted the current session, clear the chat
+      if (sessionId === sessionId) {
+        clearChat()
+      }
+    } catch (err) {
+      console.error('Failed to delete session:', err)
+    }
+  }
+
+  async function handleRenameSession(sessionId: string, title: string) {
+    try {
+      await updateSessionTitle(sessionId, title)
+    } catch (err) {
+      console.error('Failed to rename session:', err)
+    }
+  }
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="flex h-screen overflow-hidden">
+      {/* Sessions Sidebar */}
+      <CoachSessionsSidebar
+        sessions={sessions}
+        currentSessionId={sessionId}
+        onSessionSelect={handleSessionSelect}
+        onNewSession={handleNewSession}
+        onDeleteSession={handleDeleteSession}
+        onRenameSession={handleRenameSession}
+        loading={sessionsLoading}
+      />
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-3xl font-bold">AI Executive Coach</h2>
@@ -189,6 +253,12 @@ export default function CoachChatPage() {
         </Alert>
       )}
 
+      {sessionsError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertDescription>Sessions: {sessionsError}</AlertDescription>
+        </Alert>
+      )}
+
       <Card className="h-[600px] flex flex-col">
         <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.length === 0 ? (
@@ -274,6 +344,8 @@ export default function CoachChatPage() {
           </div>
         </div>
       </Card>
+        </div>
+      </div>
     </div>
   )
 }

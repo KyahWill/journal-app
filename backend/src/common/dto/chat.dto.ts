@@ -19,3 +19,9 @@ export class ChatHistoryDto {
   }>
 }
 
+export class UpdateSessionTitleDto {
+  @IsString()
+  @MinLength(1)
+  title: string
+}
+

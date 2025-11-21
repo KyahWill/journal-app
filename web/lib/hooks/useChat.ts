@@ -158,6 +158,22 @@ export function useChat(initialSessionId?: string) {
     }
   }, [])
 
+  // Rename session
+  const renameSession = useCallback(async (title: string) => {
+    if (!state.sessionId) {
+      throw new Error('No active session to rename')
+    }
+    try {
+      await apiClient.updateChatSessionTitle(state.sessionId, title)
+    } catch (error: any) {
+      setState((prev) => ({
+        ...prev,
+        error: error.message || 'Failed to rename session',
+      }))
+      throw error
+    }
+  }, [state.sessionId])
+
   return {
     messages: state.messages,
     sessionId: state.sessionId,
@@ -169,6 +185,7 @@ export function useChat(initialSessionId?: string) {
     clearChat,
     getInsights,
     getSuggestedPrompts,
+    renameSession,
   }
 }
 
@@ -201,12 +218,25 @@ export function useChatSessions() {
     }
   }, [])
 
+  const updateSessionTitle = useCallback(async (sessionId: string, title: string) => {
+    try {
+      await apiClient.updateChatSessionTitle(sessionId, title)
+      setSessions((prev) =>
+        prev.map((s) => (s.id === sessionId ? { ...s, title } : s))
+      )
+    } catch (error: any) {
+      setError(error.message || 'Failed to update session title')
+      throw error
+    }
+  }, [])
+
   return {
     sessions,
     loading,
     error,
     fetchSessions,
     deleteSession,
+    updateSessionTitle,
   }
 }
 

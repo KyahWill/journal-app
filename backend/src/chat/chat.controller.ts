@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Delete,
+  Patch,
   Body,
   Param,
   UseGuards,
@@ -10,7 +11,7 @@ import {
   HttpStatus,
 } from '@nestjs/common'
 import { ChatService } from './chat.service'
-import { SendMessageDto } from '@/common/dto/chat.dto'
+import { SendMessageDto, UpdateSessionTitleDto } from '@/common/dto/chat.dto'
 import { AuthGuard } from '@/common/guards/auth.guard'
 import { CurrentUser } from '@/common/decorators/user.decorator'
 
@@ -45,6 +46,16 @@ export class ChatController {
   @HttpCode(HttpStatus.OK)
   async deleteSession(@CurrentUser() user: any, @Param('id') id: string) {
     return this.chatService.deleteSession(id, user.uid)
+  }
+
+  @Patch('session/:id/title')
+  @HttpCode(HttpStatus.OK)
+  async updateSessionTitle(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() updateSessionTitleDto: UpdateSessionTitleDto,
+  ) {
+    return this.chatService.updateSessionTitle(id, user.uid, updateSessionTitleDto.title)
   }
 
   @Get('insights')

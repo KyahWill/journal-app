@@ -57,7 +57,17 @@ export class ChatService {
 
       // Update session with new messages
       session.messages.push(userMessage, assistantMessage)
-      await this.updateSession(session.id, userId, session.messages)
+      
+      // Auto-generate title from first user message if not set
+      if (!session.title && session.messages.length === 2) {
+        session.title = this.generateTitle(message)
+        await this.firebaseService.updateDocument(this.collectionName, session.id, {
+          messages: session.messages,
+          title: session.title,
+        })
+      } else {
+        await this.updateSession(session.id, userId, session.messages)
+      }
 
       this.logger.log(`Message sent in session: ${session.id} for user: ${userId}`)
 
@@ -77,6 +87,7 @@ export class ChatService {
       const session: Omit<ChatSession, 'id' | 'created_at' | 'updated_at'> = {
         user_id: userId,
         messages: [],
+        title: undefined,
       }
 
       const result = await this.firebaseService.addDocument(this.collectionName, session)
@@ -87,6 +98,7 @@ export class ChatService {
         id: result.id,
         user_id: userId,
         messages: [],
+        title: undefined,
         created_at: result.created_at.toDate(),
         updated_at: result.updated_at.toDate(),
       }
@@ -111,6 +123,7 @@ export class ChatService {
       return {
         id: session.id,
         user_id: session.user_id,
+        title: session.title,
         messages: session.messages || [],
         created_at: session.created_at?.toDate() || new Date(),
         updated_at: session.updated_at?.toDate() || new Date(),
@@ -136,6 +149,7 @@ export class ChatService {
       return sessions.map((session: any) => ({
         id: session.id,
         user_id: session.user_id,
+        title: session.title,
         messages: session.messages || [],
         created_at: session.created_at?.toDate() || new Date(),
         updated_at: session.updated_at?.toDate() || new Date(),
@@ -216,6 +230,33 @@ export class ChatService {
       this.logger.error('Error suggesting prompts', error)
       throw error
     }
+  }
+
+  async updateSessionTitle(sessionId: string, userId: string, title: string) {
+    try {
+      // Verify session belongs to user
+      await this.getSession(sessionId, userId)
+
+      await this.firebaseService.updateDocument(this.collectionName, sessionId, {
+        title,
+      })
+
+      this.logger.log(`Chat session title updated: ${sessionId} for user: ${userId}`)
+
+      return { success: true, message: 'Session title updated successfully' }
+    } catch (error) {
+      this.logger.error('Error updating session title', error)
+      throw error
+    }
+  }
+
+  private generateTitle(message: string): string {
+    // Truncate to ~50 characters and add ellipsis if needed
+    const maxLength = 50
+    if (message.length <= maxLength) {
+      return message
+    }
+    return message.substring(0, maxLength).trim() + '...'
   }
 }
 

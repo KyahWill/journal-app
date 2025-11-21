@@ -19,6 +19,7 @@ export interface ChatMessage {
 export interface ChatSession {
   id: string
   user_id: string
+  title?: string
   messages: ChatMessage[]
   created_at: Date
   updated_at: Date
