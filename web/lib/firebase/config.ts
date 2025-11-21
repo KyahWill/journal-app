@@ -1,5 +1,4 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app'
-import { getAuth, Auth } from 'firebase/auth'
 import { getFirestore, Firestore } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -12,8 +11,9 @@ const firebaseConfig = {
 }
 
 // Initialize Firebase - CLIENT SIDE ONLY
+// Note: Client-side Firebase Auth is no longer used.
+// Authentication is now handled entirely server-side.
 let app: FirebaseApp | undefined
-let auth: Auth | undefined
 let db: Firestore | undefined
 
 if (typeof window !== 'undefined') {
@@ -22,20 +22,12 @@ if (typeof window !== 'undefined') {
   } else {
     app = getApps()[0]
   }
-  auth = getAuth(app)
   db = getFirestore(app)
 }
 
 // Export with proper typing
-export { app, auth, db }
-
-// Helper to ensure auth is initialized
-export function getAuthInstance(): Auth {
-  if (!auth) {
-    throw new Error('Firebase Auth not initialized. Make sure this is called client-side only.')
-  }
-  return auth
-}
+// Note: 'auth' is no longer exported as it's not used
+export { app, db }
 
 // Helper to ensure firestore is initialized
 export function getDbInstance(): Firestore {
@@ -44,4 +36,3 @@ export function getDbInstance(): Firestore {
   }
   return db
 }
-

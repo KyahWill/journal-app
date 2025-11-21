@@ -21,7 +21,15 @@ export class AuthGuard implements CanActivate {
     const token = authHeader.substring(7)
 
     try {
-      const decodedToken = await this.firebaseService.verifyIdToken(token)
+      // Try to verify as session cookie first (from Next.js frontend)
+      let decodedToken
+      try {
+        decodedToken = await this.firebaseService.verifySessionCookie(token, true)
+      } catch (sessionError) {
+        // If session cookie verification fails, try as ID token (for backward compatibility)
+        decodedToken = await this.firebaseService.verifyIdToken(token)
+      }
+      
       request.user = decodedToken
       return true
     } catch (error) {

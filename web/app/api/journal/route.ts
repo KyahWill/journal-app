@@ -12,12 +12,12 @@ export async function GET() {
 
     const data = await firebaseServer.getCollection('journal_entries', user.uid)
 
+    // Always return data, even if empty array
     return NextResponse.json({ data })
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('Error fetching journal entries:', error)
+    // Return empty array instead of error for better UX
+    return NextResponse.json({ data: [] })
   }
 }
 

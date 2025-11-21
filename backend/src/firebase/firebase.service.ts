@@ -141,6 +141,10 @@ export class FirebaseService implements OnModuleInit {
     return this.auth.verifyIdToken(token)
   }
 
+  async verifySessionCookie(sessionCookie: string, checkRevoked = true) {
+    return this.auth.verifySessionCookie(sessionCookie, checkRevoked)
+  }
+
   async createUser(email: string, password: string, displayName?: string) {
     return this.auth.createUser({
       email,

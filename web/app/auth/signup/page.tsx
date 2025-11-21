@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -13,19 +13,12 @@ import { Loader2 } from 'lucide-react'
 
 export default function SignupPage() {
   const router = useRouter()
-  const { signUp, isAuthenticated, loading: authLoading } = useAuth()
+  const { signUp } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      router.push('/app')
-    }
-  }, [isAuthenticated, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,11 +27,10 @@ export default function SignupPage() {
 
     try {
       await signUp(email, password, fullName)
-      // useAuth hook will handle token sync with API client
-      router.push('/app')
+      // On successful signup, redirect to app
+      router.push('/app/journal')
     } catch (err: any) {
       setError(err.message || 'Failed to create account')
-    } finally {
       setLoading(false)
     }
   }

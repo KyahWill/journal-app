@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -13,18 +13,11 @@ import { Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { signIn, isAuthenticated, loading: authLoading } = useAuth()
+  const { signIn } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      router.push('/app/journal')
-    }
-  }, [isAuthenticated, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,24 +26,12 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password)
-      // useAuth hook will handle token sync and session cookie creation
-      // The useEffect above will handle the redirect when isAuthenticated becomes true
+      // On successful login, redirect to app
+      router.push('/app/journal')
     } catch (err: any) {
       setError(err.message || 'Failed to login')
       setLoading(false)
     }
-  }
-
-  // Show loading state if authenticated (should be redirecting)
-  if (isAuthenticated && !authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="mt-4 text-gray-600">Redirecting...</p>
-        </div>
-      </div>
-    )
   }
 
   return (

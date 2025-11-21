@@ -3,8 +3,13 @@ import { cookies } from 'next/headers'
 
 export class FirebaseServer {
   private async getSessionCookie() {
-    const cookieStore = await cookies()
-    return cookieStore.get('session')?.value
+    try {
+      const cookieStore = await cookies()
+      return cookieStore.get('session')?.value
+    } catch (error) {
+      console.error('Error getting session cookie:', error)
+      return null
+    }
   }
 
   async verifySession() {
@@ -16,19 +21,22 @@ export class FirebaseServer {
       const decodedToken = await adminAuth.verifySessionCookie(session, true)
       return decodedToken
     } catch (error) {
+      // Session invalid or expired - return null gracefully
       return null
     }
   }
 
   async getCurrentUser() {
-    const decodedToken = await this.verifySession()
-    if (!decodedToken) {
-      return null
-    }
     try {
+      const decodedToken = await this.verifySession()
+      if (!decodedToken) {
+        return null
+      }
+      
       const user = await adminAuth.getUser(decodedToken.uid)
       return user
     } catch (error) {
+      console.error('Error getting current user:', error)
       return null
     }
   }
@@ -53,20 +61,42 @@ export class FirebaseServer {
 
   // Firestore methods (server-side)
   async getCollection(collectionName: string, userId?: string) {
-    const collectionRef = adminDb.collection(collectionName)
-    let query = collectionRef
+    try {
+      const collectionRef = adminDb.collection(collectionName)
+      let query = collectionRef
 
-    if (userId) {
-      query = query.where('user_id', '==', userId) as any
+      if (userId) {
+        query = query.where('user_id', '==', userId) as any
+      }
+
+      let snapshot
+      try {
+        // Try with orderBy first (requires composite index if using where)
+        snapshot = await query.orderBy('created_at', 'desc').get()
+      } catch (indexError: any) {
+        // If index doesn't exist, fetch without orderBy and sort in memory
+        console.log('Composite index not found, sorting in memory')
+        snapshot = await query.get()
+      }
+
+      const docs = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        created_at: doc.data().created_at?.toDate().toISOString(),
+        updated_at: doc.data().updated_at?.toDate().toISOString(),
+      }))
+
+      // Sort in memory if we couldn't use orderBy
+      return docs.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime()
+        const dateB = new Date(b.created_at || 0).getTime()
+        return dateB - dateA // Descending order
+      })
+    } catch (error: any) {
+      console.error('Error fetching collection:', error)
+      // Return empty array instead of throwing
+      return []
     }
-
-    const snapshot = await query.orderBy('created_at', 'desc').get()
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      created_at: doc.data().created_at?.toDate().toISOString(),
-      updated_at: doc.data().updated_at?.toDate().toISOString(),
-    }))
   }
 
   async getDocument(collectionName: string, docId: string) {
@@ -125,4 +155,3 @@ export class FirebaseServer {
 }
 
 export const firebaseServer = new FirebaseServer()
-

@@ -2,7 +2,7 @@
  * API Client for Backend Communication
  * 
  * This client handles all HTTP requests to the NestJS backend API.
- * It automatically includes Firebase ID tokens for authentication.
+ * Authentication uses Firebase ID tokens sent in Authorization header.
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'
@@ -41,36 +41,21 @@ export interface ChatSession {
 
 class ApiClient {
   private baseUrl: string
-  private token: string | null = null
-  private tokenRefreshCallback: (() => Promise<string | null>) | null = null
+  private getToken: (() => Promise<string | null>) | null = null
 
   constructor() {
     this.baseUrl = API_BASE_URL
   }
 
   /**
-   * Set the Firebase ID token for authenticated requests
+   * Set token getter function (to get fresh Firebase ID token)
    */
-  setToken(token: string | null) {
-    this.token = token
+  setTokenGetter(getter: () => Promise<string | null>) {
+    this.getToken = getter
   }
 
   /**
-   * Get the current token
-   */
-  getToken(): string | null {
-    return this.token
-  }
-
-  /**
-   * Set a callback function to refresh the token when it expires
-   */
-  setTokenRefreshCallback(callback: () => Promise<string | null>) {
-    this.tokenRefreshCallback = callback
-  }
-
-  /**
-   * Generic request handler with automatic token refresh on 401
+   * Generic request handler with Firebase ID token authentication
    */
   private async request<T>(
     endpoint: string,
@@ -85,8 +70,16 @@ class ApiClient {
       ...options.headers,
     }
 
-    if (this.token) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${this.token}`
+    // Get fresh Firebase ID token
+    if (this.getToken) {
+      try {
+        const token = await this.getToken()
+        if (token) {
+          (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+        }
+      } catch (error) {
+        console.error('Failed to get Firebase token:', error)
+      }
     }
 
     const url = `${this.baseUrl}${endpoint}`
@@ -96,22 +89,22 @@ class ApiClient {
         ...options,
         headers,
         cache: 'no-store',
+        credentials: 'include',
       })
 
-      // Handle 401 Unauthorized - token may be expired
-      if (response.status === 401 && retryCount === 0 && this.tokenRefreshCallback) {
-        console.log('Token expired, attempting to refresh...')
-        try {
-          const newToken = await this.tokenRefreshCallback()
-          if (newToken) {
-            this.token = newToken
-            // Retry the request with the new token
-            return this.request<T>(endpoint, options, retryCount + 1)
-          }
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError)
-          throw new Error('Session expired. Please sign in again.')
+      // Handle 401 Unauthorized
+      if (response.status === 401) {
+        // Try to refresh token and retry once
+        if (retryCount === 0 && this.getToken) {
+          console.log('Token expired, retrying with fresh token...')
+          return this.request<T>(endpoint, options, retryCount + 1)
         }
+        
+        // Session expired or invalid - redirect to login
+        if (typeof window !== 'undefined') {
+          window.location.href = '/auth/login'
+        }
+        throw new Error('Session expired. Please sign in again.')
       }
 
       if (!response.ok) {
@@ -292,4 +285,3 @@ export const apiClient = new ApiClient()
 
 // Export class for testing
 export { ApiClient }
-

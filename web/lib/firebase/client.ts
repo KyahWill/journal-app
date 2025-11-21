@@ -1,11 +1,4 @@
-import { getAuthInstance, getDbInstance } from './config'
-import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  User,
-} from 'firebase/auth'
+import { getDbInstance } from './config'
 import {
   collection,
   doc,
@@ -22,28 +15,16 @@ import {
   QueryConstraint,
 } from 'firebase/firestore'
 
+/**
+ * Firebase Client
+ * 
+ * DEPRECATED: Client-side Firebase Auth methods have been removed.
+ * All authentication is now handled server-side via API routes.
+ * 
+ * This class now only provides Firestore methods for direct database access.
+ * However, it's recommended to use the API client instead for consistency.
+ */
 export class FirebaseClient {
-  // Auth methods
-  async signIn(email: string, password: string) {
-    return signInWithEmailAndPassword(getAuthInstance(), email, password)
-  }
-
-  async signUp(email: string, password: string) {
-    return createUserWithEmailAndPassword(getAuthInstance(), email, password)
-  }
-
-  async signOut() {
-    return firebaseSignOut(getAuthInstance())
-  }
-
-  getCurrentUser(): User | null {
-    return getAuthInstance().currentUser
-  }
-
-  onAuthStateChange(callback: (user: User | null) => void) {
-    return onAuthStateChanged(getAuthInstance(), callback)
-  }
-
   // Firestore methods
   async getCollection(collectionName: string, constraints: QueryConstraint[] = []) {
     const collectionRef = collection(getDbInstance(), collectionName)
@@ -109,4 +90,3 @@ export class FirebaseClient {
 }
 
 export const firebaseClient = new FirebaseClient()
-

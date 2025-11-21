@@ -2,22 +2,16 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/hooks/useAuth'
 import { Loader2 } from 'lucide-react'
 
-export default function DashboardPage() {
+export default function AppPage() {
   const router = useRouter()
-  const { isAuthenticated, loading } = useAuth()
 
+  // Simply redirect to journal page
+  // Middleware handles authentication
   useEffect(() => {
-    if (!loading) {
-      if (isAuthenticated) {
-        router.push('/app/journal')
-      } else {
-        router.push('/auth/login')
-      }
-    }
-  }, [isAuthenticated, loading, router])
+    router.replace('/app/journal')
+  }, [router])
 
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -28,4 +22,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-

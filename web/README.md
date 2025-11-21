@@ -72,12 +72,12 @@ pnpm dev
 ```
 app/
 ├── api/                    # API routes
+│   ├── auth/              # Server-side auth API
 │   ├── chat/              # AI coach API
 │   └── journal/           # Journal CRUD API
 ├── auth/                  # Authentication pages
 │   ├── login/
-│   ├── signup/
-│   └── callback/
+│   └── signup/
 ├── dashboard/             # Protected dashboard
 │   ├── journal/          # Journal pages
 │   └── coach/            # AI coach chat
@@ -179,10 +179,14 @@ pnpm lint
 ## Features Overview
 
 ### Authentication
-- Email/password signup and login
-- Secure session management via Firebase Auth with session cookies
-- Protected routes with middleware
+- **100% Server-Side Authentication** with Firebase
+- Email/password signup and login (server-side)
+- HTTP-only secure session cookies
+- Protected routes with middleware verification
 - Automatic redirects
+- No client-side token exposure
+
+See [Server-Side Auth Documentation](./docs/SERVER_SIDE_AUTH.md) and [Migration Guide](./docs/AUTH_MIGRATION_GUIDE.md) for details.
 
 ### Journal
 - Create entries with title and content
@@ -210,16 +214,21 @@ pnpm lint
 ## Security
 
 - Firebase Security Rules on all collections
-- Secure authentication with Firebase Auth
-- Session cookies for server-side auth verification
+- **Server-side authentication** with Firebase Admin SDK
+- HTTP-only, secure session cookies (no client-side token exposure)
+- Middleware verification on every protected route
+- Session revocation on logout
 - Environment variables for sensitive data
 - HTTPS enforcement in production
+
+See [Server-Side Auth Documentation](./docs/SERVER_SIDE_AUTH.md) for security details.
 
 ## Support
 
 For issues or questions, please refer to:
+- [Server-Side Auth Documentation](./docs/SERVER_SIDE_AUTH.md) - Authentication implementation details
+- [Auth Migration Guide](./docs/AUTH_MIGRATION_GUIDE.md) - Migration from client-side auth
 - [Firebase Setup Guide](../docs/FIREBASE_SETUP.md)
-- [Migration Guide](../docs/MIGRATION_GUIDE.md) (if migrating from Supabase)
 - [Feature Set Documentation](../docs/FEATURE_SET.md)
 - [Deployment Guide](../docs/WEB_SETUP.md)
 - [Project Summary](../docs/PROJECT_SUMMARY.md)

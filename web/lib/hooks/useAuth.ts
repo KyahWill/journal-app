@@ -1,27 +1,20 @@
 /**
- * Authentication Hook
+ * Authentication Hook - Server-Side Edition
  * 
- * Manages Firebase authentication state and syncs with backend API
+ * All authentication is now handled server-side via API routes.
+ * No client-side Firebase Auth SDK usage.
  */
 
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { auth } from '@/lib/firebase/config'
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  User as FirebaseUser,
-} from 'firebase/auth'
-import { apiClient } from '@/lib/api/client'
 
 export interface User {
   uid: string
   email: string | null
   displayName: string | null
   emailVerified: boolean
+  createdAt?: string
 }
 
 interface AuthState {
@@ -37,171 +30,70 @@ export function useAuth() {
     error: null,
   })
 
-  // Refresh token callback for API client
-  const refreshTokenCallback = useCallback(async () => {
-    if (!auth) return null
-    const currentUser = auth.currentUser
-    if (currentUser) {
-      try {
-        console.log('Refreshing Firebase ID token...')
-        const token = await currentUser.getIdToken(true) // Force refresh
-        
-        // Update session cookie with new token
-        try {
-          await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ idToken: token }),
-          })
-        } catch (error) {
-          console.error('Failed to update session cookie:', error)
-        }
-        
-        console.log('Token refreshed successfully')
-        return token
-      } catch (error) {
-        console.error('Token refresh failed:', error)
-        return null
+  // Fetch current user from server
+  const fetchUser = useCallback(async () => {
+    try {
+      setAuthState((prev) => ({ ...prev, loading: true, error: null }))
+      
+      const response = await fetch('/api/auth/user', {
+        method: 'GET',
+        credentials: 'include', // Include cookies
+        cache: 'no-store',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user')
       }
+
+      const data = await response.json()
+      
+      setAuthState({
+        user: data.user || null,
+        loading: false,
+        error: null,
+      })
+    } catch (error: any) {
+      console.error('Fetch user error:', error)
+      setAuthState({
+        user: null,
+        loading: false,
+        error: error.message || 'Failed to fetch user',
+      })
     }
-    return null
   }, [])
 
-  // Register token refresh callback with API client
+  // Fetch user on mount
   useEffect(() => {
-    apiClient.setTokenRefreshCallback(refreshTokenCallback)
-  }, [refreshTokenCallback])
-
-  // Proactive token refresh - refresh token every 50 minutes (before 1 hour expiry)
-  useEffect(() => {
-    if (!auth || typeof window === 'undefined') return
-
-    let refreshInterval: NodeJS.Timeout | null = null
-
-    const startTokenRefreshInterval = () => {
-      // Clear any existing interval
-      if (refreshInterval) clearInterval(refreshInterval)
-
-      // Refresh token every 50 minutes (3000000 ms)
-      // Firebase tokens expire after 1 hour, so this ensures we refresh before expiry
-      refreshInterval = setInterval(async () => {
-        if (!auth) return
-        const currentUser = auth.currentUser
-        if (currentUser) {
-          console.log('Proactively refreshing token...')
-          await refreshTokenCallback()
-        }
-      }, 50 * 60 * 1000) // 50 minutes
-    }
-
-    // Start interval when user is authenticated
-    if (auth?.currentUser) {
-      startTokenRefreshInterval()
-    }
-
-    // Listen for auth state changes to start/stop the interval
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        startTokenRefreshInterval()
-      } else if (refreshInterval) {
-        clearInterval(refreshInterval)
-        refreshInterval = null
-      }
-    })
-
-    return () => {
-      unsubscribe()
-      if (refreshInterval) clearInterval(refreshInterval)
-    }
-  }, [refreshTokenCallback])
-
-  // Listen to Firebase auth state changes
-  useEffect(() => {
-    // Only run on client side
-    if (typeof window === 'undefined' || !auth) {
-      setAuthState({ user: null, loading: false, error: null })
-      return
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      try {
-        if (firebaseUser) {
-          // Get Firebase ID token
-          const token = await firebaseUser.getIdToken()
-
-          // Set token in API client
-          apiClient.setToken(token)
-
-          // Create session cookie (required for middleware authentication)
-          try {
-            await fetch('/api/auth/session', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ idToken: token }),
-            })
-          } catch (error) {
-            console.error('Session cookie creation failed:', error)
-          }
-
-          // Verify token with backend (optional but recommended)
-          try {
-            await apiClient.verifyToken(token)
-          } catch (error) {
-            console.error('Token verification failed:', error)
-          }
-
-          // Set user state
-          setAuthState({
-            user: {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              emailVerified: firebaseUser.emailVerified,
-            },
-            loading: false,
-            error: null,
-          })
-        } else {
-          // No user signed in - clear session cookie
-          try {
-            await fetch('/api/auth/session', { method: 'DELETE' })
-          } catch (error) {
-            console.error('Failed to clear session:', error)
-          }
-          
-          apiClient.setToken(null)
-          setAuthState({
-            user: null,
-            loading: false,
-            error: null,
-          })
-        }
-      } catch (error: any) {
-        console.error('Auth state change error:', error)
-        setAuthState({
-          user: null,
-          loading: false,
-          error: error.message || 'Authentication error',
-        })
-      }
-    })
-
-    return () => unsubscribe()
-  }, [])
+    fetchUser()
+  }, [fetchUser])
 
   // Sign in with email and password
   const signIn = useCallback(async (email: string, password: string) => {
-    if (!auth) {
-      throw new Error('Firebase Auth not initialized')
-    }
     try {
       setAuthState((prev) => ({ ...prev, loading: true, error: null }))
-      await signInWithEmailAndPassword(auth, email, password)
-      // Auth state will be updated by onAuthStateChanged
+      
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed')
+      }
+
+      setAuthState({
+        user: data.user,
+        loading: false,
+        error: null,
+      })
+
+      return data.user
     } catch (error: any) {
       const errorMessage = error.message || 'Sign in failed'
       setAuthState((prev) => ({ ...prev, loading: false, error: errorMessage }))
@@ -211,19 +103,31 @@ export function useAuth() {
 
   // Sign up with email and password
   const signUp = useCallback(async (email: string, password: string, displayName?: string) => {
-    if (!auth) {
-      throw new Error('Firebase Auth not initialized')
-    }
     try {
       setAuthState((prev) => ({ ...prev, loading: true, error: null }))
       
-      // Create user in Firebase
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      
-      // Optionally create user in backend
-      // Note: Backend also has a signup endpoint if you want to use it instead
-      
-      return userCredential.user
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password, displayName }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Signup failed')
+      }
+
+      setAuthState({
+        user: data.user,
+        loading: false,
+        error: null,
+      })
+
+      return data.user
     } catch (error: any) {
       const errorMessage = error.message || 'Sign up failed'
       setAuthState((prev) => ({ ...prev, loading: false, error: errorMessage }))
@@ -233,22 +137,23 @@ export function useAuth() {
 
   // Sign out
   const signOut = useCallback(async () => {
-    if (!auth) {
-      throw new Error('Firebase Auth not initialized')
-    }
     try {
       setAuthState((prev) => ({ ...prev, loading: true, error: null }))
       
-      // Delete session cookie
-      try {
-        await fetch('/api/auth/session', { method: 'DELETE' })
-      } catch (error) {
-        console.error('Failed to delete session cookie:', error)
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        throw new Error('Logout failed')
       }
-      
-      await firebaseSignOut(auth)
-      apiClient.setToken(null)
-      // Auth state will be updated by onAuthStateChanged
+
+      setAuthState({
+        user: null,
+        loading: false,
+        error: null,
+      })
     } catch (error: any) {
       const errorMessage = error.message || 'Sign out failed'
       setAuthState((prev) => ({ ...prev, loading: false, error: errorMessage }))
@@ -256,17 +161,10 @@ export function useAuth() {
     }
   }, [])
 
-  // Refresh token (useful when token expires)
-  const refreshToken = useCallback(async () => {
-    if (!auth) return null
-    const currentUser = auth.currentUser
-    if (currentUser) {
-      const token = await currentUser.getIdToken(true) // Force refresh
-      apiClient.setToken(token)
-      return token
-    }
-    return null
-  }, [])
+  // Refresh user data
+  const refreshUser = useCallback(async () => {
+    return fetchUser()
+  }, [fetchUser])
 
   return {
     user: authState.user,
@@ -275,8 +173,7 @@ export function useAuth() {
     signIn,
     signUp,
     signOut,
-    refreshToken,
+    refreshUser,
     isAuthenticated: !!authState.user,
   }
 }
-
