@@ -22,10 +22,22 @@ pnpm dev
 
 ## 📚 Documentation
 
-- **[SETUP_GUIDE.md](docs/SETUP_GUIDE.md)** - Local development setup
-- **[WEB_SETUP.md](docs/WEB_SETUP.md)** - Google Cloud Run deployment
-- **[FEATURE_SET.md](docs/FEATURE_SET.md)** - Complete feature reference
-- **[PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)** - Project overview
+**→ [Complete Documentation Index](docs/INDEX.md)** - Full navigation guide
+
+### Quick Links
+
+#### Authentication
+- **[Authentication Summary](docs/AUTHENTICATION_SUMMARY.md)** ⚡ - 5-minute overview (Start here!)
+- **[Authentication Architecture](docs/AUTHENTICATION_ARCHITECTURE.md)** ⭐ - Complete auth system overview
+- **[Quick Reference](docs/web/AUTH_QUICK_REFERENCE.md)** - Code examples & patterns
+- **[Server-Side Auth Details](docs/web/SERVER_SIDE_AUTH.md)** - Implementation details
+
+#### Architecture & Features
+- **[System Architecture](docs/ARCHITECTURE.md)** - Overall system design
+- **[Feature Set](docs/FEATURE_SET.md)** - Complete feature reference
+
+#### Setup
+- **[Firestore Setup](docs/backend/FIRESTORE_SETUP.md)** - Database configuration
 
 ## ✨ Features
 

@@ -39,6 +39,7 @@ export default function JournalListPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [viewMode, setViewMode] = useState<'grouped' | 'list'>('list')
+  const [hasFetchedInitial, setHasFetchedInitial] = useState(false)
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -47,19 +48,28 @@ export default function JournalListPage() {
     }
   }, [isAuthenticated, authLoading, router])
 
-  // Fetch data when view mode changes
+  // Fetch initial data on mount
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !hasFetchedInitial) {
+      setHasFetchedInitial(true)
       if (viewMode === 'grouped') {
         fetchGroupedEntries()
       } else {
-        // Only fetch if entries array is empty
-        if (entries.length === 0) {
-          fetchEntries()
-        }
+        fetchEntries()
       }
     }
-  }, [isAuthenticated, viewMode])
+  }, [isAuthenticated, hasFetchedInitial])
+
+  // Fetch data when view mode changes (after initial load)
+  useEffect(() => {
+    if (isAuthenticated && hasFetchedInitial) {
+      if (viewMode === 'grouped') {
+        fetchGroupedEntries()
+      } else {
+        fetchEntries()
+      }
+    }
+  }, [viewMode])
 
   // Filter entries based on search query
   useEffect(() => {
@@ -82,12 +92,7 @@ export default function JournalListPage() {
       setDeleting(true)
       await deleteEntry(deleteId)
       setDeleteId(null)
-      // Refetch data after deletion
-      if (viewMode === 'grouped') {
-        fetchGroupedEntries()
-      } else {
-        fetchEntries()
-      }
+      // No need to refetch - hook updates state optimistically
     } catch (err: any) {
       console.error('Failed to delete entry:', err)
     } finally {

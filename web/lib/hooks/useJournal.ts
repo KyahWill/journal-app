@@ -43,13 +43,6 @@ export function useJournal() {
     }
   }, [isAuthenticated])
 
-  // Fetch entries on mount
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchEntries()
-    }
-  }, [isAuthenticated, fetchEntries])
-
   // Create a new entry
   const createEntry = useCallback(
     async (data: {
