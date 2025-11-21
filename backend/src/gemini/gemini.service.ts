@@ -56,10 +56,8 @@ export class GeminiService implements OnModuleInit {
     return buffer.join('\n')
   }
 
-  private getSystemPrompt(journalContext: string): string {
-    return `You are an experienced executive coach with expertise in leadership development, personal growth, and professional success. Your role is to have meaningful one-on-one coaching sessions with the user based on their journal entries.
-
-${journalContext}
+  private getSystemPrompt(journalContext: string, customPrompt?: string): string {
+    const basePrompt = customPrompt || `You are an experienced executive coach with expertise in leadership development, personal growth, and professional success. Your role is to have meaningful one-on-one coaching sessions with the user based on their journal entries.
 
 Guidelines for your coaching:
 1. Be empathetic, supportive, and insightful
@@ -73,16 +71,21 @@ Guidelines for your coaching:
 9. Keep responses concise but meaningful (2-4 paragraphs typically)
 
 Remember: You're here to support their personal and professional growth journey.`
+
+    return `${basePrompt}
+
+${journalContext}`
   }
 
   async sendMessage(
     userMessage: string,
     journalEntries: JournalEntry[],
     history: ChatMessage[] = [],
+    customPrompt?: string,
   ): Promise<string> {
     try {
       const journalContext = this.formatJournalContext(journalEntries)
-      const systemPrompt = this.getSystemPrompt(journalContext)
+      const systemPrompt = this.getSystemPrompt(journalContext, customPrompt)
 
       // Build conversation history
       const conversationHistory: string[] = []
@@ -170,6 +173,32 @@ Provide exactly 5 questions, one per line, without numbering or bullets.`
       return questions.slice(0, 5)
     } catch (error) {
       this.logger.error('Error generating prompts', error)
+      throw error
+    }
+  }
+
+  async analyzePrompt(promptText: string): Promise<{ suggestions: string }> {
+    try {
+      const analysisPrompt = `You are an expert in crafting effective AI system prompts. Analyze the following system prompt and provide actionable suggestions for improvement.
+
+System Prompt to Analyze:
+"""
+${promptText}
+"""
+
+Please provide:
+1. Strengths of the current prompt
+2. Areas that could be improved
+3. Specific suggestions for making it more effective
+4. Example improvements or additions
+
+Focus on clarity, specificity, tone, and effectiveness. Provide your analysis in a clear, structured format.`
+
+      const result = await this.model.generateContent(analysisPrompt)
+      const response = result.response
+      return { suggestions: response.text() }
+    } catch (error) {
+      this.logger.error('Error analyzing prompt', error)
       throw error
     }
   }

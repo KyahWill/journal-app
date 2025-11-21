@@ -47,6 +47,51 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && 
                        resource.data.user_id == request.auth.uid;
     }
+    
+    // Chat sessions
+    match /chat_sessions/{sessionId} {
+      // Users can read their own sessions
+      allow read: if isAuthenticated() && 
+                     resource.data.user_id == request.auth.uid;
+      
+      // Users can create sessions with their own user_id
+      allow create: if isAuthenticated() && 
+                       request.resource.data.user_id == request.auth.uid;
+      
+      // Users can update their own sessions
+      allow update: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid &&
+                       request.resource.data.user_id == request.auth.uid;
+      
+      // Users can delete their own sessions
+      allow delete: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+    }
+    
+    // User prompts
+    match /user_prompts/{promptId} {
+      // Users can read their own prompts
+      allow read: if isAuthenticated() && 
+                     resource.data.user_id == request.auth.uid;
+      
+      // Users can create prompts with their own user_id
+      allow create: if isAuthenticated() && 
+                       request.resource.data.user_id == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['user_id', 'name', 'prompt_text', 'is_default', 'created_at', 'updated_at']) &&
+                       request.resource.data.name.size() <= 100 &&
+                       request.resource.data.prompt_text.size() <= 10000;
+      
+      // Users can update their own prompts
+      allow update: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid &&
+                       request.resource.data.user_id == request.auth.uid &&
+                       (!request.resource.data.keys().hasAny(['name']) || request.resource.data.name.size() <= 100) &&
+                       (!request.resource.data.keys().hasAny(['prompt_text']) || request.resource.data.prompt_text.size() <= 10000);
+      
+      // Users can delete their own prompts
+      allow delete: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+    }
   }
 }
 

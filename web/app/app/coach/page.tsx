@@ -2,12 +2,21 @@
 
 import { useRef, useEffect } from 'react'
 import { useChat, useChatSessions } from '@/lib/hooks/useChat'
+import { usePrompts } from '@/lib/hooks/usePrompts'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Send, RefreshCw, Loader2, Sparkles, Lightbulb } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, Brain } from 'lucide-react'
+import { Label } from '@/components/ui/label'
 import { useState } from 'react'
 import { CoachSessionsSidebar } from '@/components/coach-sessions-sidebar'
 import { ChatSession } from '@/lib/api/client'
@@ -34,6 +43,13 @@ export default function CoachChatPage() {
     updateSessionTitle,
   } = useChatSessions()
   
+  const {
+    prompts,
+    loading: promptsLoading,
+    fetchPrompts,
+    getDefaultPrompt,
+  } = usePrompts()
+  
   const [input, setInput] = useState('')
   const [showInsights, setShowInsights] = useState(false)
   const [insights, setInsights] = useState<string | null>(null)
@@ -41,6 +57,7 @@ export default function CoachChatPage() {
   const [loadingInsights, setLoadingInsights] = useState(false)
   const [loadingPrompts, setLoadingPrompts] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -51,12 +68,26 @@ export default function CoachChatPage() {
     scrollToBottom()
   }, [messages])
 
-  // Load suggested prompts and sessions on mount and track client-side mount
+  // Load suggested prompts, sessions, and user prompts on mount
   useEffect(() => {
     setIsMounted(true)
     loadPrompts()
     fetchSessions()
+    loadUserPrompts()
   }, [])
+
+  async function loadUserPrompts() {
+    try {
+      await fetchPrompts()
+      // Load and set default prompt
+      const defaultPrompt = await getDefaultPrompt()
+      if (defaultPrompt) {
+        setSelectedPromptId(defaultPrompt.id)
+      }
+    } catch (err) {
+      console.error('Failed to load user prompts:', err)
+    }
+  }
 
   async function loadPrompts() {
     try {
@@ -77,7 +108,7 @@ export default function CoachChatPage() {
     setInput('')
 
     try {
-      await sendMessage(message)
+      await sendMessage(message, selectedPromptId || undefined)
     } catch (err) {
       console.error('Failed to send message:', err)
     }
@@ -199,6 +230,38 @@ export default function CoachChatPage() {
           )}
         </div>
       </div>
+
+      {/* Prompt Selector */}
+      {isMounted && prompts.length > 0 && (
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <Brain className="h-5 w-5 text-purple-600 flex-shrink-0" />
+              <div className="flex-1">
+                <Label htmlFor="prompt-select" className="text-sm font-medium mb-2 block">
+                  AI Personality
+                </Label>
+                <Select
+                  value={selectedPromptId || undefined}
+                  onValueChange={setSelectedPromptId}
+                >
+                  <SelectTrigger id="prompt-select" className="w-full">
+                    <SelectValue placeholder="Select a prompt..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {prompts.map((prompt) => (
+                      <SelectItem key={prompt.id} value={prompt.id}>
+                        {prompt.name}
+                        {prompt.is_default && ' (Default)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Insights Panel */}
       {showInsights && insights && (

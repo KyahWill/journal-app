@@ -5,6 +5,7 @@ import { JournalService } from '@/journal/journal.service'
 import { SendMessageDto } from '@/common/dto/chat.dto'
 import { ChatSession, ChatMessage } from '@/common/types/journal.types'
 import { v4 as uuidv4 } from 'uuid'
+import { PromptService } from '@/prompt/prompt.service'
 
 @Injectable()
 export class ChatService {
@@ -15,22 +16,36 @@ export class ChatService {
     private readonly firebaseService: FirebaseService,
     private readonly geminiService: GeminiService,
     private readonly journalService: JournalService,
+    private readonly promptService: PromptService,
   ) {}
 
   async sendMessage(userId: string, sendMessageDto: SendMessageDto) {
     try {
-      const { message, sessionId } = sendMessageDto
+      const { message, sessionId, promptId } = sendMessageDto
 
       // Get or create session
       let session: ChatSession
       if (sessionId) {
         session = await this.getSession(sessionId, userId)
       } else {
-        session = await this.createSession(userId)
+        session = await this.createSession(userId, promptId)
       }
 
       // Get user's journal entries for context
       const journalEntries = await this.journalService.getRecent(userId, 20)
+
+      // Get custom prompt if specified
+      let customPromptText: string | undefined
+      const effectivePromptId = promptId || session.prompt_id
+      
+      if (effectivePromptId) {
+        try {
+          const prompt = await this.promptService.getPrompt(effectivePromptId, userId)
+          customPromptText = prompt.prompt_text
+        } catch (error) {
+          this.logger.warn(`Could not load prompt ${effectivePromptId}, using default`)
+        }
+      }
 
       // Create user message
       const userMessage: ChatMessage = {
@@ -40,11 +55,12 @@ export class ChatService {
         timestamp: new Date(),
       }
 
-      // Get AI response
+      // Get AI response with custom prompt
       const aiResponse = await this.geminiService.sendMessage(
         message,
         journalEntries,
         session.messages,
+        customPromptText,
       )
 
       // Create assistant message
@@ -64,9 +80,10 @@ export class ChatService {
         await this.firebaseService.updateDocument(this.collectionName, session.id, {
           messages: session.messages,
           title: session.title,
+          prompt_id: effectivePromptId,
         })
       } else {
-        await this.updateSession(session.id, userId, session.messages)
+        await this.updateSession(session.id, userId, session.messages, effectivePromptId)
       }
 
       this.logger.log(`Message sent in session: ${session.id} for user: ${userId}`)
@@ -82,12 +99,13 @@ export class ChatService {
     }
   }
 
-  async createSession(userId: string): Promise<ChatSession> {
+  async createSession(userId: string, promptId?: string): Promise<ChatSession> {
     try {
       const session: Omit<ChatSession, 'id' | 'created_at' | 'updated_at'> = {
         user_id: userId,
         messages: [],
         title: undefined,
+        prompt_id: promptId,
       }
 
       const result = await this.firebaseService.addDocument(this.collectionName, session)
@@ -99,6 +117,7 @@ export class ChatService {
         user_id: userId,
         messages: [],
         title: undefined,
+        prompt_id: promptId,
         created_at: result.created_at.toDate(),
         updated_at: result.updated_at.toDate(),
       }
@@ -125,6 +144,7 @@ export class ChatService {
         user_id: session.user_id,
         title: session.title,
         messages: session.messages || [],
+        prompt_id: session.prompt_id,
         created_at: session.created_at?.toDate() || new Date(),
         updated_at: session.updated_at?.toDate() || new Date(),
       }
@@ -151,6 +171,7 @@ export class ChatService {
         user_id: session.user_id,
         title: session.title,
         messages: session.messages || [],
+        prompt_id: session.prompt_id,
         created_at: session.created_at?.toDate() || new Date(),
         updated_at: session.updated_at?.toDate() || new Date(),
       }))
@@ -164,14 +185,18 @@ export class ChatService {
     sessionId: string,
     userId: string,
     messages: ChatMessage[],
+    promptId?: string,
   ): Promise<ChatSession> {
     try {
       // Verify session belongs to user
       await this.getSession(sessionId, userId)
 
-      await this.firebaseService.updateDocument(this.collectionName, sessionId, {
-        messages,
-      })
+      const updateData: any = { messages }
+      if (promptId !== undefined) {
+        updateData.prompt_id = promptId
+      }
+
+      await this.firebaseService.updateDocument(this.collectionName, sessionId, updateData)
 
       return this.getSession(sessionId, userId)
     } catch (error) {

@@ -26,7 +26,7 @@ export function useChat(initialSessionId?: string) {
 
   // Send a message to the AI coach
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, promptId?: string) => {
       setState((prev) => ({ ...prev, loading: true, error: null }))
 
       // Add user message to state immediately
@@ -43,7 +43,11 @@ export function useChat(initialSessionId?: string) {
       }))
 
       try {
-        const response = await apiClient.sendChatMessage(content, state.sessionId || undefined)
+        const response = await apiClient.sendChatMessage(
+          content,
+          state.sessionId || undefined,
+          promptId
+        )
 
         // Update messages with actual response
         setState((prev) => ({

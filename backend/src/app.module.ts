@@ -5,6 +5,7 @@ import { GeminiModule } from './gemini/gemini.module'
 import { AuthModule } from './auth/auth.module'
 import { JournalModule } from './journal/journal.module'
 import { ChatModule } from './chat/chat.module'
+import { PromptModule } from './prompt/prompt.module'
 import { AppController } from './app.controller'
 
 @Module({
@@ -18,6 +19,7 @@ import { AppController } from './app.controller'
     AuthModule,
     JournalModule,
     ChatModule,
+    PromptModule,
   ],
   controllers: [AppController],
 })

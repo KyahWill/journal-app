@@ -36,6 +36,17 @@ export interface ChatSession {
   user_id: string
   title?: string
   messages: ChatMessage[]
+  prompt_id?: string
+  created_at: string | Date
+  updated_at: string | Date
+}
+
+export interface UserPrompt {
+  id: string
+  user_id: string
+  name: string
+  prompt_text: string
+  is_default: boolean
   created_at: string | Date
   updated_at: string | Date
 }
@@ -232,7 +243,8 @@ class ApiClient {
 
   async sendChatMessage(
     message: string,
-    sessionId?: string
+    sessionId?: string,
+    promptId?: string
   ): Promise<{
     sessionId: string
     userMessage: ChatMessage
@@ -240,7 +252,7 @@ class ApiClient {
   }> {
     return this.request('/chat/message', {
       method: 'POST',
-      body: JSON.stringify({ message, sessionId }),
+      body: JSON.stringify({ message, sessionId, promptId }),
     })
   }
 
@@ -277,6 +289,66 @@ class ApiClient {
 
   async getSuggestedPrompts(): Promise<{ prompts: string[] }> {
     return this.request<{ prompts: string[] }>('/chat/prompts')
+  }
+
+  // ============================================================================
+  // Prompt APIs
+  // ============================================================================
+
+  async getUserPrompts(): Promise<UserPrompt[]> {
+    return this.request<UserPrompt[]>('/prompt')
+  }
+
+  async getPrompt(id: string): Promise<UserPrompt> {
+    return this.request<UserPrompt>(`/prompt/${id}`)
+  }
+
+  async getDefaultPrompt(): Promise<UserPrompt> {
+    return this.request<UserPrompt>('/prompt/default')
+  }
+
+  async createPrompt(data: {
+    name: string
+    prompt_text: string
+    is_default?: boolean
+  }): Promise<UserPrompt> {
+    return this.request<UserPrompt>('/prompt', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updatePrompt(
+    id: string,
+    data: {
+      name?: string
+      prompt_text?: string
+      is_default?: boolean
+    }
+  ): Promise<UserPrompt> {
+    return this.request<UserPrompt>(`/prompt/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deletePrompt(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/prompt/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async setDefaultPrompt(id: string): Promise<UserPrompt> {
+    return this.request<UserPrompt>(`/prompt/${id}/set-default`, {
+      method: 'PATCH',
+    })
+  }
+
+  async getPromptImprovements(promptText: string): Promise<{ suggestions: string }> {
+    return this.request<{ suggestions: string }>('/prompt/improve', {
+      method: 'POST',
+      body: JSON.stringify({ prompt_text: promptText }),
+    })
   }
 
   // ============================================================================

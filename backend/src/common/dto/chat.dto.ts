@@ -8,6 +8,10 @@ export class SendMessageDto {
   @IsOptional()
   @IsString()
   sessionId?: string
+
+  @IsOptional()
+  @IsString()
+  promptId?: string
 }
 
 export class ChatHistoryDto {
