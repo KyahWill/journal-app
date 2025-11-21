@@ -21,7 +21,7 @@ export class GeminiService implements OnModuleInit {
 
       this.genAI = new GoogleGenerativeAI(apiKey)
       this.model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash-exp',
+        model: 'gemini-2.0-flash-lite',
       })
 
       this.logger.log('Google Gemini AI initialized successfully')
@@ -147,9 +147,13 @@ Please provide a thoughtful analysis in 3-5 paragraphs.`
   async suggestPrompts(journalEntries: JournalEntry[]): Promise<string[]> {
     try {
       const journalContext = this.formatJournalContext(journalEntries.slice(0, 5))
-      const prompt = `Based on these journal entries, suggest 5 thoughtful coaching questions or prompts that would help the user reflect deeper on their experiences and personal growth.
+      const prompt = `Based on these journal entries, suggest 5 thoughtful questions that the user
+      could ask the AI coach to help them reflect deeper on their experiences and personal growth.
+      Put an emphasis on the users. 
 
-${journalContext}
+      Generate questions that focus on "I" rather than "you".
+
+      ${journalContext}
 
 Provide exactly 5 questions, one per line, without numbering or bullets.`
 

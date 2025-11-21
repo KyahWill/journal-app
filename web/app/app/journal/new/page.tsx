@@ -31,7 +31,7 @@ export default function NewEntryPage() {
         content,
         mood: mood || undefined,
       })
-      router.push('/dashboard/journal')
+      router.push('/app/journal')
     } catch (err: any) {
       setError(err.message || 'Failed to create entry')
     } finally {

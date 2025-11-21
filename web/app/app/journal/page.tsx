@@ -38,7 +38,7 @@ export default function JournalListPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [viewMode, setViewMode] = useState<'grouped' | 'list'>('grouped')
+  const [viewMode, setViewMode] = useState<'grouped' | 'list'>('list')
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -162,7 +162,7 @@ export default function JournalListPage() {
                 : 'No journal entries yet. Create your first entry!'}
             </p>
             {!searchQuery && (
-              <Link href="/dashboard/journal/new">
+              <Link href="/app/journal/new">
                 <Button className="mt-4">
                   <Plus className="h-4 w-4 mr-2" />
                   Create First Entry
@@ -207,7 +207,7 @@ export default function JournalListPage() {
                     <p className="text-sm text-gray-600 line-clamp-3">
                       {entry.content}
                     </p>
-                    <Link href={`/dashboard/journal/${entry.id}`}>
+                    <Link href={`/app/journal/${entry.id}`}>
                       <Button variant="link" className="mt-4 px-0">
                         Read more →
                       </Button>
@@ -234,7 +234,7 @@ export default function JournalListPage() {
                 : 'No journal entries yet. Create your first entry!'}
             </p>
             {!searchQuery && (
-              <Link href="/dashboard/journal/new">
+              <Link href="/app/journal/new">
                 <Button className="mt-4">
                   <Plus className="h-4 w-4 mr-2" />
                   Create First Entry
@@ -271,7 +271,7 @@ export default function JournalListPage() {
               <p className="text-sm text-gray-600 line-clamp-3">
                 {entry.content}
               </p>
-              <Link href={`/dashboard/journal/${entry.id}`}>
+              <Link href={`/app/journal/${entry.id}`}>
                 <Button variant="link" className="mt-4 px-0">
                   Read more →
                 </Button>
@@ -304,7 +304,7 @@ export default function JournalListPage() {
             <List className="h-4 w-4 mr-2" />
             List View
           </Button>
-          <Link href="/dashboard/journal/new">
+          <Link href="/app/journal/new">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               New Entry

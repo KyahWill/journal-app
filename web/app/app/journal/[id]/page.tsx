@@ -95,7 +95,7 @@ export default function EntryDetailPage() {
         </Alert>
         <Button
           className="mt-4"
-          onClick={() => router.push('/dashboard/journal')}
+          onClick={() => router.push('/app/journal')}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Journal
@@ -108,7 +108,7 @@ export default function EntryDetailPage() {
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <Button
         variant="ghost"
-        onClick={() => router.push('/dashboard/journal')}
+        onClick={() => router.push('/app/journal')}
         className="mb-6"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />

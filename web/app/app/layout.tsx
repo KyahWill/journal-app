@@ -55,13 +55,13 @@ export default function DashboardLayout({
               <h1 className="text-2xl font-bold">Journal</h1>
               <nav className="flex space-x-4">
                 <Link
-                  href="/dashboard/journal"
+                  href="/app/journal"
                   className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Journal
                 </Link>
                 <Link
-                  href="/dashboard/coach"
+                  href="/app/coach"
                   className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   AI Coach
