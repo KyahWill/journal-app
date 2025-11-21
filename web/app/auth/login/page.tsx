@@ -22,7 +22,7 @@ export default function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      router.push('/dashboard/journal')
+      router.push('/app/journal')
     }
   }, [isAuthenticated, authLoading, router])
 

@@ -42,6 +42,7 @@ export interface ChatSession {
 class ApiClient {
   private baseUrl: string
   private token: string | null = null
+  private tokenRefreshCallback: (() => Promise<string | null>) | null = null
 
   constructor() {
     this.baseUrl = API_BASE_URL
@@ -62,14 +63,25 @@ class ApiClient {
   }
 
   /**
-   * Generic request handler
+   * Set a callback function to refresh the token when it expires
+   */
+  setTokenRefreshCallback(callback: () => Promise<string | null>) {
+    this.tokenRefreshCallback = callback
+  }
+
+  /**
+   * Generic request handler with automatic token refresh on 401
    */
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retryCount: number = 0
   ): Promise<T> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
       ...options.headers,
     }
 
@@ -83,7 +95,24 @@ class ApiClient {
       const response = await fetch(url, {
         ...options,
         headers,
+        cache: 'no-store',
       })
+
+      // Handle 401 Unauthorized - token may be expired
+      if (response.status === 401 && retryCount === 0 && this.tokenRefreshCallback) {
+        console.log('Token expired, attempting to refresh...')
+        try {
+          const newToken = await this.tokenRefreshCallback()
+          if (newToken) {
+            this.token = newToken
+            // Retry the request with the new token
+            return this.request<T>(endpoint, options, retryCount + 1)
+          }
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError)
+          throw new Error('Session expired. Please sign in again.')
+        }
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -197,6 +226,10 @@ class ApiClient {
 
   async getRecentJournalEntries(limit: number = 10): Promise<JournalEntry[]> {
     return this.request<JournalEntry[]>(`/journal/recent?limit=${limit}`)
+  }
+
+  async getGroupedJournalEntries(): Promise<Record<string, JournalEntry[]>> {
+    return this.request<Record<string, JournalEntry[]>>('/journal/grouped')
   }
 
   // ============================================================================

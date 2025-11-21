@@ -18,6 +18,7 @@ export class FirebaseService implements OnModuleInit {
     try {
       const serviceAccountKey = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT_KEY')
       const projectId = this.configService.get<string>('FIREBASE_PROJECT_ID')
+      const databaseId = this.configService.get<string>('FIREBASE_DATABASE_ID') || '(default)'
 
       if (!serviceAccountKey) {
         throw new Error(
@@ -42,22 +43,91 @@ export class FirebaseService implements OnModuleInit {
         )
       }
 
+      const finalProjectId = projectId || serviceAccount.project_id
+
       // Initialize Firebase Admin
       if (!admin.apps.length) {
         this.app = admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
-          projectId: projectId || serviceAccount.project_id,
+          projectId: finalProjectId,
         })
       } else {
         this.app = admin.app()
       }
 
       this.auth = admin.auth(this.app)
-      this.firestore = admin.firestore(this.app)
+      
+      // Initialize Firestore with specific database if provided
+      if (databaseId && databaseId !== '(default)') {
+        this.firestore = admin.firestore(this.app)
+        this.firestore.settings({ databaseId })
+        this.logger.log(`Using Firestore database: ${databaseId}`)
+      } else {
+        this.firestore = admin.firestore(this.app)
+        this.logger.log('Using Firestore default database: (default)')
+      }
 
+      this.logger.log('='.repeat(60))
+      this.logger.log('Firebase Configuration:')
+      this.logger.log(`  Project ID: ${finalProjectId}`)
+      this.logger.log(`  Database ID: ${databaseId}`)
+      this.logger.log(`  Collection: journal-entries (will be created automatically)`)
+      this.logger.log('='.repeat(60))
       this.logger.log('Firebase Admin SDK initialized successfully')
+      
+      // Test database connectivity
+      await this.testDatabaseConnection()
+      
+      this.logger.log('Please verify:')
+      this.logger.log(`  1. Firestore is enabled in Firebase Console`)
+      this.logger.log(`  2. Database "${databaseId}" exists`)
+      this.logger.log(`  3. Service account has Firestore permissions`)
+      this.logger.log(`  Firebase Console: https://console.firebase.google.com/project/${finalProjectId}/firestore`)
+      this.logger.log('='.repeat(60))
     } catch (error) {
       this.logger.error('Failed to initialize Firebase Admin SDK', error)
+      throw error
+    }
+  }
+
+  /**
+   * Test database connection and check if collections exist
+   */
+  private async testDatabaseConnection(): Promise<void> {
+    try {
+      this.logger.log('Testing Firestore database connection...')
+      
+      // Try to list collections (this will fail if database doesn't exist)
+      const collections = await this.firestore.listCollections()
+      
+      this.logger.log(`✅ Database connection successful!`)
+      
+      if (collections.length > 0) {
+        this.logger.log(`✅ Found ${collections.length} collection(s):`)
+        collections.forEach(col => {
+          this.logger.log(`   - ${col.id}`)
+        })
+        
+        // Check if journal-entries collection exists
+        const hasJournalCollection = collections.some(col => col.id === 'journal-entries')
+        if (hasJournalCollection) {
+          // Count documents in the collection
+          const snapshot = await this.firestore.collection('journal-entries').get()
+          this.logger.log(`✅ journal-entries collection exists with ${snapshot.size} document(s)`)
+        } else {
+          this.logger.log(`ℹ️  journal-entries collection doesn't exist yet (will be created on first write)`)
+        }
+      } else {
+        this.logger.log(`ℹ️  No collections exist yet (this is normal for a new database)`)
+        this.logger.log(`ℹ️  Collections will be created automatically when you add data`)
+      }
+    } catch (error) {
+      this.logger.error('❌ Database connection test failed!')
+      this.logger.error('This usually means:')
+      this.logger.error('  1. Firestore is not enabled in Firebase Console')
+      this.logger.error('  2. The database does not exist')
+      this.logger.error('  3. Service account lacks proper permissions')
+      this.logger.error(`Error details: ${error.message}`)
       throw error
     }
   }
@@ -188,6 +258,71 @@ export class FirebaseService implements OnModuleInit {
   // Transaction operations
   async runTransaction<T>(updateFunction: (transaction: FirebaseFirestore.Transaction) => Promise<T>) {
     return this.firestore.runTransaction(updateFunction)
+  }
+
+  // Diagnostic methods
+  async checkDatabaseConnection(): Promise<{ connected: boolean; projectId: string; error?: string }> {
+    try {
+      const projectId = this.app.options.projectId || 'unknown'
+      // Try to list collections (even if empty, this will succeed if database exists)
+      await this.firestore.listCollections()
+      
+      this.logger.log('✅ Database connection successful')
+      return { connected: true, projectId }
+    } catch (error) {
+      this.logger.error('❌ Database connection failed', error)
+      return { 
+        connected: false, 
+        projectId: this.app.options.projectId || 'unknown',
+        error: error.message 
+      }
+    }
+  }
+
+  async checkCollectionExists(collectionName: string): Promise<{ exists: boolean; documentCount?: number; error?: string }> {
+    try {
+      const collectionRef = this.firestore.collection(collectionName)
+      const snapshot = await collectionRef.limit(1).get()
+      
+      // Get document count (limit to 1000 for performance)
+      const countSnapshot = await collectionRef.count().get()
+      const count = countSnapshot.data().count
+      
+      if (count > 0) {
+        this.logger.log(`✅ Collection '${collectionName}' exists with ${count} documents`)
+        return { exists: true, documentCount: count }
+      } else {
+        this.logger.log(`⚠️  Collection '${collectionName}' doesn't exist yet (will be created on first write)`)
+        return { exists: false, documentCount: 0 }
+      }
+    } catch (error) {
+      this.logger.error(`❌ Error checking collection '${collectionName}'`, error)
+      return { 
+        exists: false, 
+        error: error.message 
+      }
+    }
+  }
+
+  async getDatabaseInfo(): Promise<any> {
+    try {
+      const projectId = this.app.options.projectId || 'unknown'
+      const collections = await this.firestore.listCollections()
+      const collectionNames = collections.map(col => col.id)
+
+      const info = {
+        projectId,
+        databaseId: '(default)',
+        collections: collectionNames,
+        collectionCount: collectionNames.length,
+      }
+
+      this.logger.log('📊 Database Info:', JSON.stringify(info, null, 2))
+      return info
+    } catch (error) {
+      this.logger.error('❌ Failed to get database info', error)
+      throw error
+    }
   }
 }
 

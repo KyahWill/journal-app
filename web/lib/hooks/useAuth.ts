@@ -37,6 +37,86 @@ export function useAuth() {
     error: null,
   })
 
+  // Refresh token callback for API client
+  const refreshTokenCallback = useCallback(async () => {
+    if (!auth) return null
+    const currentUser = auth.currentUser
+    if (currentUser) {
+      try {
+        console.log('Refreshing Firebase ID token...')
+        const token = await currentUser.getIdToken(true) // Force refresh
+        
+        // Update session cookie with new token
+        try {
+          await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ idToken: token }),
+          })
+        } catch (error) {
+          console.error('Failed to update session cookie:', error)
+        }
+        
+        console.log('Token refreshed successfully')
+        return token
+      } catch (error) {
+        console.error('Token refresh failed:', error)
+        return null
+      }
+    }
+    return null
+  }, [])
+
+  // Register token refresh callback with API client
+  useEffect(() => {
+    apiClient.setTokenRefreshCallback(refreshTokenCallback)
+  }, [refreshTokenCallback])
+
+  // Proactive token refresh - refresh token every 50 minutes (before 1 hour expiry)
+  useEffect(() => {
+    if (!auth || typeof window === 'undefined') return
+
+    let refreshInterval: NodeJS.Timeout | null = null
+
+    const startTokenRefreshInterval = () => {
+      // Clear any existing interval
+      if (refreshInterval) clearInterval(refreshInterval)
+
+      // Refresh token every 50 minutes (3000000 ms)
+      // Firebase tokens expire after 1 hour, so this ensures we refresh before expiry
+      refreshInterval = setInterval(async () => {
+        if (!auth) return
+        const currentUser = auth.currentUser
+        if (currentUser) {
+          console.log('Proactively refreshing token...')
+          await refreshTokenCallback()
+        }
+      }, 50 * 60 * 1000) // 50 minutes
+    }
+
+    // Start interval when user is authenticated
+    if (auth?.currentUser) {
+      startTokenRefreshInterval()
+    }
+
+    // Listen for auth state changes to start/stop the interval
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        startTokenRefreshInterval()
+      } else if (refreshInterval) {
+        clearInterval(refreshInterval)
+        refreshInterval = null
+      }
+    })
+
+    return () => {
+      unsubscribe()
+      if (refreshInterval) clearInterval(refreshInterval)
+    }
+  }, [refreshTokenCallback])
+
   // Listen to Firebase auth state changes
   useEffect(() => {
     // Only run on client side

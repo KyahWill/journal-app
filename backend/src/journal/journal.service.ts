@@ -6,20 +6,26 @@ import { JournalEntry } from '@/common/types/journal.types'
 @Injectable()
 export class JournalService {
   private readonly logger = new Logger(JournalService.name)
-  private readonly collectionName = 'journal_entries'
+  private readonly collectionName = 'journal-entries'
 
   constructor(private readonly firebaseService: FirebaseService) {}
 
   async create(userId: string, createJournalDto: CreateJournalDto): Promise<JournalEntry> {
     try {
-      const data = {
+      const data: any = {
         user_id: userId,
         title: createJournalDto.title,
         content: createJournalDto.content,
-        mood: createJournalDto.mood || undefined,
         tags: createJournalDto.tags || [],
       }
 
+      // Only add mood if it's provided
+      // this is because the mood is optional and not required
+      if (createJournalDto.mood) {
+        data.mood = createJournalDto.mood
+      }
+
+      this.logger.log(`Creating journal entry for user:`)
       const result = await this.firebaseService.addDocument(this.collectionName, data)
 
       this.logger.log(`Journal entry created: ${result.id} for user: ${userId}`)
@@ -177,6 +183,35 @@ export class JournalService {
       return entries.slice(0, limit)
     } catch (error) {
       this.logger.error('Error fetching recent journal entries', error)
+      throw error
+    }
+  }
+
+  async findAllGroupedByDate(userId: string): Promise<Record<string, JournalEntry[]>> {
+    try {
+      const entries = await this.findAll(userId)
+
+      // Group entries by date (YYYY-MM-DD format)
+      const grouped = entries.reduce((acc, entry) => {
+        const dateKey = entry.created_at.toISOString().split('T')[0]
+        
+        if (!acc[dateKey]) {
+          acc[dateKey] = []
+        }
+        
+        acc[dateKey].push(entry)
+        
+        return acc
+      }, {} as Record<string, JournalEntry[]>)
+
+      // Sort entries within each date group by created_at (most recent first)
+      Object.keys(grouped).forEach(dateKey => {
+        grouped[dateKey].sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+      })
+
+      return grouped
+    } catch (error) {
+      this.logger.error('Error fetching grouped journal entries', error)
       throw error
     }
   }

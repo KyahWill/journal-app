@@ -23,7 +23,7 @@ export default function SignupPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      router.push('/dashboard')
+      router.push('/app')
     }
   }, [isAuthenticated, authLoading, router])
 
@@ -35,7 +35,7 @@ export default function SignupPage() {
     try {
       await signUp(email, password, fullName)
       // useAuth hook will handle token sync with API client
-      router.push('/dashboard')
+      router.push('/app')
     } catch (err: any) {
       setError(err.message || 'Failed to create account')
     } finally {

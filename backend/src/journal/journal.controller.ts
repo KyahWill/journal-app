@@ -43,6 +43,11 @@ export class JournalController {
     return this.journalService.search(user.uid, searchTerm)
   }
 
+  @Get('grouped')
+  async findAllGroupedByDate(@CurrentUser() user: any) {
+    return this.journalService.findAllGroupedByDate(user.uid)
+  }
+
   @Get(':id')
   async findOne(@CurrentUser() user: any, @Param('id') id: string) {
     return this.journalService.findOne(id, user.uid)
