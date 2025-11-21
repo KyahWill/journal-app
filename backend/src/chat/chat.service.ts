@@ -77,11 +77,14 @@ export class ChatService {
       // Auto-generate title from first user message if not set
       if (!session.title && session.messages.length === 2) {
         session.title = this.generateTitle(message)
-        await this.firebaseService.updateDocument(this.collectionName, session.id, {
+        const updateData: any = {
           messages: session.messages,
           title: session.title,
-          prompt_id: effectivePromptId,
-        })
+        }
+        if (effectivePromptId) {
+          updateData.prompt_id = effectivePromptId
+        }
+        await this.firebaseService.updateDocument(this.collectionName, session.id, updateData)
       } else {
         await this.updateSession(session.id, userId, session.messages, effectivePromptId)
       }
@@ -101,11 +104,14 @@ export class ChatService {
 
   async createSession(userId: string, promptId?: string): Promise<ChatSession> {
     try {
-      const session: Omit<ChatSession, 'id' | 'created_at' | 'updated_at'> = {
+      const session: any = {
         user_id: userId,
         messages: [],
-        title: undefined,
-        prompt_id: promptId,
+      }
+      
+      // Only add optional fields if they have values
+      if (promptId) {
+        session.prompt_id = promptId
       }
 
       const result = await this.firebaseService.addDocument(this.collectionName, session)
@@ -116,7 +122,6 @@ export class ChatService {
         id: result.id,
         user_id: userId,
         messages: [],
-        title: undefined,
         prompt_id: promptId,
         created_at: result.created_at.toDate(),
         updated_at: result.updated_at.toDate(),

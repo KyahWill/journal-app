@@ -11,7 +11,7 @@ export default function AppLayout({
   
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))', color: 'hsl(var(--foreground))' }}>
         <AppHeader />
         <main>{children}</main>
       </div>

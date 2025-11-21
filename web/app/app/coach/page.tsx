@@ -20,6 +20,11 @@ import { Label } from '@/components/ui/label'
 import { useState } from 'react'
 import { CoachSessionsSidebar } from '@/components/coach-sessions-sidebar'
 import { ChatSession } from '@/lib/api/client'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeHighlight from 'rehype-highlight'
+import 'highlight.js/styles/github-dark.css'
+import type { Components } from 'react-markdown'
 
 export default function CoachChatPage() {
   const {
@@ -271,7 +276,32 @@ export default function CoachChatPage() {
               <Sparkles className="h-5 w-5 text-purple-600 mt-1 flex-shrink-0" />
               <div className="flex-1">
                 <h3 className="font-semibold text-lg mb-2">AI Insights</h3>
-                <p className="whitespace-pre-wrap text-gray-700">{insights}</p>
+                <div className="prose prose-sm max-w-none prose-p:leading-relaxed text-gray-700">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={
+                      {
+                        p: ({ children }: any) => (
+                          <p className="mb-2 last:mb-0">{children}</p>
+                        ),
+                        ul: ({ children }: any) => (
+                          <ul className="mb-2 ml-4 list-disc">{children}</ul>
+                        ),
+                        ol: ({ children }: any) => (
+                          <ol className="mb-2 ml-4 list-decimal">{children}</ol>
+                        ),
+                        li: ({ children }: any) => (
+                          <li className="mb-1">{children}</li>
+                        ),
+                        strong: ({ children }: any) => (
+                          <strong className="font-semibold text-purple-900">{children}</strong>
+                        ),
+                      } as Components
+                    }
+                  >
+                    {insights}
+                  </ReactMarkdown>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -361,7 +391,54 @@ export default function CoachChatPage() {
                         {message.role === 'user' ? 'You' : 'Coach'}
                       </Badge>
                     </div>
-                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    {message.role === 'user' ? (
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                    ) : (
+                      <div className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed prose-pre:p-0">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeHighlight]}
+                          components={
+                            {
+                              p: ({ children }: any) => (
+                                <p className="mb-2 last:mb-0">{children}</p>
+                              ),
+                              ul: ({ children }: any) => (
+                                <ul className="mb-2 ml-4 list-disc">{children}</ul>
+                              ),
+                              ol: ({ children }: any) => (
+                                <ol className="mb-2 ml-4 list-decimal">{children}</ol>
+                              ),
+                              li: ({ children }: any) => (
+                                <li className="mb-1">{children}</li>
+                              ),
+                              code: ({ className, children, ...props }: any) => {
+                                const match = /language-(\w+)/.exec(className || '')
+                                return match ? (
+                                  <code className={className} {...props}>
+                                    {children}
+                                  </code>
+                                ) : (
+                                  <code
+                                    className="bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5 text-sm"
+                                    {...props}
+                                  >
+                                    {children}
+                                  </code>
+                                )
+                              },
+                              pre: ({ children }: any) => (
+                                <pre className="bg-gray-900 rounded-lg p-4 overflow-x-auto mb-2">
+                                  {children}
+                                </pre>
+                              ),
+                            } as Components
+                          }
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

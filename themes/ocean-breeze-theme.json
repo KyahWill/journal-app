@@ -1,0 +1,42 @@
+{
+  "name": "Ocean Breeze",
+  "is_default": false,
+  "is_public": true,
+  "colors": {
+    "background": "200 30% 98%",
+    "foreground": "210 40% 15%",
+    "card": "200 40% 96%",
+    "cardForeground": "210 40% 15%",
+    "popover": "200 40% 97%",
+    "popoverForeground": "210 40% 15%",
+    "primary": "200 85% 45%",
+    "primaryForeground": "0 0% 100%",
+    "secondary": "195 65% 75%",
+    "secondaryForeground": "210 40% 15%",
+    "muted": "200 30% 92%",
+    "mutedForeground": "210 30% 40%",
+    "accent": "180 70% 65%",
+    "accentForeground": "210 40% 15%",
+    "destructive": "0 75% 55%",
+    "destructiveForeground": "0 0% 100%",
+    "border": "200 30% 85%",
+    "input": "200 30% 88%",
+    "ring": "200 85% 50%"
+  },
+  "typography": {
+    "fontFamily": "var(--font-geist-sans)",
+    "baseFontSize": 16,
+    "headingScale": 1.5,
+    "lineHeight": 1.6
+  },
+  "spacing": {
+    "scale": 1
+  },
+  "borderRadius": 0.5,
+  "shadowIntensity": "subtle",
+  "animations": {
+    "duration": 200,
+    "easing": "ease-in-out"
+  },
+  "density": "comfortable"
+}

@@ -179,20 +179,14 @@ Provide exactly 5 questions, one per line, without numbering or bullets.`
 
   async analyzePrompt(promptText: string): Promise<{ suggestions: string }> {
     try {
-      const analysisPrompt = `You are an expert in crafting effective AI system prompts. Analyze the following system prompt and provide actionable suggestions for improvement.
+      const analysisPrompt = `You are an expert in crafting effective AI system prompts. Analyze the following system prompt and modify it to be more effective..
 
 System Prompt to Analyze:
 """
 ${promptText}
 """
-
-Please provide:
-1. Strengths of the current prompt
-2. Areas that could be improved
-3. Specific suggestions for making it more effective
-4. Example improvements or additions
-
-Focus on clarity, specificity, tone, and effectiveness. Provide your analysis in a clear, structured format.`
+Focus on clarity, specificity, tone, and effectiveness. 
+Do not provide an analysis of the prompt, only the modified prompt.`
 
       const result = await this.model.generateContent(analysisPrompt)
       const response = result.response

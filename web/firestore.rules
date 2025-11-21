@@ -92,6 +92,29 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && 
                        resource.data.user_id == request.auth.uid;
     }
+    
+    // User themes
+    match /user_themes/{themeId} {
+      // Users can read their own themes OR public themes
+      allow read: if isAuthenticated() && 
+                     (resource.data.user_id == request.auth.uid || resource.data.is_public == true);
+      
+      // Users can create themes with their own user_id
+      allow create: if isAuthenticated() && 
+                       request.resource.data.user_id == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['user_id', 'name', 'is_default', 'is_public', 'colors', 'typography', 'spacing', 'borderRadius', 'shadowIntensity', 'animations', 'density', 'created_at', 'updated_at']) &&
+                       request.resource.data.name.size() <= 100;
+      
+      // Users can update their own themes
+      allow update: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid &&
+                       request.resource.data.user_id == request.auth.uid &&
+                       (!request.resource.data.keys().hasAny(['name']) || request.resource.data.name.size() <= 100);
+      
+      // Users can delete their own themes
+      allow delete: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+    }
   }
 }
 

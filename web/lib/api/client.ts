@@ -51,6 +51,64 @@ export interface UserPrompt {
   updated_at: string | Date
 }
 
+export interface ThemeColors {
+  background: string
+  foreground: string
+  card: string
+  cardForeground: string
+  popover: string
+  popoverForeground: string
+  primary: string
+  primaryForeground: string
+  secondary: string
+  secondaryForeground: string
+  muted: string
+  mutedForeground: string
+  accent: string
+  accentForeground: string
+  destructive: string
+  destructiveForeground: string
+  border: string
+  input: string
+  ring: string
+}
+
+export interface ThemeTypography {
+  fontFamily: string
+  baseFontSize: number
+  headingScale: number
+  lineHeight: number
+}
+
+export interface ThemeSpacing {
+  scale: number
+}
+
+export interface ThemeAnimations {
+  duration: number
+  easing: string
+}
+
+export type ThemeDensity = 'comfortable' | 'compact' | 'spacious'
+export type ThemeShadowIntensity = 'none' | 'subtle' | 'medium' | 'strong'
+
+export interface UserTheme {
+  id: string
+  user_id: string
+  name: string
+  is_default: boolean
+  is_public: boolean
+  colors: ThemeColors
+  typography: ThemeTypography
+  spacing: ThemeSpacing
+  borderRadius: number
+  shadowIntensity: ThemeShadowIntensity
+  animations: ThemeAnimations
+  density: ThemeDensity
+  created_at: string | Date
+  updated_at: string | Date
+}
+
 class ApiClient {
   private baseUrl: string
   private getToken: (() => Promise<string | null>) | null = null
@@ -348,6 +406,87 @@ class ApiClient {
     return this.request<{ suggestions: string }>('/prompt/improve', {
       method: 'POST',
       body: JSON.stringify({ prompt_text: promptText }),
+    })
+  }
+
+  // ============================================================================
+  // Theme APIs
+  // ============================================================================
+
+  async getUserThemes(): Promise<UserTheme[]> {
+    return this.request<UserTheme[]>('/theme')
+  }
+
+  async getTheme(id: string): Promise<UserTheme> {
+    return this.request<UserTheme>(`/theme/${id}`)
+  }
+
+  async getDefaultTheme(): Promise<UserTheme> {
+    return this.request<UserTheme>('/theme/default')
+  }
+
+  async getPublicTheme(id: string): Promise<UserTheme> {
+    return this.request<UserTheme>(`/theme/public/${id}`)
+  }
+
+  async createTheme(data: {
+    name: string
+    is_default?: boolean
+    is_public?: boolean
+    colors: ThemeColors
+    typography: ThemeTypography
+    spacing: ThemeSpacing
+    borderRadius: number
+    shadowIntensity: ThemeShadowIntensity
+    animations: ThemeAnimations
+    density: ThemeDensity
+  }): Promise<UserTheme> {
+    return this.request<UserTheme>('/theme', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateTheme(
+    id: string,
+    data: {
+      name?: string
+      is_default?: boolean
+      is_public?: boolean
+      colors?: ThemeColors
+      typography?: ThemeTypography
+      spacing?: ThemeSpacing
+      borderRadius?: number
+      shadowIntensity?: ThemeShadowIntensity
+      animations?: ThemeAnimations
+      density?: ThemeDensity
+    }
+  ): Promise<UserTheme> {
+    return this.request<UserTheme>(`/theme/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteTheme(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/theme/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async setDefaultTheme(id: string): Promise<UserTheme> {
+    return this.request<UserTheme>(`/theme/${id}/set-default`, {
+      method: 'PATCH',
+    })
+  }
+
+  async getThemeRecommendations(data: {
+    mood?: string
+    preferences?: string
+  }): Promise<{ suggestions: string }> {
+    return this.request<{ suggestions: string }>('/theme/recommend', {
+      method: 'POST',
+      body: JSON.stringify(data),
     })
   }
 

@@ -1,0 +1,43 @@
+{
+  "name": "Ember Ocean",
+  "is_default": false,
+  "is_public": true,
+  "colors": {
+    "background": "205 35% 96%",
+    "foreground": "15 50% 15%",
+    "card": "205 40% 94%",
+    "cardForeground": "15 50% 15%",
+    "popover": "205 40% 95%",
+    "popoverForeground": "15 50% 15%",
+    "primary": "205 80% 50%",
+    "primaryForeground": "0 0% 100%",
+    "secondary": "18 85% 58%",
+    "secondaryForeground": "0 0% 100%",
+    "muted": "205 28% 89%",
+    "mutedForeground": "15 40% 35%",
+    "accent": "22 80% 62%",
+    "accentForeground": "15 50% 15%",
+    "destructive": "0 75% 55%",
+    "destructiveForeground": "0 0% 100%",
+    "border": "205 25% 84%",
+    "input": "205 25% 87%",
+    "ring": "205 80% 54%"
+  },
+  "typography": {
+    "fontFamily": "var(--font-geist-sans)",
+    "baseFontSize": 16,
+    "headingScale": 1.55,
+    "lineHeight": 1.6
+  },
+  "spacing": {
+    "scale": 1.1
+  },
+  "borderRadius": 0.7,
+  "shadowIntensity": "medium",
+  "animations": {
+    "duration": 220,
+    "easing": "ease-in-out"
+  },
+  "density": "spacious"
+}
+

@@ -17,7 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Plus, Edit, Trash2, Star, Sparkles, Loader2 } from 'lucide-react'
+import { Plus, Edit, Trash2, Star, Sparkles, Loader2, Palette } from 'lucide-react'
+import Link from 'next/link'
 
 export default function SettingsPage() {
   const {
@@ -143,9 +144,21 @@ export default function SettingsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-4">Settings</h1>
+        <div className="flex gap-2">
+          <Link href="/app/settings/themes">
+            <Button variant="outline" size="sm">
+              <Palette className="h-4 w-4 mr-2" />
+              Themes
+            </Button>
+          </Link>
+        </div>
+      </div>
+
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Settings</h1>
+          <h2 className="text-2xl font-bold">AI Prompts</h2>
           <p className="text-gray-600 mt-1">
             Customize your AI chat experience with custom prompts
           </p>
