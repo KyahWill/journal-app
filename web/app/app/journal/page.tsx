@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useJournal } from '@/lib/hooks/useJournal'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useAuth } from '@/lib/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,14 +38,13 @@ export default function JournalListPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [viewMode, setViewMode] = useState<'grouped' | 'list'>('list')
+  const [viewMode, setViewMode] = useState<'grouped' | 'list'>('grouped')
   const [hasFetchedInitial, setHasFetchedInitial] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
 
   // Track client-side mount to prevent hydration issues
   useEffect(() => {
-    setIsMounted(true)
-  }, [])
+    setIsMounted(true) }, [])
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -211,7 +210,7 @@ export default function JournalListPage() {
                       </Button>
                     </div>
                     <CardDescription suppressHydrationWarning>
-                      {isMounted ? format(new Date(entry.created_at), 'h:mm a') : ''}
+                      {isMounted ? format(new Date(entry.created_at), 'MMM d, yyyy hh:mm a') : ''}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

@@ -4,65 +4,20 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { apiClient } from '@/lib/api/client'
+import { useState } from 'react'
+import { useAuth } from '@/lib/contexts/auth-context'
 
 export default function AppHeader() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [userEmail, setUserEmail] = useState<string>('')
-
-  // Fetch user email once on mount and set up API client token getter
-  useEffect(() => {
-    async function fetchUser() {
-      try {
-        const response = await fetch('/api/auth/user', {
-          credentials: 'include',
-          cache: 'no-store',
-        })
-        if (response.ok) {
-          const data = await response.json()
-          if (data.user) {
-            setUserEmail(data.user.email || '')
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch user:', error)
-      }
-    }
-
-    // Set up token getter for API client (gets session cookie token for backend auth)
-    apiClient.setTokenGetter(async () => {
-      try {
-        const response = await fetch('/api/auth/token', {
-          credentials: 'include',
-          cache: 'no-store',
-        })
-        if (response.ok) {
-          const data = await response.json()
-          return data.token
-        }
-      } catch (error) {
-        console.error('Failed to get token:', error)
-      }
-      return null
-    })
-
-    fetchUser()
-  }, [])
+  const { user, signOut } = useAuth()
 
   async function handleSignOut() {
     try {
       setLoading(true)
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      })
-
-      if (response.ok) {
-        router.push('/auth/login')
-        router.refresh()
-      }
+      await signOut()
+      router.push('/auth/login')
+      router.refresh()
     } catch (error) {
       console.error('Sign out error:', error)
     } finally {
@@ -92,8 +47,8 @@ export default function AppHeader() {
             </nav>
           </div>
           <div className="flex items-center space-x-4">
-            {userEmail && (
-              <span className="text-sm text-gray-600">{userEmail}</span>
+            {user?.email && (
+              <span className="text-sm text-gray-600">{user.email}</span>
             )}
             <Button 
               variant="outline" 

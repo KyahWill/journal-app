@@ -1,4 +1,5 @@
 import AppHeader from './app-header'
+import { AuthProvider } from '@/lib/contexts/auth-context'
 
 export default function AppLayout({
   children,
@@ -6,12 +7,14 @@ export default function AppLayout({
   children: React.ReactNode
 }) {
   // Middleware already protects this route
-  // No need to verify user here - just display the UI
+  // AuthProvider provides shared user context to all children
   
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader />
-      <main>{children}</main>
-    </div>
+    <AuthProvider>
+      <div className="min-h-screen bg-gray-50">
+        <AppHeader />
+        <main>{children}</main>
+      </div>
+    </AuthProvider>
   )
 }
