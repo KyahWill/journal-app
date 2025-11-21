@@ -27,6 +27,7 @@ export default function CoachChatPage() {
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([])
   const [loadingInsights, setLoadingInsights] = useState(false)
   const [loadingPrompts, setLoadingPrompts] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -37,8 +38,9 @@ export default function CoachChatPage() {
     scrollToBottom()
   }, [messages])
 
-  // Load suggested prompts on mount
+  // Load suggested prompts on mount and track client-side mount
   useEffect(() => {
+    setIsMounted(true)
     loadPrompts()
   }, [])
 
@@ -158,7 +160,7 @@ export default function CoachChatPage() {
       )}
 
       {/* Suggested Prompts */}
-      {messages.length === 0 && suggestedPrompts.length > 0 && (
+      {isMounted && messages.length === 0 && suggestedPrompts.length > 0 && (
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3 mb-3">

@@ -40,6 +40,12 @@ export default function JournalListPage() {
   const [deleting, setDeleting] = useState(false)
   const [viewMode, setViewMode] = useState<'grouped' | 'list'>('list')
   const [hasFetchedInitial, setHasFetchedInitial] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+
+  // Track client-side mount to prevent hydration issues
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -183,9 +189,9 @@ export default function JournalListPage() {
       <div className="space-y-8">
         {dates.map((date) => (
           <div key={date}>
-            <h3 className="text-xl font-semibold mb-4 flex items-center">
+            <h3 className="text-xl font-semibold mb-4 flex items-center" suppressHydrationWarning>
               <Calendar className="h-5 w-5 mr-2" />
-              {format(new Date(date), 'MMMM d, yyyy')}
+              {isMounted ? format(new Date(date), 'MMMM d, yyyy') : date}
               <span className="ml-2 text-sm font-normal text-gray-500">
                 ({filteredGroupedEntries[date].length} {filteredGroupedEntries[date].length === 1 ? 'entry' : 'entries'})
               </span>
@@ -204,8 +210,8 @@ export default function JournalListPage() {
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>
-                    <CardDescription>
-                      {format(new Date(entry.created_at), 'h:mm a')}
+                    <CardDescription suppressHydrationWarning>
+                      {isMounted ? format(new Date(entry.created_at), 'h:mm a') : ''}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -266,10 +272,10 @@ export default function JournalListPage() {
                   <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
               </div>
-              <CardDescription>
-                {formatDistanceToNow(new Date(entry.created_at), {
+              <CardDescription suppressHydrationWarning>
+                {isMounted ? formatDistanceToNow(new Date(entry.created_at), {
                   addSuffix: true,
-                })}
+                }) : ''}
               </CardDescription>
             </CardHeader>
             <CardContent>
