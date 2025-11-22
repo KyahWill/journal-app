@@ -37,6 +37,7 @@ export default function CoachChatPage() {
     sessionId,
     loading,
     error,
+    usageWarning,
     sendMessage,
     loadSession,
     clearChat,
@@ -375,6 +376,14 @@ export default function CoachChatPage() {
           {error && (
             <Alert variant="destructive" className="mb-6">
               <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {usageWarning && (
+            <Alert className="mb-6 border-yellow-500 bg-yellow-50 text-yellow-900">
+              <AlertDescription className="flex items-center gap-2">
+                <span className="font-semibold">⚠️ Note:</span> {usageWarning}
+              </AlertDescription>
             </Alert>
           )}
 

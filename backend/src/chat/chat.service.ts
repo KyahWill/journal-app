@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common'
+import { Injectable, NotFoundException, Logger, HttpException, HttpStatus } from '@nestjs/common'
 import { FirebaseService } from '@/firebase/firebase.service'
 import { GeminiService } from '@/gemini/gemini.service'
 import { JournalService } from '@/journal/journal.service'
@@ -6,6 +6,7 @@ import { SendMessageDto } from '@/common/dto/chat.dto'
 import { ChatSession, ChatMessage } from '@/common/types/journal.types'
 import { v4 as uuidv4 } from 'uuid'
 import { PromptService } from '@/prompt/prompt.service'
+import { RateLimitService } from '@/common/services/rate-limit.service'
 
 @Injectable()
 export class ChatService {
@@ -17,10 +18,25 @@ export class ChatService {
     private readonly geminiService: GeminiService,
     private readonly journalService: JournalService,
     private readonly promptService: PromptService,
+    private readonly rateLimitService: RateLimitService,
   ) {}
 
   async sendMessage(userId: string, sendMessageDto: SendMessageDto) {
     try {
+      // Check rate limit first
+      const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'chat')
+      if (!usageInfo.allowed) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: usageInfo.warning || 'Daily chat limit reached',
+            error: 'Too Many Requests',
+            usageInfo,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        )
+      }
+
       const { message, sessionId, promptId } = sendMessageDto
 
       // Get or create session
@@ -95,6 +111,7 @@ export class ChatService {
         sessionId: session.id,
         userMessage,
         assistantMessage,
+        usageInfo,
       }
     } catch (error) {
       this.logger.error('Error sending message', error)
@@ -228,6 +245,20 @@ export class ChatService {
 
   async generateInsights(userId: string) {
     try {
+      // Check rate limit
+      const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'insights')
+      if (!usageInfo.allowed) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: usageInfo.warning || 'Daily insights limit reached',
+            error: 'Too Many Requests',
+            usageInfo,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        )
+      }
+
       const journalEntries = await this.journalService.getRecent(userId, 30)
 
       if (journalEntries.length === 0) {
@@ -249,6 +280,20 @@ export class ChatService {
 
   async suggestPrompts(userId: string) {
     try {
+      // Check rate limit
+      const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'prompt_suggestions')
+      if (!usageInfo.allowed) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: usageInfo.warning || 'Daily prompt suggestions limit reached',
+            error: 'Too Many Requests',
+            usageInfo,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        )
+      }
+
       const journalEntries = await this.journalService.getRecent(userId, 10)
 
       const prompts = await this.geminiService.suggestPrompts(journalEntries)

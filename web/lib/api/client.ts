@@ -7,10 +7,24 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
+export interface UsageInfo {
+  allowed: boolean
+  remaining: number
+  limit: number
+  resetsAt: string
+  warning?: string
+}
+
+export interface ApiError extends Error {
+  usageInfo?: UsageInfo
+  statusCode?: number
+}
+
 export interface ApiResponse<T = any> {
   data?: T
   error?: string
   message?: string
+  usageInfo?: UsageInfo
 }
 
 export interface JournalEntry {
@@ -199,9 +213,16 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(
+        const error = new Error(
           errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`
-        )
+        ) as ApiError
+        
+        error.statusCode = response.status
+        if (errorData.usageInfo) {
+          error.usageInfo = errorData.usageInfo
+        }
+        
+        throw error
       }
 
       return response.json()
@@ -337,6 +358,7 @@ class ApiClient {
     sessionId: string
     userMessage: ChatMessage
     assistantMessage: ChatMessage
+    usageInfo?: UsageInfo
   }> {
     return this.request('/chat/message', {
       method: 'POST',
@@ -553,11 +575,14 @@ class ApiClient {
     if (!response.ok) {
       // Try to get error message from response
       let errorMessage = `Failed to convert text to speech (HTTP ${response.status})`
+      let usageInfo: UsageInfo | undefined
+
       try {
         const contentType = response.headers.get('content-type')
         if (contentType && contentType.includes('application/json')) {
           const errorData = await response.json()
           errorMessage = errorData.message || errorData.error || errorMessage
+          usageInfo = errorData.usageInfo
         } else {
           const errorText = await response.text()
           if (errorText) {
@@ -567,7 +592,11 @@ class ApiClient {
       } catch (e) {
         // Ignore parsing errors, use default message
       }
-      throw new Error(errorMessage)
+      
+      const error = new Error(errorMessage) as ApiError
+      error.statusCode = response.status
+      error.usageInfo = usageInfo
+      throw error
     }
 
     // Verify we got audio content

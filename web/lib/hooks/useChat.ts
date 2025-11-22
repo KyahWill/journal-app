@@ -7,13 +7,14 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { apiClient, ChatMessage, ChatSession } from '@/lib/api/client'
+import { apiClient, ChatMessage, ChatSession, UsageInfo } from '@/lib/api/client'
 
 interface ChatState {
   messages: ChatMessage[]
   sessionId: string | null
   loading: boolean
   error: string | null
+  usageWarning: string | null
 }
 
 export function useChat(initialSessionId?: string) {
@@ -22,12 +23,13 @@ export function useChat(initialSessionId?: string) {
     sessionId: initialSessionId || null,
     loading: false,
     error: null,
+    usageWarning: null,
   })
 
   // Send a message to the AI coach
   const sendMessage = useCallback(
     async (content: string, promptId?: string) => {
-      setState((prev) => ({ ...prev, loading: true, error: null }))
+      setState((prev) => ({ ...prev, loading: true, error: null, usageWarning: null }))
 
       // Add user message to state immediately
       const tempUserMessage: ChatMessage = {
@@ -59,6 +61,7 @@ export function useChat(initialSessionId?: string) {
           sessionId: response.sessionId,
           loading: false,
           error: null,
+          usageWarning: response.usageInfo?.warning || null,
         }))
 
         return response.assistantMessage
@@ -69,6 +72,7 @@ export function useChat(initialSessionId?: string) {
           messages: prev.messages.filter((m) => m.id !== tempUserMessage.id),
           loading: false,
           error: error.message || 'Failed to send message',
+          usageWarning: error.usageInfo?.warning || null,
         }))
         throw error
       }
@@ -86,6 +90,7 @@ export function useChat(initialSessionId?: string) {
         sessionId: session.id,
         loading: false,
         error: null,
+        usageWarning: null,
       })
       return session
     } catch (error: any) {
@@ -107,6 +112,7 @@ export function useChat(initialSessionId?: string) {
         sessionId: session.id,
         loading: false,
         error: null,
+        usageWarning: null,
       })
       return session
     } catch (error: any) {
@@ -125,12 +131,13 @@ export function useChat(initialSessionId?: string) {
       sessionId: null,
       loading: false,
       error: null,
+      usageWarning: null,
     })
   }, [])
 
   // Get AI insights
   const getInsights = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true, error: null }))
+    setState((prev) => ({ ...prev, loading: true, error: null, usageWarning: null }))
     try {
       const response = await apiClient.generateInsights()
       setState((prev) => ({ ...prev, loading: false, error: null }))
@@ -140,6 +147,7 @@ export function useChat(initialSessionId?: string) {
         ...prev,
         loading: false,
         error: error.message || 'Failed to generate insights',
+        usageWarning: error.usageInfo?.warning || null,
       }))
       throw error
     }
@@ -147,7 +155,7 @@ export function useChat(initialSessionId?: string) {
 
   // Get suggested prompts
   const getSuggestedPrompts = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true, error: null }))
+    setState((prev) => ({ ...prev, loading: true, error: null, usageWarning: null }))
     try {
       const response = await apiClient.getSuggestedPrompts()
       setState((prev) => ({ ...prev, loading: false, error: null }))
@@ -157,6 +165,7 @@ export function useChat(initialSessionId?: string) {
         ...prev,
         loading: false,
         error: error.message || 'Failed to get prompts',
+        usageWarning: error.usageInfo?.warning || null,
       }))
       throw error
     }
@@ -183,6 +192,7 @@ export function useChat(initialSessionId?: string) {
     sessionId: state.sessionId,
     loading: state.loading,
     error: state.error,
+    usageWarning: state.usageWarning,
     sendMessage,
     loadSession,
     createSession,

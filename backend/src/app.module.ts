@@ -8,6 +8,7 @@ import { ChatModule } from './chat/chat.module'
 import { PromptModule } from './prompt/prompt.module'
 import { ThemeModule } from './theme/theme.module'
 import { ElevenLabsModule } from './elevenlabs/elevenlabs.module'
+import { CommonModule } from './common/common.module'
 import { AppController } from './app.controller'
 
 @Module({
@@ -16,6 +17,7 @@ import { AppController } from './app.controller'
       isGlobal: true,
       envFilePath: '.env',
     }),
+    CommonModule,
     FirebaseModule,
     GeminiModule,
     AuthModule,
