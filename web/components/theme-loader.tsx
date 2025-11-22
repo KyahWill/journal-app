@@ -2,11 +2,22 @@
 
 import { useEffect } from 'react'
 import { useThemes } from '@/lib/hooks/useThemes'
+import { useAuth } from '@/lib/contexts/auth-context'
 
 export function ThemeLoader() {
   const { fetchDefaultTheme, setActiveTheme } = useThemes()
+  const { isAuthenticated, loading: authLoading } = useAuth()
 
   useEffect(() => {
+    // Only load theme when auth state is determined and user is authenticated
+    if (authLoading) {
+      return
+    }
+
+    if (!isAuthenticated) {
+      return
+    }
+
     const loadTheme = async () => {
       try {
         // Check if there's a stored theme ID
@@ -35,7 +46,7 @@ export function ThemeLoader() {
     }
 
     loadTheme()
-  }, [fetchDefaultTheme, setActiveTheme])
+  }, [fetchDefaultTheme, setActiveTheme, isAuthenticated, authLoading])
 
   return null
 }

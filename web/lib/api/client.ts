@@ -114,7 +114,7 @@ class ApiClient {
   private getToken: (() => Promise<string | null>) | null = null
 
   constructor() {
-    this.baseUrl = API_BASE_URL
+    this.baseUrl = API_BASE_URL || ''
   }
 
   /**
@@ -140,12 +140,15 @@ class ApiClient {
       ...options.headers,
     }
 
+    let tokenObtained = false
+
     // Get fresh Firebase ID token
     if (this.getToken) {
       try {
         const token = await this.getToken()
         if (token) {
           (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+          tokenObtained = true
         }
       } catch (error) {
         console.error('Failed to get Firebase token:', error)
@@ -164,17 +167,15 @@ class ApiClient {
 
       // Handle 401 Unauthorized
       if (response.status === 401) {
-        // Try to refresh token and retry once
-        if (retryCount === 0 && this.getToken) {
+        // Only retry if we had a token before (meaning it might have expired)
+        // and we haven't retried yet
+        if (retryCount === 0 && tokenObtained && this.getToken) {
           console.log('Token expired, retrying with fresh token...')
           return this.request<T>(endpoint, options, retryCount + 1)
         }
         
-        // Session expired or invalid - redirect to login
-        if (typeof window !== 'undefined') {
-          window.location.href = '/auth/login'
-        }
-        throw new Error('Session expired. Please sign in again.')
+        // Don't throw error - let calling code handle authentication
+        throw new Error('Authentication required. Please sign in.')
       }
 
       if (!response.ok) {
