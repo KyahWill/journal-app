@@ -187,7 +187,7 @@ export default function CoachChatPage() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Sessions Sidebar */}
+      {/* Sessions Sidebar - Left */}
       <CoachSessionsSidebar
         sessions={sessions}
         currentSessionId={sessionId}
@@ -198,292 +198,309 @@ export default function CoachChatPage() {
         loading={sessionsLoading}
       />
 
-      {/* Main Content */}
+      {/* Main Content - Center */}
       <div className="flex-1 overflow-y-auto">
         <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-3xl font-bold">AI Executive Coach</h2>
-          <p className="text-gray-600 mt-1">
-            Get personalized insights based on your journal entries
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleGetInsights}
-            disabled={loadingInsights}
-          >
-            {loadingInsights ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4 mr-2" />
-            )}
-            Generate Insights
-          </Button>
-          {messages.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClearHistory}
-              disabled={loading}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Clear Chat
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Prompt Selector */}
-      {isMounted && prompts.length > 0 && (
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Brain className="h-5 w-5 text-purple-600 flex-shrink-0" />
-              <div className="flex-1">
-                <Label htmlFor="prompt-select" className="text-sm font-medium mb-2 block">
-                  AI Personality
-                </Label>
-                <Select
-                  value={selectedPromptId || undefined}
-                  onValueChange={setSelectedPromptId}
-                >
-                  <SelectTrigger id="prompt-select" className="w-full">
-                    <SelectValue placeholder="Select a prompt..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {prompts.map((prompt) => (
-                      <SelectItem key={prompt.id} value={prompt.id}>
-                        {prompt.name}
-                        {prompt.is_default && ' (Default)'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-3xl font-bold">AI Executive Coach</h2>
+              <p className="text-gray-600 mt-1">
+                Get personalized insights based on your journal entries
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Insights Panel */}
-      {showInsights && insights && (
-        <Card className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <Sparkles className="h-5 w-5 text-purple-600 mt-1 flex-shrink-0" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg mb-2">AI Insights</h3>
-                <div className="prose prose-sm max-w-none prose-p:leading-relaxed text-gray-700">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={
-                      {
-                        p: ({ children }: any) => (
-                          <p className="mb-2 last:mb-0">{children}</p>
-                        ),
-                        ul: ({ children }: any) => (
-                          <ul className="mb-2 ml-4 list-disc">{children}</ul>
-                        ),
-                        ol: ({ children }: any) => (
-                          <ol className="mb-2 ml-4 list-decimal">{children}</ol>
-                        ),
-                        li: ({ children }: any) => (
-                          <li className="mb-1">{children}</li>
-                        ),
-                        strong: ({ children }: any) => (
-                          <strong className="font-semibold text-purple-900">{children}</strong>
-                        ),
-                      } as Components
-                    }
-                  >
-                    {insights}
-                  </ReactMarkdown>
-                </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGetInsights}
+                disabled={loadingInsights}
+              >
+                {loadingInsights ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4 mr-2" />
+                )}
+                Generate Insights
+              </Button>
+              {messages.length > 0 && (
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={() => setShowInsights(false)}
-                  className="mt-2"
+                  onClick={handleClearHistory}
+                  disabled={loading}
                 >
-                  Dismiss
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Clear Chat
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Prompt Selector */}
+          {isMounted && prompts.length > 0 && (
+            <Card className="mb-6">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <Brain className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                  <div className="flex-1">
+                    <Label htmlFor="prompt-select" className="text-sm font-medium mb-2 block">
+                      AI Personality
+                    </Label>
+                    <Select
+                      value={selectedPromptId || undefined}
+                      onValueChange={setSelectedPromptId}
+                    >
+                      <SelectTrigger id="prompt-select" className="w-full">
+                        <SelectValue placeholder="Select a prompt..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {prompts.map((prompt) => (
+                          <SelectItem key={prompt.id} value={prompt.id}>
+                            {prompt.name}
+                            {prompt.is_default && ' (Default)'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Insights Panel */}
+          {showInsights && insights && (
+            <Card className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="h-5 w-5 text-purple-600 mt-1 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-2">AI Insights</h3>
+                    <div className="prose prose-sm max-w-none prose-p:leading-relaxed text-gray-700">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={
+                          {
+                            p: ({ children }: any) => (
+                              <p className="mb-2 last:mb-0">{children}</p>
+                            ),
+                            ul: ({ children }: any) => (
+                              <ul className="mb-2 ml-4 list-disc">{children}</ul>
+                            ),
+                            ol: ({ children }: any) => (
+                              <ol className="mb-2 ml-4 list-decimal">{children}</ol>
+                            ),
+                            li: ({ children }: any) => (
+                              <li className="mb-1">{children}</li>
+                            ),
+                            strong: ({ children }: any) => (
+                              <strong className="font-semibold text-purple-900">{children}</strong>
+                            ),
+                          } as Components
+                        }
+                      >
+                        {insights}
+                      </ReactMarkdown>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowInsights(false)}
+                      className="mt-2"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {sessionsError && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>Sessions: {sessionsError}</AlertDescription>
+            </Alert>
+          )}
+
+          <Card className="h-[600px] flex flex-col">
+            <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
+              {messages.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-center">
+                  <div>
+                    <p className="text-gray-500 mb-4">
+                      Start a conversation with your AI coach
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      I have access to all your journal entries and can provide
+                      personalized guidance
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {messages.map((message, index) => (
+                    <div
+                      key={message.id || index}
+                      className={`flex ${
+                        message.role === 'user' ? 'justify-end' : 'justify-start'
+                      }`}
+                    >
+                      <div
+                        className={`max-w-[80%] rounded-lg p-4 ${
+                          message.role === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge
+                            variant={
+                              message.role === 'user' ? 'default' : 'secondary'
+                            }
+                          >
+                            {message.role === 'user' ? 'You' : 'Coach'}
+                          </Badge>
+                        </div>
+                        {message.role === 'user' ? (
+                          <p className="whitespace-pre-wrap">{message.content}</p>
+                        ) : (
+                          <div className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed prose-pre:p-0">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              rehypePlugins={[rehypeHighlight]}
+                              components={
+                                {
+                                  p: ({ children }: any) => (
+                                    <p className="mb-2 last:mb-0">{children}</p>
+                                  ),
+                                  ul: ({ children }: any) => (
+                                    <ul className="mb-2 ml-4 list-disc">{children}</ul>
+                                  ),
+                                  ol: ({ children }: any) => (
+                                    <ol className="mb-2 ml-4 list-decimal">{children}</ol>
+                                  ),
+                                  li: ({ children }: any) => (
+                                    <li className="mb-1">{children}</li>
+                                  ),
+                                  code: ({ className, children, ...props }: any) => {
+                                    const match = /language-(\w+)/.exec(className || '')
+                                    return match ? (
+                                      <code className={className} {...props}>
+                                        {children}
+                                      </code>
+                                    ) : (
+                                      <code
+                                        className="bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5 text-sm"
+                                        {...props}
+                                      >
+                                        {children}
+                                      </code>
+                                    )
+                                  },
+                                  pre: ({ children }: any) => (
+                                    <pre className="bg-gray-900 rounded-lg p-4 overflow-x-auto mb-2">
+                                      {children}
+                                    </pre>
+                                  ),
+                                } as Components
+                              }
+                            >
+                              {message.content}
+                            </ReactMarkdown>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {loading && (
+                    <div className="flex justify-start">
+                      <div className="bg-secondary rounded-lg p-4">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-sm text-gray-600">
+                            Coach is thinking...
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+            </CardContent>
+
+            <div className="border-t p-4">
+              <div className="flex gap-2">
+                <Textarea
+                  placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={loading}
+                  rows={3}
+                  className="resize-none"
+                />
+                <Button
+                  onClick={handleSend}
+                  disabled={loading || !input.trim()}
+                  size="lg"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </Card>
+        </div>
+      </div>
 
-      {/* Suggested Prompts */}
-      {isMounted && messages.length === 0 && suggestedPrompts.length > 0 && (
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3 mb-3">
-              <Lightbulb className="h-5 w-5 text-yellow-600 mt-1 flex-shrink-0" />
-              <h3 className="font-semibold">Suggested Questions</h3>
+      {/* Suggested Prompts Sidebar - Right */}
+      <div className="w-80 border-l bg-gray-50/50 overflow-y-auto">
+        <div className="p-6 space-y-4">
+          <div className="flex items-start gap-3 mb-4">
+            <Lightbulb className="h-5 w-5 text-yellow-600 mt-1 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-lg">Suggested Questions</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Click any question to start
+              </p>
             </div>
+          </div>
+          
+          {loadingPrompts ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <span className="ml-2 text-sm text-gray-500 mt-2">Loading suggestions...</span>
+            </div>
+          ) : suggestedPrompts.length > 0 ? (
             <div className="space-y-2">
               {suggestedPrompts.map((prompt, index) => (
                 <Button
                   key={index}
                   variant="outline"
-                  className="w-full text-left justify-start h-auto py-3 px-4"
+                  className="w-full text-left justify-start h-auto min-h-[3rem] py-3 px-4 whitespace-normal leading-relaxed hover:bg-white hover:shadow-sm transition-all"
                   onClick={() => handlePromptClick(prompt)}
                 >
-                  {prompt}
+                  <span className="text-sm">{prompt}</span>
                 </Button>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {sessionsError && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertDescription>Sessions: {sessionsError}</AlertDescription>
-        </Alert>
-      )}
-
-      <Card className="h-[600px] flex flex-col">
-        <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-center">
-              <div>
-                <p className="text-gray-500 mb-4">
-                  Start a conversation with your AI coach
-                </p>
-                <p className="text-sm text-gray-400">
-                  I have access to all your journal entries and can provide
-                  personalized guidance
-                </p>
-              </div>
-            </div>
           ) : (
-            <>
-              {messages.map((message, index) => (
-                <div
-                  key={message.id || index}
-                  className={`flex ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-lg p-4 ${
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-secondary text-secondary-foreground'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge
-                        variant={
-                          message.role === 'user' ? 'default' : 'secondary'
-                        }
-                      >
-                        {message.role === 'user' ? 'You' : 'Coach'}
-                      </Badge>
-                    </div>
-                    {message.role === 'user' ? (
-                      <p className="whitespace-pre-wrap">{message.content}</p>
-                    ) : (
-                      <div className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed prose-pre:p-0">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeHighlight]}
-                          components={
-                            {
-                              p: ({ children }: any) => (
-                                <p className="mb-2 last:mb-0">{children}</p>
-                              ),
-                              ul: ({ children }: any) => (
-                                <ul className="mb-2 ml-4 list-disc">{children}</ul>
-                              ),
-                              ol: ({ children }: any) => (
-                                <ol className="mb-2 ml-4 list-decimal">{children}</ol>
-                              ),
-                              li: ({ children }: any) => (
-                                <li className="mb-1">{children}</li>
-                              ),
-                              code: ({ className, children, ...props }: any) => {
-                                const match = /language-(\w+)/.exec(className || '')
-                                return match ? (
-                                  <code className={className} {...props}>
-                                    {children}
-                                  </code>
-                                ) : (
-                                  <code
-                                    className="bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5 text-sm"
-                                    {...props}
-                                  >
-                                    {children}
-                                  </code>
-                                )
-                              },
-                              pre: ({ children }: any) => (
-                                <pre className="bg-gray-900 rounded-lg p-4 overflow-x-auto mb-2">
-                                  {children}
-                                </pre>
-                              ),
-                            } as Components
-                          }
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {loading && (
-                <div className="flex justify-start">
-                  <div className="bg-secondary rounded-lg p-4">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm text-gray-600">
-                        Coach is thinking...
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </>
+            <Card>
+              <CardContent className="py-8">
+                <p className="text-sm text-gray-500 text-center">No suggestions available</p>
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-
-        <div className="border-t p-4">
-          <div className="flex gap-2">
-            <Textarea
-              placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={loading}
-              rows={3}
-              className="resize-none"
-            />
-            <Button
-              onClick={handleSend}
-              disabled={loading || !input.trim()}
-              size="lg"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </div>
-      </Card>
         </div>
       </div>
     </div>
