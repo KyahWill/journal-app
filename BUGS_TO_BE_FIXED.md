@@ -1,1 +1,0 @@
-[ ] grouped_by_date filters are fetching new api instead of just refiltering the list view data.  

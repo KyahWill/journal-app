@@ -1,8 +1,79 @@
 # Authentication Architecture
 
+**System-wide authentication overview for the Journal application**
+
 ## Overview
 
-This application uses **server-side session-based authentication** with Firebase Admin SDK. All authentication operations are handled server-side using Next.js API routes, with HTTP-only cookies for session management. No client-side Firebase Auth SDK is used.
+This application uses **server-side authentication** with Firebase Admin SDK across both the web application and backend API:
+
+### Web Application (Next.js)
+- **Session-based authentication** using HTTP-only cookies
+- Next.js API routes handle authentication operations
+- No client-side Firebase Auth SDK
+- 5-day session duration
+
+### Backend API (NestJS)
+- **Token-based authentication** using Bearer tokens
+- Accepts both session cookies and ID tokens
+- Firebase Admin SDK for verification
+- NestJS guards for route protection
+
+### Key Principles
+- ✅ **Server-side only**: All authentication happens on the server
+- ✅ **Firebase Admin SDK**: Single source of truth for user management
+- ✅ **HTTP-only cookies**: Session management for web app
+- ✅ **Bearer tokens**: Standard authentication for API
+- ✅ **Zero client-side tokens**: No tokens exposed to JavaScript
+
+## 📋 Quick Reference
+
+### Common Code Patterns
+
+**useAuth Hook (Web)**:
+```typescript
+import { useAuth } from '@/lib/hooks/useAuth'
+
+const { user, loading, isAuthenticated, signIn, signOut } = useAuth()
+
+// Login
+await signIn('user@example.com', 'password123')
+
+// Signup
+await signUp('user@example.com', 'password123', 'Display Name')
+
+// Logout
+await signOut()
+
+// Check auth status
+if (isAuthenticated) {
+  console.log(`Logged in as ${user.email}`)
+}
+```
+
+**Protected Route (Web)**:
+```typescript
+// Server Component
+const user = await firebaseServer.getCurrentUser()
+if (!user) redirect('/auth/login')
+
+// Client Component
+const { isAuthenticated } = useAuth()
+if (!isAuthenticated) return <div>Please log in</div>
+```
+
+**AuthGuard (Backend)**:
+```typescript
+@Controller('journal')
+@UseGuards(AuthGuard)
+export class JournalController {
+  @Get()
+  async getEntries(@CurrentUser() user: any) {
+    return this.service.getEntries(user.uid)
+  }
+}
+```
+
+---
 
 ## Architecture Diagram
 
@@ -184,6 +255,71 @@ This application uses **server-side session-based authentication** with Firebase
 **Used For**:
 - Sign in operations (Admin SDK doesn't have email/password sign-in)
 - Getting ID tokens for session cookie creation
+
+### 5. Backend API Layer (NestJS)
+
+#### AuthGuard (`backend/src/common/guards/auth.guard.ts`)
+**Purpose**: Protect backend API routes with authentication
+
+**Implementation**:
+```typescript
+@Injectable()
+export class AuthGuard implements CanActivate {
+  constructor(private readonly firebaseService: FirebaseService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest()
+    const authHeader = request.headers.authorization
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('No token provided')
+    }
+
+    const token = authHeader.substring(7)
+
+    try {
+      // Try session cookie first (from Next.js)
+      let decodedToken
+      try {
+        decodedToken = await this.firebaseService.verifySessionCookie(token, true)
+      } catch {
+        // Fallback to ID token
+        decodedToken = await this.firebaseService.verifyIdToken(token)
+      }
+      
+      request.user = decodedToken
+      return true
+    } catch {
+      throw new UnauthorizedException('Invalid token')
+    }
+  }
+}
+```
+
+**Usage**:
+```typescript
+@Controller('journal')
+@UseGuards(AuthGuard)
+export class JournalController {
+  @Get()
+  async getEntries(@CurrentUser() user: any) {
+    // user.uid, user.email available
+    return this.service.getEntries(user.uid)
+  }
+}
+```
+
+#### CurrentUser Decorator
+**Purpose**: Extract authenticated user from request
+
+```typescript
+export const CurrentUser = createParamDecorator(
+  (data: unknown, ctx: ExecutionContext) => {
+    const request = ctx.switchToHttp().getRequest()
+    return request.user
+  },
+)
+```
 
 ## Authentication Flows
 
@@ -545,6 +681,50 @@ curl -X POST http://localhost:3000/api/auth/logout \
 2. Check server system time
 3. Verify `maxAge` calculation (milliseconds vs seconds)
 
+### Issue: Random authentication errors
+
+**Symptoms**: Sometimes works, sometimes shows "Not authenticated" even when logged in
+
+**Possible Causes**:
+1. Token caching not working properly
+2. Race condition on page load (components try to fetch data before auth is ready)
+3. Network timing issues
+
+**Solutions**:
+1. Ensure `auth-context.tsx` includes token caching (4-minute TTL)
+2. Use the `ready` flag from `useAuth()` before making API calls:
+   ```typescript
+   const { ready, user } = useAuth()
+   useEffect(() => {
+     if (!ready) return // Wait for auth to be ready
+     fetchData()
+   }, [ready])
+   ```
+3. Check DevTools Network tab for failed `/api/auth/token` requests
+4. Verify `credentials: 'include'` is set on all fetch calls
+
+### Issue: Backend returns "No token provided"
+
+**Symptoms**: Backend API returns 401 with "No token provided" even when user is logged in
+
+**Possible Causes**:
+1. Authorization header not included in request
+2. Token getter returning null
+3. Session cookie not being sent to Next.js `/api/auth/token` endpoint
+
+**Solutions**:
+1. Verify API client is configured with token getter:
+   ```typescript
+   apiClient.setTokenGetter(async () => {
+     const response = await fetch('/api/auth/token', {
+       credentials: 'include'
+     })
+     return response.json().then(data => data.token)
+   })
+   ```
+2. Check that session cookie exists in browser (DevTools → Application → Cookies)
+3. Ensure backend AuthGuard accepts both session cookies and ID tokens (fallback)
+
 ## Migration from Client-Side Auth
 
 This system replaces the previous client-side Firebase Authentication. Key changes:
@@ -565,8 +745,6 @@ This system replaces the previous client-side Firebase Authentication. Key chang
 - `useAuth` hook interface (backward compatible)
 - Component code using `useAuth`
 - UI components (login, signup forms)
-
-See [`/docs/web/AUTH_MIGRATION_GUIDE.md`](./web/AUTH_MIGRATION_GUIDE.md) for detailed migration steps.
 
 ## Best Practices
 
@@ -632,29 +810,19 @@ See [`/docs/web/AUTH_MIGRATION_GUIDE.md`](./web/AUTH_MIGRATION_GUIDE.md) for det
 
 ## Related Documentation
 
-- [Server-Side Authentication Details](./web/SERVER_SIDE_AUTH.md)
-- [Authentication Migration Guide](./web/AUTH_MIGRATION_GUIDE.md)
-- [Implementation Summary](./web/IMPLEMENTATION_SUMMARY.md)
-- [Firebase Admin Auth Guide](https://firebase.google.com/docs/auth/admin)
-- [Next.js Middleware](https://nextjs.org/docs/app/building-your-application/routing/middleware)
-
-## Support & Resources
-
-### Internal Documentation
-- `/docs/AUTHENTICATION_ARCHITECTURE.md` (this file)
-- `/docs/web/SERVER_SIDE_AUTH.md` - Detailed implementation
-- `/docs/web/AUTH_MIGRATION_GUIDE.md` - Migration steps
-
-### Code References
-- `/app/api/auth/` - Auth API routes
-- `/lib/hooks/useAuth.ts` - Authentication hook
-- `/middleware.ts` - Route protection
-- `/lib/firebase/admin.ts` - Firebase Admin setup
+### Project Documentation
+- **[Documentation Index](INDEX.md)** - Main documentation navigation
+- **[Backend README](backend/BACKEND_README.md)** - Backend setup and API overview
+- **[Web README](web/WEB_README.md)** - Web app setup and deployment
+- **[Firestore Setup](backend/FIRESTORE_SETUP.md)** - Database configuration
 
 ### External Resources
-- [Firebase Authentication](https://firebase.google.com/docs/auth)
-- [Session Cookies](https://firebase.google.com/docs/auth/admin/manage-cookies)
-- [HTTP Cookie Security](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#security)
+- **[Firebase Authentication](https://firebase.google.com/docs/auth)** - Firebase Auth documentation
+- **[Firebase Admin SDK](https://firebase.google.com/docs/auth/admin)** - Admin SDK reference
+- **[Session Cookies](https://firebase.google.com/docs/auth/admin/manage-cookies)** - Session cookie management
+- **[Next.js Middleware](https://nextjs.org/docs/app/building-your-application/routing/middleware)** - Next.js middleware guide
+- **[NestJS Guards](https://docs.nestjs.com/guards)** - NestJS guard documentation
+- **[HTTP Cookie Security](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#security)** - Cookie security best practices
 
 ---
 

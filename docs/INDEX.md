@@ -4,23 +4,39 @@ Complete documentation for the Journal application.
 
 ## 📋 Quick Navigation
 
-### 🔐 Authentication (Start Here)
-- **[Authentication Summary](AUTHENTICATION_SUMMARY.md)** ⚡ - 5-minute overview (Start here!)
-- **[Auth Cheat Sheet](AUTH_CHEAT_SHEET.md)** 📋 - One-page quick reference
-- **[Authentication Architecture](AUTHENTICATION_ARCHITECTURE.md)** ⭐ - Complete overview of auth system
-- **[Quick Reference](web/AUTH_QUICK_REFERENCE.md)** - Code examples & patterns
-- **[Server-Side Auth Details](web/SERVER_SIDE_AUTH.md)** - Implementation details
-- **[Migration Guide](web/AUTH_MIGRATION_GUIDE.md)** - Moving from client-side auth
+> **Note**: See [DOCUMENTATION_STRUCTURE.md](DOCUMENTATION_STRUCTURE.md) for a complete overview of all documentation files.  
+> **Recent**: All documentation has been reorganized into the `docs/` directory. See [REORGANIZATION_SUMMARY.md](REORGANIZATION_SUMMARY.md) for details.
+
+### 🔐 Authentication
+
+- **[Authentication Architecture](AUTHENTICATION_ARCHITECTURE.md)** ⭐ - Complete authentication guide
+  - System-wide architecture overview
+  - Web application (Next.js) authentication
+  - Backend API (NestJS) authentication
+  - Quick reference code examples
+  - Troubleshooting and best practices
 
 ### 🏗️ Architecture & Features
 - **[System Architecture](ARCHITECTURE.md)** - Overall system design
 - **[Feature Set](FEATURE_SET.md)** - Complete feature reference
 
 ### 🛠️ Setup & Configuration
+- **[Backend README](backend/BACKEND_README.md)** - Backend setup and API documentation
+- **[Web README](web/WEB_README.md)** - Web app setup and deployment
 - **[Firestore Setup](backend/FIRESTORE_SETUP.md)** - Database configuration
 
-### 📝 Implementation
+### 📝 Implementation & Development
 - **[Implementation Summary](web/IMPLEMENTATION_SUMMARY.md)** - Web app implementation details
+- **[Theming Implementation](THEMING_IMPLEMENTATION.md)** - Theme system and customization
+- **[ElevenLabs Integration](ELEVENLABS_INTEGRATION_SUMMARY.md)** - Voice/audio integration
+
+### 🐛 Troubleshooting & Analysis
+- **[Bugs to be Fixed](BUGS_TO_BE_FIXED.md)** - Known issues and planned fixes
+- **[Authentication Issues Analysis](AUTHENTICATION_ISSUES_ANALYSIS.md)** - Auth problem analysis
+- **[Authentication Fixes](AUTHENTICATION_FIXES.md)** - Implemented auth fixes
+- **[Auth Analysis README](AUTH_ANALYSIS_README.md)** - Detailed auth analysis
+- **[Auth Edge Cases Summary](AUTH_EDGE_CASES_SUMMARY.md)** - Edge case handling
+- **[Auth Problem Examples](AUTH_PROBLEM_EXAMPLES.md)** - Common auth problems
 
 ## 📚 Documentation by Topic
 
@@ -28,23 +44,27 @@ Complete documentation for the Journal application.
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| [Authentication Summary](AUTHENTICATION_SUMMARY.md) | 5-minute overview | **New developers (start here)** |
-| [Auth Cheat Sheet](AUTH_CHEAT_SHEET.md) | One-page quick reference | **Developers (keep open while coding)** |
-| [Authentication Architecture](AUTHENTICATION_ARCHITECTURE.md) | Complete auth system overview | All developers |
-| [Quick Reference](web/AUTH_QUICK_REFERENCE.md) | Code examples & common patterns | Frontend developers |
-| [Server-Side Auth Details](web/SERVER_SIDE_AUTH.md) | Detailed implementation | Backend developers |
-| [Migration Guide](web/AUTH_MIGRATION_GUIDE.md) | Client → Server auth migration | Migration tasks |
+| [Authentication Architecture](AUTHENTICATION_ARCHITECTURE.md) | Complete authentication guide covering web & backend | **All developers** |
+
+**Covers:**
+- System-wide architecture
+- Web application (Next.js) with HTTP-only cookies
+- Backend API (NestJS) with Bearer tokens
+- Quick reference code examples
+- Common issues and troubleshooting
+- Best practices and security
 
 **Key Concepts:**
-- Server-side session management
-- HTTP-only cookies
-- Firebase Admin SDK integration
-- Middleware-based route protection
+- Server-side authentication only
+- Firebase Admin SDK for verification
+- HTTP-only cookies (Web) & Bearer tokens (Backend)
+- Middleware & Guard-based route protection
 
 ### Architecture
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
+| [Documentation Structure](DOCUMENTATION_STRUCTURE.md) | Complete docs organization | All developers |
 | [System Architecture](ARCHITECTURE.md) | Overall system design | All developers |
 | [Feature Set](FEATURE_SET.md) | Available features | Product/Dev |
 
@@ -58,24 +78,58 @@ Complete documentation for the Journal application.
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
+| [Backend README](backend/BACKEND_README.md) | Backend setup & API docs | Backend developers |
 | [Firestore Setup](backend/FIRESTORE_SETUP.md) | Database configuration | Backend developers |
 
 **Technologies:**
+- NestJS framework
 - Firestore for data storage
 - Firebase Admin SDK
 - Security rules
+- Google Gemini AI
+
+**Key Features:**
+- RESTful API endpoints
+- Guard-based route protection
+- Token verification with Firebase Admin SDK
 
 ### Frontend
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
+| [Web README](web/WEB_README.md) | Web app setup & deployment | Frontend developers |
 | [Implementation Summary](web/IMPLEMENTATION_SUMMARY.md) | Web implementation details | Frontend developers |
+| [Contexts README](web/CONTEXTS_README.md) | React context usage guide | Frontend developers |
+| [Theming Implementation](THEMING_IMPLEMENTATION.md) | Theme system | Frontend developers |
 
 **Technologies:**
 - Next.js 14
 - React Server Components
 - Tailwind CSS + shadcn/ui
 - TypeScript
+
+**Key Features:**
+- Server-side rendering
+- API route handlers
+- Middleware route protection
+- Session-based authentication
+
+### Integrations
+
+| Document | Purpose | Audience |
+|----------|---------|----------|
+| [ElevenLabs Integration](ELEVENLABS_INTEGRATION_SUMMARY.md) | Voice/audio integration | All developers |
+
+**Features:**
+- Text-to-speech
+- Voice synthesis
+- Audio streaming
+
+### Troubleshooting
+
+| Document | Purpose | Audience |
+|----------|---------|----------|
+| [Bugs to be Fixed](BUGS_TO_BE_FIXED.md) | Known issues | All developers |
 
 ## 🎯 Documentation by Role
 
@@ -174,18 +228,27 @@ Understanding security implementation:
 
 ```
 docs/
-├── INDEX.md                           # This file
-├── AUTHENTICATION_ARCHITECTURE.md     # Main auth documentation
-├── ARCHITECTURE.md                    # System architecture
-├── FEATURE_SET.md                     # Feature reference
+├── INDEX.md                           # This file - Main navigation
 │
-├── web/                               # Web app docs
-│   ├── AUTH_QUICK_REFERENCE.md       # Quick auth reference
-│   ├── SERVER_SIDE_AUTH.md           # Auth implementation
-│   ├── AUTH_MIGRATION_GUIDE.md       # Migration guide
+├── Core Documentation
+│   ├── ARCHITECTURE.md                # System architecture
+│   ├── FEATURE_SET.md                 # Feature reference
+│   └── AUTHENTICATION_ARCHITECTURE.md # Complete auth guide (web & backend)
+│
+├── Implementation & Integration
+│   ├── THEMING_IMPLEMENTATION.md      # Theme system
+│   └── ELEVENLABS_INTEGRATION_SUMMARY.md # Voice integration
+│
+├── Troubleshooting
+│   └── BUGS_TO_BE_FIXED.md           # Known issues
+│
+├── web/                               # Web app documentation
+│   ├── WEB_README.md                 # Web app setup & deploy
+│   ├── CONTEXTS_README.md            # Context usage guide
 │   └── IMPLEMENTATION_SUMMARY.md     # Web implementation
 │
-└── backend/                           # Backend docs
+└── backend/                           # Backend documentation
+    ├── BACKEND_README.md             # Backend setup & API
     └── FIRESTORE_SETUP.md            # Database setup
 ```
 

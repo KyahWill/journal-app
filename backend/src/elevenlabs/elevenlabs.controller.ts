@@ -84,7 +84,9 @@ export class ElevenLabsController {
       },
     }),
   )
-  async speechToText(@UploadedFile() file: Express.Multer.File) {
+  async speechToText(
+    @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
+  ) {
     try {
       if (!file) {
         throw new BadRequestException('Audio file is required')
