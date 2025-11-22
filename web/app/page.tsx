@@ -3,6 +3,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Footer } from '@/components/footer'
 import { LandingHeader } from '@/components/landing-header'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Home',
+  description: 'A warm, personal space for reflection and growth, enhanced with AI-powered insights to guide your journey.',
+}
 
 export default function Home() {
   return (

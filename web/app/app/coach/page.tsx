@@ -3,6 +3,9 @@
 import { useRef, useEffect } from 'react'
 import { useChat, useChatSessions } from '@/lib/hooks/useChat'
 import { usePrompts } from '@/lib/hooks/usePrompts'
+import { useAuthReady } from '@/lib/hooks/useAuthReady'
+import { useTextToSpeech } from '@/lib/hooks/useTextToSpeech'
+import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, Brain } from 'lucide-react'
+import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, Brain, Volume2, VolumeX, Mic, Square } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { useState } from 'react'
 import { CoachSessionsSidebar } from '@/components/coach-sessions-sidebar'
@@ -27,6 +30,8 @@ import 'highlight.js/styles/github-dark.css'
 import type { Components } from 'react-markdown'
 
 export default function CoachChatPage() {
+  const isAuthReady = useAuthReady()
+  
   const {
     messages,
     sessionId,
@@ -63,7 +68,22 @@ export default function CoachChatPage() {
   const [loadingPrompts, setLoadingPrompts] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Text-to-speech hook
+  const { play: playAudio, stop: stopAudio, isLoading: isTTSLoading, isPlaying } = useTextToSpeech()
+  
+  // Speech-to-text hook
+  const { 
+    startRecording, 
+    stopRecording, 
+    transcription, 
+    isRecording, 
+    isProcessing, 
+    error: sttError,
+    clearTranscription 
+  } = useSpeechToText()
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -73,13 +93,24 @@ export default function CoachChatPage() {
     scrollToBottom()
   }, [messages])
 
+  // Handle transcription result
+  useEffect(() => {
+    if (transcription) {
+      setInput((prev) => (prev ? `${prev} ${transcription}` : transcription))
+      clearTranscription()
+    }
+  }, [transcription, clearTranscription])
+
   // Load suggested prompts, sessions, and user prompts on mount
   useEffect(() => {
+    // Don't make API calls until auth is ready
+    if (!isAuthReady) return
+    
     setIsMounted(true)
     loadPrompts()
     fetchSessions()
     loadUserPrompts()
-  }, [])
+  }, [isAuthReady])
 
   async function loadUserPrompts() {
     try {
@@ -163,6 +194,8 @@ export default function CoachChatPage() {
     clearChat()
     setInsights(null)
     setShowInsights(false)
+    stopAudio()
+    setPlayingMessageId(null)
   }
 
   async function handleDeleteSession(sessionId: string) {
@@ -182,6 +215,29 @@ export default function CoachChatPage() {
       await updateSessionTitle(sessionId, title)
     } catch (err) {
       console.error('Failed to rename session:', err)
+    }
+  }
+
+  // Handle text-to-speech for a message
+  function handlePlayMessage(messageId: string, content: string) {
+    if (playingMessageId === messageId && isPlaying) {
+      // Stop if already playing this message
+      stopAudio()
+      setPlayingMessageId(null)
+    } else {
+      // Play the message
+      stopAudio() // Stop any current playback
+      setPlayingMessageId(messageId)
+      playAudio(content)
+    }
+  }
+
+  // Handle microphone recording
+  async function handleMicrophoneToggle() {
+    if (isRecording) {
+      await stopRecording()
+    } else {
+      await startRecording()
     }
   }
 
@@ -366,6 +422,23 @@ export default function CoachChatPage() {
                           >
                             {message.role === 'user' ? 'You' : 'Coach'}
                           </Badge>
+                          {message.role === 'assistant' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handlePlayMessage(message.id || index.toString(), message.content)}
+                              disabled={isTTSLoading && playingMessageId === (message.id || index.toString())}
+                              className="h-6 w-6 p-0"
+                            >
+                              {isTTSLoading && playingMessageId === (message.id || index.toString()) ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : playingMessageId === (message.id || index.toString()) && isPlaying ? (
+                                <VolumeX className="h-3 w-3" />
+                              ) : (
+                                <Volume2 className="h-3 w-3" />
+                              )}
+                            </Button>
+                          )}
                         </div>
                         {message.role === 'user' ? (
                           <p className="whitespace-pre-wrap">{message.content}</p>
@@ -436,27 +509,49 @@ export default function CoachChatPage() {
             </CardContent>
 
             <div className="border-t p-4">
+              {sttError && (
+                <Alert variant="destructive" className="mb-2">
+                  <AlertDescription>{sttError}</AlertDescription>
+                </Alert>
+              )}
               <div className="flex gap-2">
                 <Textarea
                   placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  disabled={loading}
+                  disabled={loading || isRecording || isProcessing}
                   rows={3}
                   className="resize-none"
                 />
-                <Button
-                  onClick={handleSend}
-                  disabled={loading || !input.trim()}
-                  size="lg"
-                >
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    onClick={handleMicrophoneToggle}
+                    disabled={loading || isProcessing}
+                    size="lg"
+                    variant={isRecording ? 'destructive' : 'outline'}
+                    className={isRecording ? 'animate-pulse' : ''}
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isRecording ? (
+                      <Square className="h-4 w-4" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleSend}
+                    disabled={loading || !input.trim() || isRecording || isProcessing}
+                    size="lg"
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>

@@ -141,6 +141,7 @@ class ApiClient {
     }
 
     let tokenObtained = false
+    let tokenFetchFailed = false
 
     // Get fresh Firebase ID token
     if (this.getToken) {
@@ -149,8 +150,12 @@ class ApiClient {
         if (token) {
           (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
           tokenObtained = true
+        } else {
+          tokenFetchFailed = true
+          console.warn('Token getter returned null - proceeding without token')
         }
       } catch (error) {
+        tokenFetchFailed = true
         console.error('Failed to get Firebase token:', error)
       }
     }
@@ -167,15 +172,29 @@ class ApiClient {
 
       // Handle 401 Unauthorized
       if (response.status === 401) {
-        // Only retry if we had a token before (meaning it might have expired)
-        // and we haven't retried yet
-        if (retryCount === 0 && tokenObtained && this.getToken) {
-          console.log('Token expired, retrying with fresh token...')
+        // If we got 401 AND token fetch failed, might be transient - retry once
+        if (retryCount === 0 && tokenFetchFailed && this.getToken) {
+          console.log('Token fetch failed, retrying request...')
+          await new Promise(resolve => setTimeout(resolve, 500))
           return this.request<T>(endpoint, options, retryCount + 1)
         }
         
-        // Don't throw error - let calling code handle authentication
-        throw new Error('Authentication required. Please sign in.')
+        // If we got 401 AND had a token, it might be expired - retry once with fresh token
+        if (retryCount === 0 && tokenObtained && this.getToken) {
+          console.log('Token might be expired, retrying with fresh token...')
+          // Note: token getter has its own retry logic and caching
+          return this.request<T>(endpoint, options, retryCount + 1)
+        }
+        
+        // Give up and throw appropriate error
+        const errorData = await response.json().catch(() => ({}))
+        const message = errorData.message || errorData.error || 'Authentication required'
+        
+        if (tokenFetchFailed) {
+          throw new Error(`Authentication failed: Unable to retrieve auth token. ${message}`)
+        } else {
+          throw new Error(`Authentication failed: ${message}`)
+        }
       }
 
       if (!response.ok) {
@@ -187,7 +206,17 @@ class ApiClient {
 
       return response.json()
     } catch (error: any) {
-      console.error('API Request failed:', error)
+      // Add context to error message
+      if (error.message?.includes('Authentication')) {
+        console.error('API Authentication error:', {
+          endpoint,
+          tokenObtained,
+          tokenFetchFailed,
+          retryCount,
+        })
+      } else {
+        console.error('API Request failed:', error)
+      }
       throw error
     }
   }
@@ -489,6 +518,81 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     })
+  }
+
+  // ============================================================================
+  // ElevenLabs APIs (Text-to-Speech & Speech-to-Text)
+  // ============================================================================
+
+  async textToSpeech(text: string, voiceId?: string): Promise<Blob> {
+    const url = `${this.baseUrl}/elevenlabs/text-to-speech`
+    
+    // Get fresh Firebase ID token
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    }
+
+    if (this.getToken) {
+      try {
+        const token = await this.getToken()
+        if (token) {
+          (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+        }
+      } catch (error) {
+        console.error('Failed to get Firebase token:', error)
+      }
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ text, voiceId }),
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || 'Failed to convert text to speech')
+    }
+
+    return response.blob()
+  }
+
+  async speechToText(audioBlob: Blob): Promise<string> {
+    const url = `${this.baseUrl}/elevenlabs/speech-to-text`
+    
+    // Get fresh Firebase ID token
+    const headers: HeadersInit = {}
+
+    if (this.getToken) {
+      try {
+        const token = await this.getToken()
+        if (token) {
+          (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+        }
+      } catch (error) {
+        console.error('Failed to get Firebase token:', error)
+      }
+    }
+
+    // Create FormData to upload audio file
+    const formData = new FormData()
+    formData.append('audio', audioBlob, 'recording.webm')
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || 'Failed to convert speech to text')
+    }
+
+    const data = await response.json()
+    return data.text
   }
 
   // ============================================================================

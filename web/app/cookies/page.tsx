@@ -1,5 +1,11 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Cookie Policy',
+  description: 'Understand how Journal App uses cookies to enhance your experience.',
+}
 
 export default function CookiePolicy() {
   return (

@@ -1,5 +1,14 @@
 import AppHeader from './app-header'
 import { AuthProvider } from '@/lib/contexts/auth-context'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: {
+    default: 'Dashboard',
+    template: '%s | Journal App'
+  },
+  description: 'Your personal journaling and AI coaching dashboard.',
+}
 
 export default function AppLayout({
   children,

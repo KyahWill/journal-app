@@ -7,6 +7,7 @@ import { JournalModule } from './journal/journal.module'
 import { ChatModule } from './chat/chat.module'
 import { PromptModule } from './prompt/prompt.module'
 import { ThemeModule } from './theme/theme.module'
+import { ElevenLabsModule } from './elevenlabs/elevenlabs.module'
 import { AppController } from './app.controller'
 
 @Module({
@@ -22,6 +23,7 @@ import { AppController } from './app.controller'
     ChatModule,
     PromptModule,
     ThemeModule,
+    ElevenLabsModule,
   ],
   controllers: [AppController],
 })

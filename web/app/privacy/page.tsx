@@ -1,5 +1,11 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
+  description: 'Learn how Journal App protects your personal information and ensures your privacy.',
+}
 
 export default function PrivacyPolicy() {
   return (
