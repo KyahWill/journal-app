@@ -551,11 +551,40 @@ class ApiClient {
     })
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || 'Failed to convert text to speech')
+      // Try to get error message from response
+      let errorMessage = `Failed to convert text to speech (HTTP ${response.status})`
+      try {
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorData.error || errorMessage
+        } else {
+          const errorText = await response.text()
+          if (errorText) {
+            errorMessage = errorText
+          }
+        }
+      } catch (e) {
+        // Ignore parsing errors, use default message
+      }
+      throw new Error(errorMessage)
     }
 
-    return response.blob()
+    // Verify we got audio content
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('audio')) {
+      console.error('Invalid content type:', contentType)
+      throw new Error('Server did not return audio data. Got: ' + contentType)
+    }
+
+    const blob = await response.blob()
+    
+    // Verify blob size
+    if (blob.size === 0) {
+      throw new Error('Received empty audio data')
+    }
+
+    return blob
   }
 
   async speechToText(audioBlob: Blob): Promise<string> {

@@ -42,9 +42,16 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
       setPlaybackState('loading')
       setError(null)
 
+      console.log('Requesting text-to-speech for:', text.substring(0, 50) + '...')
+
       // Get audio from API
       const audioBlob = await apiClient.textToSpeech(text, voiceId)
       
+      console.log('Received audio blob:', {
+        size: audioBlob.size,
+        type: audioBlob.type
+      })
+
       // Create audio URL
       const audioUrl = URL.createObjectURL(audioBlob)
       audioUrlRef.current = audioUrl
@@ -61,7 +68,30 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
 
       audio.addEventListener('error', (e) => {
         console.error('Audio playback error:', e)
-        setError('Failed to play audio')
+        // Try to get more specific error information
+        const mediaError = (e.target as HTMLAudioElement)?.error
+        let errorMessage = 'Failed to play audio'
+        
+        if (mediaError) {
+          switch (mediaError.code) {
+            case MediaError.MEDIA_ERR_ABORTED:
+              errorMessage = 'Audio playback was aborted'
+              break
+            case MediaError.MEDIA_ERR_NETWORK:
+              errorMessage = 'Network error while loading audio'
+              break
+            case MediaError.MEDIA_ERR_DECODE:
+              errorMessage = 'Audio format not supported or corrupted'
+              break
+            case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+              errorMessage = 'Audio format not supported by browser'
+              break
+            default:
+              errorMessage = `Audio playback error: ${mediaError.message || 'Unknown error'}`
+          }
+        }
+        
+        setError(errorMessage)
         setPlaybackState('error')
         cleanup()
       })
