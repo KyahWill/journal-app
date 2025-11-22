@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2 } from 'lucide-react' // Removed Sparkles (AI feature disabled)
 import { Card, CardContent } from '@/components/ui/card'
 import { ThemePreview } from '@/components/theme-preview'
 import { ColorPicker } from '@/components/ui/color-picker'
@@ -37,12 +37,12 @@ interface ThemeEditorProps {
 type TabType = 'colors' | 'typography' | 'spacing' | 'visual' | 'animations' | 'preview'
 
 export function ThemeEditor({ theme, isOpen, onClose, onSave }: ThemeEditorProps) {
-  const { createTheme, updateTheme, getRecommendations } = useThemes()
+  const { createTheme, updateTheme } = useThemes() // Removed getRecommendations (AI feature disabled)
   
   const [activeTab, setActiveTab] = useState<TabType>('colors')
   const [isSaving, setIsSaving] = useState(false)
-  const [loadingAI, setLoadingAI] = useState(false)
-  const [aiSuggestions, setAiSuggestions] = useState<string>('')
+  // const [loadingAI, setLoadingAI] = useState(false) // Disabled AI features
+  // const [aiSuggestions, setAiSuggestions] = useState<string>('') // Disabled AI features
 
   // Form state
   const [name, setName] = useState('')
@@ -141,20 +141,21 @@ export function ThemeEditor({ theme, isOpen, onClose, onSave }: ThemeEditorProps
     }
   }
 
-  const handleGetAIRecommendations = async () => {
-    setLoadingAI(true)
-    try {
-      const suggestions = await getRecommendations({
-        mood: 'creative and professional',
-        preferences: `Current theme: ${name || 'New Theme'}`,
-      })
-      setAiSuggestions(suggestions)
-    } catch (err) {
-      console.error('Failed to get AI recommendations:', err)
-    } finally {
-      setLoadingAI(false)
-    }
-  }
+  // Disabled AI recommendations feature
+  // const handleGetAIRecommendations = async () => {
+  //   setLoadingAI(true)
+  //   try {
+  //     const suggestions = await getRecommendations({
+  //       mood: 'creative and professional',
+  //       preferences: `Current theme: ${name || 'New Theme'}`,
+  //     })
+  //     setAiSuggestions(suggestions)
+  //   } catch (err) {
+  //     console.error('Failed to get AI recommendations:', err)
+  //   } finally {
+  //     setLoadingAI(false)
+  //   }
+  // }
 
   const updateColor = (key: keyof ThemeColors, value: string) => {
     setColors({ ...colors, [key]: value })
@@ -179,7 +180,7 @@ export function ThemeEditor({ theme, isOpen, onClose, onSave }: ThemeEditorProps
 
   const tabs = [
     { id: 'colors' as TabType, label: 'Colors' },
-    { id: 'typography' as TabType, label: 'Typography' },
+    // { id: 'typography' as TabType, label: 'Typography' }, // Disabled
     { id: 'spacing' as TabType, label: 'Spacing' },
     { id: 'visual' as TabType, label: 'Visual' },
     { id: 'animations' as TabType, label: 'Animations' },
@@ -255,19 +256,6 @@ export function ThemeEditor({ theme, isOpen, onClose, onSave }: ThemeEditorProps
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold">Color Palette</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleGetAIRecommendations}
-                    disabled={loadingAI}
-                  >
-                    {loadingAI ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4 mr-2" />
-                    )}
-                    AI Suggestions
-                  </Button>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
@@ -280,73 +268,10 @@ export function ThemeEditor({ theme, isOpen, onClose, onSave }: ThemeEditorProps
                     />
                   ))}
                 </div>
-
-                {aiSuggestions && (
-                  <Card className="mt-4 bg-purple-50">
-                    <CardContent className="pt-4">
-                      <h4 className="font-semibold mb-2">AI Suggestions</h4>
-                      <pre className="text-sm whitespace-pre-wrap">{aiSuggestions}</pre>
-                    </CardContent>
-                  </Card>
-                )}
               </div>
             )}
 
-            {activeTab === 'typography' && (
-              <div className="space-y-4">
-                <h3 className="font-semibold mb-4">Typography Settings</h3>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="fontFamily">Font Family</Label>
-                  <Input
-                    id="fontFamily"
-                    value={typography.fontFamily}
-                    onChange={(e) => setTypography({ ...typography, fontFamily: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="baseFontSize">Base Font Size (px): {typography.baseFontSize}</Label>
-                  <input
-                    type="range"
-                    id="baseFontSize"
-                    min="10"
-                    max="24"
-                    value={typography.baseFontSize}
-                    onChange={(e) => setTypography({ ...typography, baseFontSize: Number(e.target.value) })}
-                    className="w-full"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="headingScale">Heading Scale: {typography.headingScale}</Label>
-                  <input
-                    type="range"
-                    id="headingScale"
-                    min="1"
-                    max="2"
-                    step="0.1"
-                    value={typography.headingScale}
-                    onChange={(e) => setTypography({ ...typography, headingScale: Number(e.target.value) })}
-                    className="w-full"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lineHeight">Line Height: {typography.lineHeight}</Label>
-                  <input
-                    type="range"
-                    id="lineHeight"
-                    min="1"
-                    max="2.5"
-                    step="0.1"
-                    value={typography.lineHeight}
-                    onChange={(e) => setTypography({ ...typography, lineHeight: Number(e.target.value) })}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            )}
+            {/* Typography tab disabled */}
 
             {activeTab === 'spacing' && (
               <div className="space-y-4">
