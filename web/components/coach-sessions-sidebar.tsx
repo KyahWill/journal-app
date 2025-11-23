@@ -97,7 +97,7 @@ export function CoachSessionsSidebar({
 
   if (isCollapsed) {
     return (
-      <div className="fixed top-20 left-4 z-50">
+      <div className="fixed top-20 left-4 z-50 lg:hidden">
         <Button
           onClick={() => setIsCollapsed(false)}
           size="icon"
@@ -114,7 +114,7 @@ export function CoachSessionsSidebar({
       {/* Overlay for mobile */}
       {isMobile && !isCollapsed && (
         <div
-          className="fixed inset-0 bg-black/50 z-40"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setIsCollapsed(true)}
         />
       )}
@@ -123,35 +123,34 @@ export function CoachSessionsSidebar({
       <div
         className={`
           ${isMobile ? 'fixed left-0 top-0 h-full z-50' : 'relative'}
-          w-80 bg-background border-r flex flex-col
+          w-full sm:w-80 bg-background border-r flex flex-col
           ${isCollapsed ? 'hidden' : 'flex'}
         `}
       >
         {/* Header */}
-        <div className="p-4 border-b">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-lg">Coach Sessions</h3>
-            {isMobile && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsCollapsed(true)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            )}
+        <div className="p-3 sm:p-4 border-b">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h3 className="font-semibold text-base sm:text-lg">Coach Sessions</h3>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsCollapsed(true)}
+              className="lg:hidden"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
           </div>
-          <Button onClick={onNewSession} className="w-full" disabled={loading}>
+          <Button onClick={onNewSession} className="w-full" disabled={loading} size="sm">
             <Plus className="h-4 w-4 mr-2" />
             New Session
           </Button>
         </div>
 
         {/* Sessions List */}
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-3">
           {sessions.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+            <div className="text-center py-6 sm:py-8 text-gray-500 px-4">
+              <MessageSquare className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No sessions yet</p>
               <p className="text-xs mt-1">Start a conversation to create one</p>
             </div>

@@ -77,11 +77,12 @@ export default function NewEntryPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
+    <div className="container mx-auto px-4 py-6 sm:py-8 max-w-3xl">
       <Button
         variant="ghost"
         onClick={() => router.back()}
-        className="mb-6"
+        className="mb-4 sm:mb-6"
+        size="sm"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back
@@ -89,7 +90,7 @@ export default function NewEntryPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>New Journal Entry</CardTitle>
+          <CardTitle className="text-xl sm:text-2xl">New Journal Entry</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -123,6 +124,7 @@ export default function NewEntryPage() {
                   disabled={loading || isProcessing || (isRecording && recordingField !== 'title')}
                   variant={isRecording && recordingField === 'title' ? 'destructive' : 'outline'}
                   className={isRecording && recordingField === 'title' ? 'animate-pulse' : ''}
+                  size="icon"
                 >
                   {isProcessing && recordingField === 'title' ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -148,18 +150,18 @@ export default function NewEntryPage() {
                 >
                   {isProcessing && recordingField === 'content' ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
+                      <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                      <span className="hidden sm:inline">Processing...</span>
                     </>
                   ) : isRecording && recordingField === 'content' ? (
                     <>
-                      <Square className="h-4 w-4 mr-2" />
-                      Stop Recording
+                      <Square className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Stop Recording</span>
                     </>
                   ) : (
                     <>
-                      <Mic className="h-4 w-4 mr-2" />
-                      Record
+                      <Mic className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Record</span>
                     </>
                   )}
                 </Button>
@@ -171,8 +173,8 @@ export default function NewEntryPage() {
                 onChange={(e) => setContent(e.target.value)}
                 required
                 disabled={loading || isRecording || isProcessing}
-                rows={12}
-                className="resize-none"
+                rows={10}
+                className="resize-none text-sm sm:text-base"
               />
             </div>
 
@@ -193,6 +195,7 @@ export default function NewEntryPage() {
                   disabled={loading || isProcessing || (isRecording && recordingField !== 'mood')}
                   variant={isRecording && recordingField === 'mood' ? 'destructive' : 'outline'}
                   className={isRecording && recordingField === 'mood' ? 'animate-pulse' : ''}
+                  size="icon"
                 >
                   {isProcessing && recordingField === 'mood' ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -208,8 +211,8 @@ export default function NewEntryPage() {
               </p>
             </div>
 
-            <div className="flex gap-4">
-              <Button type="submit" disabled={loading}>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <Button type="submit" disabled={loading} className="w-full sm:w-auto">
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -224,6 +227,7 @@ export default function NewEntryPage() {
                 variant="outline"
                 onClick={() => router.back()}
                 disabled={loading}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>

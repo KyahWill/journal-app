@@ -165,4 +165,26 @@
     --tw-gradient-to: rgb(255 245 240 / 0);
     --tw-gradient-stops: var(--tw-gradient-from), #fff5f0, var(--tw-gradient-to);
   }
+
+  /* Mobile-friendly touch targets */
+  @media (max-width: 768px) {
+    button, a {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Better text rendering on mobile */
+  @media (max-width: 768px) {
+    body {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+  }
 }

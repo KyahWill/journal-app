@@ -21,6 +21,11 @@ export const metadata: Metadata = {
     template: "%s | Journal App"
   },
   description: "A warm, personal space for reflection and growth, enhanced with AI-powered insights to guide your journey.",
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
+  },
 };
 
 export default function RootLayout({

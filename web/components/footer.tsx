@@ -5,11 +5,11 @@ export function Footer() {
 
   return (
     <footer className="bg-gradient-to-b from-orange-50 to-orange-100 border-t border-orange-200 mt-auto">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+      <div className="container mx-auto px-4 py-8 sm:py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-6 sm:mb-8">
           {/* Brand Section */}
-          <div className="md:col-span-1">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Journal App</h3>
+          <div className="sm:col-span-2 md:col-span-1">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Journal App</h3>
             <p className="text-sm text-gray-600 leading-relaxed">
               Your personal space for reflection and growth, enhanced with AI-powered insights.
             </p>
@@ -83,12 +83,12 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-orange-200 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-gray-600">
+        <div className="border-t border-orange-200 pt-6 sm:pt-8">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <p className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
               © {currentYear} Journal App. All rights reserved.
             </p>
-            <div className="flex gap-6">
+            <div className="flex gap-4 sm:gap-6">
               <a 
                 href="https://twitter.com" 
                 target="_blank" 

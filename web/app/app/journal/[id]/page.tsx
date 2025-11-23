@@ -143,11 +143,12 @@ export default function EntryDetailPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
+    <div className="container mx-auto px-4 py-6 sm:py-8 max-w-3xl">
       <Button
         variant="ghost"
         onClick={() => router.push('/app/journal')}
-        className="mb-6"
+        className="mb-4 sm:mb-6"
+        size="sm"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back to Journal
@@ -155,15 +156,15 @@ export default function EntryDetailPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+            <div className="flex-1 w-full">
               {isEditing ? (
                 <div className="flex gap-2 mb-2">
                   <Input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Title"
-                    className="text-2xl font-bold flex-1"
+                    className="text-lg sm:text-2xl font-bold flex-1"
                     disabled={saving || isRecording || isProcessing}
                   />
                   <Button
@@ -172,6 +173,7 @@ export default function EntryDetailPage() {
                     disabled={saving || isProcessing || (isRecording && recordingField !== 'title')}
                     variant={isRecording && recordingField === 'title' ? 'destructive' : 'outline'}
                     className={isRecording && recordingField === 'title' ? 'animate-pulse' : ''}
+                    size="icon"
                   >
                     {isProcessing && recordingField === 'title' ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -183,41 +185,42 @@ export default function EntryDetailPage() {
                   </Button>
                 </div>
               ) : (
-                <CardTitle className="text-2xl mb-2">{entry.title}</CardTitle>
+                <CardTitle className="text-xl sm:text-2xl mb-2">{entry.title}</CardTitle>
               )}
-              <div className="flex gap-2 text-sm text-gray-600 flex-wrap">
-                <Badge variant="outline">
-                  Created: {format(new Date(entry.created_at), 'PPP')}
+              <div className="flex gap-2 text-xs sm:text-sm text-gray-600 flex-wrap">
+                <Badge variant="outline" className="text-xs">
+                  Created: {format(new Date(entry.created_at), 'PP')}
                 </Badge>
                 {entry.updated_at !== entry.created_at && (
-                  <Badge variant="outline">
-                    Updated: {format(new Date(entry.updated_at), 'PPP')}
+                  <Badge variant="outline" className="text-xs">
+                    Updated: {format(new Date(entry.updated_at), 'PP')}
                   </Badge>
                 )}
                 {entry.mood && (
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="text-xs">
                     Mood: {entry.mood}
                   </Badge>
                 )}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
               {isEditing ? (
                 <>
                   <Button
                     size="sm"
                     onClick={handleSave}
                     disabled={saving}
+                    className="flex-1 sm:flex-none"
                   >
                     {saving ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Saving...
+                        <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                        <span className="hidden sm:inline">Saving...</span>
                       </>
                     ) : (
                       <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save
+                        <Save className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Save</span>
                       </>
                     )}
                   </Button>
@@ -226,9 +229,10 @@ export default function EntryDetailPage() {
                     variant="outline"
                     onClick={handleCancel}
                     disabled={saving}
+                    className="flex-1 sm:flex-none"
                   >
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel
+                    <X className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Cancel</span>
                   </Button>
                 </>
               ) : (
@@ -236,6 +240,7 @@ export default function EntryDetailPage() {
                   size="sm"
                   variant="outline"
                   onClick={() => setIsEditing(true)}
+                  className="w-full sm:w-auto"
                 >
                   <Edit2 className="h-4 w-4 mr-2" />
                   Edit
@@ -272,18 +277,18 @@ export default function EntryDetailPage() {
                   >
                     {isProcessing && recordingField === 'content' ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Processing...
+                        <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                        <span className="hidden sm:inline">Processing...</span>
                       </>
                     ) : isRecording && recordingField === 'content' ? (
                       <>
-                        <Square className="h-4 w-4 mr-2" />
-                        Stop Recording
+                        <Square className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Stop Recording</span>
                       </>
                     ) : (
                       <>
-                        <Mic className="h-4 w-4 mr-2" />
-                        Record
+                        <Mic className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Record</span>
                       </>
                     )}
                   </Button>
@@ -293,8 +298,8 @@ export default function EntryDetailPage() {
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   disabled={saving || isRecording || isProcessing}
-                  rows={15}
-                  className="resize-none"
+                  rows={12}
+                  className="resize-none text-sm sm:text-base"
                 />
               </div>
               <div className="space-y-2">

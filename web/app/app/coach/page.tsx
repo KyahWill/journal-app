@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, Brain, Volume2, VolumeX, Mic, Square } from 'lucide-react'
+import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, Brain, Volume2, VolumeX, Mic, Square, ChevronDown, ChevronUp } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { useState } from 'react'
 import { CoachSessionsSidebar } from '@/components/coach-sessions-sidebar'
@@ -70,6 +70,7 @@ export default function CoachChatPage() {
   const [isMounted, setIsMounted] = useState(false)
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null)
+  const [showMobileSuggestions, setShowMobileSuggestions] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
   // Text-to-speech hook
@@ -166,6 +167,7 @@ export default function CoachChatPage() {
 
   async function handlePromptClick(prompt: string) {
     setInput(prompt)
+    setShowMobileSuggestions(false) // Close mobile suggestions after selection
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -243,7 +245,7 @@ export default function CoachChatPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-screen overflow-hidden">
       {/* Sessions Sidebar - Left */}
       <CoachSessionsSidebar
         sessions={sessions}
@@ -257,27 +259,29 @@ export default function CoachChatPage() {
 
       {/* Main Content - Center */}
       <div className="flex-1 overflow-y-auto">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <div className="flex justify-between items-center mb-6">
+        <div className="container mx-auto px-4 py-6 sm:py-8 max-w-4xl">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
-              <h2 className="text-3xl font-bold">AI Executive Coach</h2>
-              <p className="text-gray-600 mt-1">
+              <h2 className="text-2xl sm:text-3xl font-bold">AI Executive Coach</h2>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">
                 Get personalized insights based on your journal entries
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleGetInsights}
                 disabled={loadingInsights}
+                className="flex-1 sm:flex-none"
               >
                 {loadingInsights ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
                 ) : (
-                  <Sparkles className="h-4 w-4 mr-2" />
+                  <Sparkles className="h-4 w-4 sm:mr-2" />
                 )}
-                Generate Insights
+                <span className="hidden sm:inline">Generate Insights</span>
+                <span className="sm:hidden">Insights</span>
               </Button>
               {messages.length > 0 && (
                 <Button
@@ -285,9 +289,11 @@ export default function CoachChatPage() {
                   size="sm"
                   onClick={handleClearHistory}
                   disabled={loading}
+                  className="flex-1 sm:flex-none"
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Clear Chat
+                  <RefreshCw className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Clear Chat</span>
+                  <span className="sm:hidden">Clear</span>
                 </Button>
               )}
             </div>
@@ -393,8 +399,60 @@ export default function CoachChatPage() {
             </Alert>
           )}
 
-          <Card className="h-[600px] flex flex-col">
-            <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
+          {/* Mobile Suggested Questions - Collapsible */}
+          <div className="lg:hidden mb-6">
+            <Button
+              variant="outline"
+              onClick={() => setShowMobileSuggestions(!showMobileSuggestions)}
+              className="w-full justify-between"
+            >
+              <span className="flex items-center gap-2">
+                <Lightbulb className="h-4 w-4 text-yellow-600" />
+                Suggested Questions
+                {suggestedPrompts.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {suggestedPrompts.length}
+                  </Badge>
+                )}
+              </span>
+              {showMobileSuggestions ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+            
+            {showMobileSuggestions && (
+              <Card className="mt-2 border-yellow-200 bg-yellow-50/50">
+                <CardContent className="pt-4 pb-4">
+                  {loadingPrompts ? (
+                    <div className="flex flex-col items-center justify-center py-6">
+                      <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                      <span className="text-sm text-gray-500 mt-2">Loading suggestions...</span>
+                    </div>
+                  ) : suggestedPrompts.length > 0 ? (
+                    <div className="space-y-2">
+                      {suggestedPrompts.map((prompt, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          className="w-full text-left justify-start h-auto min-h-[3rem] py-3 px-4 whitespace-normal leading-relaxed hover:bg-white hover:shadow-sm transition-all bg-white"
+                          onClick={() => handlePromptClick(prompt)}
+                        >
+                          <span className="text-sm">{prompt}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 text-center py-4">No suggestions available</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <Card className="h-[500px] sm:h-[600px] flex flex-col">
+            <CardContent className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-center">
                   <div>
@@ -417,7 +475,7 @@ export default function CoachChatPage() {
                       }`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-lg p-4 ${
+                        className={`max-w-[95%] sm:max-w-[85%] md:max-w-[80%] rounded-lg p-3 sm:p-4 ${
                           message.role === 'user'
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-secondary text-secondary-foreground'
@@ -517,7 +575,7 @@ export default function CoachChatPage() {
               )}
             </CardContent>
 
-            <div className="border-t p-4">
+            <div className="border-t p-3 sm:p-4">
               {sttError && (
                 <Alert variant="destructive" className="mb-2">
                   <AlertDescription>{sttError}</AlertDescription>
@@ -525,21 +583,21 @@ export default function CoachChatPage() {
               )}
               <div className="flex gap-2">
                 <Textarea
-                  placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
+                  placeholder="Type your message..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   disabled={loading || isRecording || isProcessing}
                   rows={3}
-                  className="resize-none"
+                  className="resize-none text-sm sm:text-base"
                 />
                 <div className="flex flex-col gap-2">
                   <Button
                     onClick={handleMicrophoneToggle}
                     disabled={loading || isProcessing}
-                    size="lg"
+                    size="sm"
                     variant={isRecording ? 'destructive' : 'outline'}
-                    className={isRecording ? 'animate-pulse' : ''}
+                    className={`${isRecording ? 'animate-pulse' : ''} h-auto py-2 sm:py-3`}
                   >
                     {isProcessing ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -552,7 +610,8 @@ export default function CoachChatPage() {
                   <Button
                     onClick={handleSend}
                     disabled={loading || !input.trim() || isRecording || isProcessing}
-                    size="lg"
+                    size="sm"
+                    className="h-auto py-2 sm:py-3"
                   >
                     {loading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -567,8 +626,8 @@ export default function CoachChatPage() {
         </div>
       </div>
 
-      {/* Suggested Prompts Sidebar - Right */}
-      <div className="w-80 border-l bg-gray-50/50 overflow-y-auto">
+      {/* Suggested Prompts Sidebar - Right (Hidden on mobile) */}
+      <div className="hidden lg:block w-80 border-l bg-gray-50/50 overflow-y-auto">
         <div className="p-6 space-y-4">
           <div className="flex items-start gap-3 mb-4">
             <Lightbulb className="h-5 w-5 text-yellow-600 mt-1 flex-shrink-0" />

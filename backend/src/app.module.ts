@@ -8,6 +8,7 @@ import { ChatModule } from './chat/chat.module'
 import { PromptModule } from './prompt/prompt.module'
 import { ThemeModule } from './theme/theme.module'
 import { ElevenLabsModule } from './elevenlabs/elevenlabs.module'
+import { GoalModule } from './goal/goal.module'
 import { CommonModule } from './common/common.module'
 import { AppController } from './app.controller'
 
@@ -26,6 +27,7 @@ import { AppController } from './app.controller'
     PromptModule,
     ThemeModule,
     ElevenLabsModule,
+    GoalModule,
   ],
   controllers: [AppController],
 })

@@ -143,9 +143,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-4">Settings</h1>
+    <div className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-4">Settings</h1>
         <div className="flex gap-2">
           <Link href="/app/settings/themes">
             <Button variant="outline" size="sm">
@@ -156,14 +156,14 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-bold">AI Prompts</h2>
-          <p className="text-gray-600 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold">AI Prompts</h2>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             Customize your AI chat experience with custom prompts
           </p>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
+        <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           New Prompt
         </Button>
@@ -180,7 +180,7 @@ export default function SettingsPage() {
           <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {prompts.map((prompt) => (
             <Card key={prompt.id} className="relative">
               <CardHeader>
@@ -256,7 +256,7 @@ export default function SettingsPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingPrompt ? 'Edit Prompt' : 'Create New Prompt'}

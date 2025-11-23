@@ -19,32 +19,32 @@ export default function Home() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(251,146,60,0.1),transparent_50%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_rgba(252,165,165,0.1),transparent_50%)]" />
       
-      <div className="container mx-auto px-4 py-20 relative z-10">
-        <div className="text-center mb-20 animate-fade-in">
-          <h1 className="text-6xl md:text-7xl font-bold mb-6 text-gray-900 leading-tight">
+      <div className="container mx-auto px-4 py-12 sm:py-16 md:py-20 relative z-10">
+        <div className="text-center mb-12 sm:mb-16 md:mb-20 animate-fade-in">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 text-gray-900 leading-tight px-2">
             Your Journey,{' '}
             <span className="bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
               Beautifully Captured
             </span>
           </h1>
-          <p className="text-xl md:text-2xl text-gray-700 mb-10 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-700 mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed px-4">
             A warm, personal space for reflection and growth, enhanced with AI-powered insights to guide your journey
           </p>
-          <div className="flex gap-4 justify-center flex-wrap">
-            <Link href="/auth/signup">
-              <Button size="lg" className="text-lg px-8 py-6 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
+            <Link href="/auth/signup" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
                 Start Your Journey
               </Button>
             </Link>
-            <Link href="/auth/login">
-              <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-2 border-orange-300 text-gray-700 hover:bg-orange-50 hover:border-orange-400 transform hover:scale-105 transition-all duration-200">
+            <Link href="/auth/login" className="w-full sm:w-auto">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6 border-2 border-orange-300 text-gray-700 hover:bg-orange-50 hover:border-orange-400 transform hover:scale-105 transition-all duration-200">
                 Welcome Back
               </Button>
             </Link>
           </div>
         </div>
 
-        <div id="features" className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mt-24">
+        <div id="features" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto mt-12 sm:mt-16 md:mt-24">
           <Card className="border-orange-100 bg-white/80 backdrop-blur hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
             <CardHeader>
               <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">📝</div>

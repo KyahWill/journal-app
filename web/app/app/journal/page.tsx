@@ -188,14 +188,16 @@ export default function JournalListPage() {
       <div className="space-y-8">
         {dates.map((date) => (
           <div key={date}>
-            <h3 className="text-xl font-semibold mb-4 flex items-center" suppressHydrationWarning>
-              <Calendar className="h-5 w-5 mr-2" />
-              {isMounted ? format(new Date(date), 'MMMM d, yyyy') : date}
-              <span className="ml-2 text-sm font-normal text-gray-500">
+            <h3 className="text-lg sm:text-xl font-semibold mb-4 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0" suppressHydrationWarning>
+              <span className="flex items-center">
+                <Calendar className="h-5 w-5 mr-2" />
+                {isMounted ? format(new Date(date), 'MMMM d, yyyy') : date}
+              </span>
+              <span className="ml-0 sm:ml-2 text-sm font-normal text-gray-500">
                 ({filteredGroupedEntries[date].length} {filteredGroupedEntries[date].length === 1 ? 'entry' : 'entries'})
               </span>
             </h3>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredGroupedEntries[date].map((entry) => (
                 <Card key={entry.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
@@ -257,7 +259,7 @@ export default function JournalListPage() {
     }
 
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filteredEntries.map((entry) => (
           <Card key={entry.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
@@ -294,28 +296,30 @@ export default function JournalListPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-bold">My Journal</h2>
-        <div className="flex gap-2">
+    <div className="container mx-auto px-4 py-6 sm:py-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4">
+        <h2 className="text-2xl sm:text-3xl font-bold">My Journal</h2>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <Button
             variant={viewMode === 'list' ? 'outline' : 'default'}
             size="sm"
             onClick={() => setViewMode('grouped')}
+            className="flex-1 sm:flex-none"
           >
-            <Calendar className="h-4 w-4 mr-2" />
-            By Date
+            <Calendar className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">By Date</span>
           </Button>
           <Button
             variant={viewMode === 'grouped' ? 'outline' : 'default'}
             size="sm"
             onClick={() => setViewMode('list')}
+            className="flex-1 sm:flex-none"
           >
-            <List className="h-4 w-4 mr-2" />
-            List View
+            <List className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">List View</span>
           </Button>
-          <Link href="/app/journal/new">
-            <Button>
+          <Link href="/app/journal/new" className="flex-1 sm:flex-none">
+            <Button className="w-full">
               <Plus className="h-4 w-4 mr-2" />
               New Entry
             </Button>
