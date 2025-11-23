@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger, HttpException, HttpStatus } from '@nestjs/common'
+import { Injectable, NotFoundException, Logger, HttpException, HttpStatus, Inject, forwardRef } from '@nestjs/common'
 import { FirebaseService } from '@/firebase/firebase.service'
 import { GeminiService } from '@/gemini/gemini.service'
 import { JournalService } from '@/journal/journal.service'
@@ -7,6 +7,7 @@ import { ChatSession, ChatMessage } from '@/common/types/journal.types'
 import { v4 as uuidv4 } from 'uuid'
 import { PromptService } from '@/prompt/prompt.service'
 import { RateLimitService } from '@/common/services/rate-limit.service'
+import { GoalService } from '@/goal/goal.service'
 
 @Injectable()
 export class ChatService {
@@ -19,6 +20,8 @@ export class ChatService {
     private readonly journalService: JournalService,
     private readonly promptService: PromptService,
     private readonly rateLimitService: RateLimitService,
+    @Inject(forwardRef(() => GoalService))
+    private readonly goalService: GoalService,
   ) {}
 
   async sendMessage(userId: string, sendMessageDto: SendMessageDto) {
@@ -50,6 +53,9 @@ export class ChatService {
       // Get user's journal entries for context
       const journalEntries = await this.journalService.getRecent(userId, 20)
 
+      // Build goal context for AI
+      const goalContext = await this.buildGoalContext(userId)
+
       // Get custom prompt if specified
       let customPromptText: string | undefined
       const effectivePromptId = promptId || session.prompt_id
@@ -71,12 +77,13 @@ export class ChatService {
         timestamp: new Date(),
       }
 
-      // Get AI response with custom prompt
+      // Get AI response with custom prompt and goal context
       const aiResponse = await this.geminiService.sendMessage(
         message,
         journalEntries,
         session.messages,
         customPromptText,
+        goalContext,
       )
 
       // Create assistant message
@@ -332,6 +339,145 @@ export class ChatService {
       return message
     }
     return message.substring(0, maxLength).trim() + '...'
+  }
+
+  async suggestGoals(userId: string) {
+    try {
+      // Check rate limit
+      const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'goal_suggestions')
+      if (!usageInfo.allowed) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: usageInfo.warning || 'Daily goal suggestions limit reached',
+            error: 'Too Many Requests',
+            usageInfo,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        )
+      }
+
+      const journalEntries = await this.journalService.getRecent(userId, 30)
+
+      if (journalEntries.length === 0) {
+        return {
+          suggestions: [],
+          message: 'No journal entries available to generate goal suggestions. Start writing to get personalized goal suggestions!',
+        }
+      }
+
+      const suggestions = await this.geminiService.generateGoalSuggestions(journalEntries)
+
+      this.logger.log(`Goal suggestions generated for user: ${userId}`)
+
+      return { suggestions, usageInfo }
+    } catch (error) {
+      this.logger.error('Error suggesting goals', error)
+      throw error
+    }
+  }
+
+  async getGoalInsights(userId: string, goalId: string) {
+    try {
+      // Check rate limit
+      const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'goal_insights')
+      if (!usageInfo.allowed) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: usageInfo.warning || 'Daily goal insights limit reached',
+            error: 'Too Many Requests',
+            usageInfo,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        )
+      }
+
+      // Get goal details
+      const goal = await this.goalService.getGoalById(userId, goalId)
+      const milestones = await this.goalService.getMilestones(userId, goalId)
+      const progressUpdates = await this.goalService.getProgressUpdates(userId, goalId)
+
+      // Format goal data for AI
+      const now = new Date()
+      const daysRemaining = Math.ceil(
+        (goal.target_date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      )
+
+      const goalData = {
+        title: goal.title,
+        description: goal.description,
+        category: goal.category,
+        status: goal.status,
+        targetDate: goal.target_date.toISOString().split('T')[0],
+        daysRemaining,
+        progress: goal.progress_percentage,
+      }
+
+      const formattedMilestones = milestones.map((m) => ({
+        title: m.title,
+        completed: m.completed,
+        dueDate: m.due_date ? m.due_date.toISOString().split('T')[0] : null,
+      }))
+
+      const formattedProgress = progressUpdates.slice(0, 5).map((p) => ({
+        content: p.content,
+        date: p.created_at.toISOString().split('T')[0],
+      }))
+
+      const insights = await this.geminiService.generateGoalInsights(
+        goalData,
+        formattedMilestones,
+        formattedProgress
+      )
+
+      this.logger.log(`Goal insights generated for goal ${goalId} for user: ${userId}`)
+
+      return { insights, usageInfo }
+    } catch (error) {
+      this.logger.error('Error generating goal insights', error)
+      throw error
+    }
+  }
+
+  private async buildGoalContext(userId: string): Promise<any> {
+    try {
+      const [activeGoals, overdueGoals, inactiveGoals, recentCompletions] = await Promise.all([
+        this.goalService.getGoalsForAIContext(userId),
+        this.goalService.getOverdueGoals(userId),
+        this.goalService.getInactiveGoals(userId),
+        this.goalService.getRecentCompletions(userId, 30),
+      ])
+
+      // Format overdue goals
+      const formattedOverdueGoals = overdueGoals.map((goal) => {
+        const now = new Date()
+        const daysRemaining = Math.ceil(
+          (goal.target_date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+        )
+        return {
+          title: goal.title,
+          category: goal.category,
+          daysRemaining,
+        }
+      })
+
+      return {
+        activeGoals,
+        overdueGoals: formattedOverdueGoals,
+        inactiveGoals,
+        recentCompletions,
+      }
+    } catch (error) {
+      this.logger.error('Error building goal context for AI', error)
+      // Return empty context on error to not block chat functionality
+      return {
+        activeGoals: [],
+        overdueGoals: [],
+        inactiveGoals: [],
+        recentCompletions: [],
+      }
+    }
   }
 }
 

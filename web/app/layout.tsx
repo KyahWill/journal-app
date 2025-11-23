@@ -39,10 +39,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <ThemeProvider>
-            <ThemeLoader />
-            {children}
-          </ThemeProvider>
+            <ThemeProvider>
+              <ThemeLoader />
+              {children}
+            </ThemeProvider>
         </AuthProvider>
       </body>
     </html>

@@ -56,8 +56,87 @@ export class GeminiService implements OnModuleInit {
     return buffer.join('\n')
   }
 
-  private getSystemPrompt(journalContext: string, customPrompt?: string): string {
-    const basePrompt = customPrompt || `You are an experienced executive coach with expertise in leadership development, personal growth, and professional success. Your role is to have meaningful one-on-one coaching sessions with the user based on their journal entries.
+  private formatGoalContext(goalData: any): string {
+    if (!goalData) {
+      return ''
+    }
+
+    const buffer: string[] = []
+    
+    // Active Goals
+    if (goalData.activeGoals && goalData.activeGoals.length > 0) {
+      buffer.push("\n=== USER'S ACTIVE GOALS ===\n")
+      for (const goal of goalData.activeGoals) {
+        buffer.push(`Goal: ${goal.title}`)
+        buffer.push(`Category: ${goal.category}`)
+        buffer.push(`Status: ${goal.status}`)
+        buffer.push(`Target Date: ${goal.targetDate}`)
+        buffer.push(`Days Remaining: ${goal.daysRemaining}`)
+        buffer.push(`Progress: ${goal.progress}%`)
+        
+        if (goal.description) {
+          buffer.push(`Description: ${goal.description}`)
+        }
+        
+        if (goal.milestones && goal.milestones.length > 0) {
+          buffer.push('Milestones:')
+          for (const milestone of goal.milestones) {
+            const status = milestone.completed ? '✓' : '○'
+            const dueDate = milestone.dueDate ? ` (due: ${milestone.dueDate})` : ''
+            buffer.push(`  ${status} ${milestone.title}${dueDate}`)
+          }
+        }
+        
+        if (goal.recentProgress && goal.recentProgress.length > 0) {
+          buffer.push('Recent Progress Updates:')
+          for (const progress of goal.recentProgress) {
+            buffer.push(`  - ${progress.date}: ${progress.content}`)
+          }
+        }
+        
+        buffer.push('---\n')
+      }
+    }
+
+    // Overdue Goals
+    if (goalData.overdueGoals && goalData.overdueGoals.length > 0) {
+      buffer.push("\n=== OVERDUE GOALS (Need Attention) ===\n")
+      for (const goal of goalData.overdueGoals) {
+        buffer.push(`Goal: ${goal.title}`)
+        buffer.push(`Category: ${goal.category}`)
+        buffer.push(`Days Overdue: ${Math.abs(goal.daysRemaining)}`)
+        buffer.push('---\n')
+      }
+    }
+
+    // Inactive Goals
+    if (goalData.inactiveGoals && goalData.inactiveGoals.length > 0) {
+      buffer.push("\n=== INACTIVE GOALS (No Recent Activity) ===\n")
+      for (const goal of goalData.inactiveGoals) {
+        buffer.push(`Goal: ${goal.title}`)
+        buffer.push(`Category: ${goal.category}`)
+        buffer.push(`Days Since Last Activity: ${goal.daysSinceLastActivity}`)
+        buffer.push('---\n')
+      }
+    }
+
+    // Recent Completions
+    if (goalData.recentCompletions && goalData.recentCompletions.length > 0) {
+      buffer.push("\n=== RECENTLY COMPLETED GOALS ===\n")
+      for (const goal of goalData.recentCompletions) {
+        buffer.push(`Goal: ${goal.title}`)
+        buffer.push(`Category: ${goal.category}`)
+        buffer.push(`Completed: ${goal.completedAt}`)
+        buffer.push(`Time Taken: ${goal.daysTaken} days`)
+        buffer.push('---\n')
+      }
+    }
+
+    return buffer.join('\n')
+  }
+
+  private getSystemPrompt(journalContext: string, goalContext: string, customPrompt?: string): string {
+    const basePrompt = customPrompt || `You are an experienced executive coach with expertise in leadership development, personal growth, and professional success. Your role is to have meaningful one-on-one coaching sessions with the user based on their journal entries and goals.
 
 Guidelines for your coaching:
 1. Be empathetic, supportive, and insightful
@@ -67,14 +146,26 @@ Guidelines for your coaching:
 5. Celebrate their wins and progress
 6. Help them work through challenges
 7. Be conversational and authentic, not robotic
-8. Draw specific references to their journal entries when relevant
+8. Draw specific references to their journal entries and goals when relevant
 9. Keep responses concise but meaningful (2-4 paragraphs typically)
+
+Goal-Specific Coaching Guidelines:
+- Reference specific goals by name when discussing progress or challenges
+- Acknowledge milestone completions and progress updates
+- Provide accountability for overdue goals in a supportive, non-judgmental way
+- Encourage action on inactive goals by asking about obstacles
+- Celebrate recent goal completions and ask reflection questions
+- Help break down large goals into manageable milestones
+- Connect journal reflections to goal progress when relevant
+- Suggest creating goals based on patterns in journal entries
 
 Remember: You're here to support their personal and professional growth journey.`
 
     return `${basePrompt}
 
-${journalContext}`
+${journalContext}
+
+${goalContext}`
   }
 
   async sendMessage(
@@ -82,10 +173,12 @@ ${journalContext}`
     journalEntries: JournalEntry[],
     history: ChatMessage[] = [],
     customPrompt?: string,
+    goalContext?: any,
   ): Promise<string> {
     try {
       const journalContext = this.formatJournalContext(journalEntries)
-      const systemPrompt = this.getSystemPrompt(journalContext, customPrompt)
+      const formattedGoalContext = goalContext ? this.formatGoalContext(goalContext) : ''
+      const systemPrompt = this.getSystemPrompt(journalContext, formattedGoalContext, customPrompt)
 
       // Build conversation history
       const conversationHistory: string[] = []
@@ -193,6 +286,105 @@ Do not provide an analysis of the prompt, only the modified prompt.`
       return { suggestions: response.text() }
     } catch (error) {
       this.logger.error('Error analyzing prompt', error)
+      throw error
+    }
+  }
+
+  async generateGoalSuggestions(journalEntries: JournalEntry[]): Promise<any[]> {
+    try {
+      if (journalEntries.length === 0) {
+        return []
+      }
+
+      const journalContext = this.formatJournalContext(journalEntries)
+      const prompt = `Based on the following journal entries, analyze patterns, themes, and aspirations to suggest 3-5 specific, actionable goals the user might want to pursue.
+
+${journalContext}
+
+For each goal suggestion, provide:
+1. A clear, specific title (3-10 words)
+2. A category (one of: career, health, personal, financial, relationships, learning, other)
+3. A brief description explaining why this goal is relevant based on their journal entries (2-3 sentences)
+4. 2-4 suggested milestones to achieve this goal
+5. A reasoning section that references specific journal entries or patterns
+
+Format your response as a JSON array with this structure:
+[
+  {
+    "title": "Goal title here",
+    "category": "category_name",
+    "description": "Why this goal matters...",
+    "milestones": [
+      "First milestone",
+      "Second milestone",
+      "Third milestone"
+    ],
+    "reasoning": "Based on your journal entries..."
+  }
+]
+
+Provide ONLY the JSON array, no additional text.`
+
+      const result = await this.model.generateContent(prompt)
+      const response = result.response
+      const text = response.text()
+
+      // Try to parse the JSON response
+      try {
+        // Remove markdown code blocks if present
+        let jsonText = text.trim()
+        if (jsonText.startsWith('```json')) {
+          jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '')
+        } else if (jsonText.startsWith('```')) {
+          jsonText = jsonText.replace(/```\n?/g, '')
+        }
+        
+        const suggestions = JSON.parse(jsonText)
+        return Array.isArray(suggestions) ? suggestions : []
+      } catch (parseError) {
+        this.logger.error('Error parsing goal suggestions JSON', parseError)
+        this.logger.debug('Raw response:', text)
+        return []
+      }
+    } catch (error) {
+      this.logger.error('Error generating goal suggestions', error)
+      throw error
+    }
+  }
+
+  async generateGoalInsights(goal: any, milestones: any[], progressUpdates: any[]): Promise<string> {
+    try {
+      const prompt = `You are an executive coach analyzing a user's goal progress. Provide insightful, actionable feedback.
+
+GOAL DETAILS:
+Title: ${goal.title}
+Description: ${goal.description || 'No description provided'}
+Category: ${goal.category}
+Status: ${goal.status}
+Target Date: ${goal.targetDate}
+Days Remaining: ${goal.daysRemaining}
+Progress: ${goal.progress}%
+
+MILESTONES:
+${milestones.length > 0 ? milestones.map((m: any) => `${m.completed ? '✓' : '○'} ${m.title}${m.dueDate ? ` (due: ${m.dueDate})` : ''}`).join('\n') : 'No milestones set'}
+
+RECENT PROGRESS UPDATES:
+${progressUpdates.length > 0 ? progressUpdates.map((p: any) => `${p.date}: ${p.content}`).join('\n') : 'No progress updates yet'}
+
+Provide a thoughtful analysis covering:
+1. Progress Assessment: How is the user doing? What patterns do you see?
+2. Momentum Analysis: Is progress accelerating, steady, or stalling?
+3. Potential Obstacles: What might be blocking progress?
+4. Actionable Recommendations: 2-3 specific next steps
+5. Encouragement: Acknowledge wins and provide motivation
+
+Keep your response conversational, supportive, and actionable (3-4 paragraphs).`
+
+      const result = await this.model.generateContent(prompt)
+      const response = result.response
+      return response.text()
+    } catch (error) {
+      this.logger.error('Error generating goal insights', error)
       throw error
     }
   }

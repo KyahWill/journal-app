@@ -20,6 +20,8 @@ export class RateLimitService {
     insights: 3,
     tts: 5,
     prompt_suggestions: 5,
+    goal_suggestions: 3,
+    goal_insights: 5,
   }
 
   // Warning thresholds (when to start showing warnings)
@@ -28,6 +30,8 @@ export class RateLimitService {
     insights: 1,
     tts: 1,
     prompt_suggestions: 1,
+    goal_suggestions: 1,
+    goal_insights: 1,
   }
 
   constructor(private readonly firebaseService: FirebaseService) {}
@@ -139,6 +143,8 @@ export class RateLimitService {
       case 'insights': return 'AI insights'
       case 'tts': return 'text-to-speech'
       case 'prompt_suggestions': return 'prompt suggestions'
+      case 'goal_suggestions': return 'goal suggestions'
+      case 'goal_insights': return 'goal insights'
       default: return feature
     }
   }
@@ -149,6 +155,8 @@ export class RateLimitService {
       case 'insights': return 'uses'
       case 'tts': return 'uses'
       case 'prompt_suggestions': return 'uses'
+      case 'goal_suggestions': return 'uses'
+      case 'goal_insights': return 'uses'
       default: return 'uses'
     }
   }

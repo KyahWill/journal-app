@@ -115,6 +115,113 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && 
                        resource.data.user_id == request.auth.uid;
     }
+    
+    // Goals collection
+    match /goals/{goalId} {
+      // Users can read their own goals
+      allow read: if isAuthenticated() && 
+                     resource.data.user_id == request.auth.uid;
+      
+      // Users can create goals with their own user_id
+      allow create: if isAuthenticated() && 
+                       request.resource.data.user_id == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['user_id', 'title', 'category', 'status', 'target_date', 'created_at', 'updated_at', 'status_changed_at', 'last_activity', 'progress_percentage']) &&
+                       request.resource.data.title.size() >= 3 &&
+                       request.resource.data.title.size() <= 200 &&
+                       (!request.resource.data.keys().hasAny(['description']) || request.resource.data.description.size() <= 2000) &&
+                       request.resource.data.category in ['career', 'health', 'personal', 'financial', 'relationships', 'learning', 'other'] &&
+                       request.resource.data.status in ['not_started', 'in_progress', 'completed', 'abandoned'] &&
+                       request.resource.data.progress_percentage >= 0 &&
+                       request.resource.data.progress_percentage <= 100;
+      
+      // Users can update their own goals
+      allow update: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid &&
+                       request.resource.data.user_id == request.auth.uid &&
+                       (!request.resource.data.keys().hasAny(['title']) || (request.resource.data.title.size() >= 3 && request.resource.data.title.size() <= 200)) &&
+                       (!request.resource.data.keys().hasAny(['description']) || request.resource.data.description.size() <= 2000) &&
+                       (!request.resource.data.keys().hasAny(['category']) || request.resource.data.category in ['career', 'health', 'personal', 'financial', 'relationships', 'learning', 'other']) &&
+                       (!request.resource.data.keys().hasAny(['status']) || request.resource.data.status in ['not_started', 'in_progress', 'completed', 'abandoned']) &&
+                       (!request.resource.data.keys().hasAny(['progress_percentage']) || (request.resource.data.progress_percentage >= 0 && request.resource.data.progress_percentage <= 100));
+      
+      // Users can delete their own goals
+      allow delete: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+      
+      // Milestones subcollection
+      match /milestones/{milestoneId} {
+        // Users can read milestones if they own the parent goal
+        allow read: if isAuthenticated() && 
+                       get(/databases/$(database)/documents/goals/$(goalId)).data.user_id == request.auth.uid;
+        
+        // Users can create milestones if they own the parent goal
+        allow create: if isAuthenticated() && 
+                         get(/databases/$(database)/documents/goals/$(goalId)).data.user_id == request.auth.uid &&
+                         request.resource.data.keys().hasAll(['goal_id', 'title', 'completed', 'order', 'created_at']) &&
+                         request.resource.data.goal_id == goalId &&
+                         request.resource.data.title.size() > 0 &&
+                         request.resource.data.title.size() <= 200;
+        
+        // Users can update milestones if they own the parent goal
+        allow update: if isAuthenticated() && 
+                         get(/databases/$(database)/documents/goals/$(goalId)).data.user_id == request.auth.uid &&
+                         request.resource.data.goal_id == goalId &&
+                         (!request.resource.data.keys().hasAny(['title']) || (request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 200));
+        
+        // Users can delete milestones if they own the parent goal
+        allow delete: if isAuthenticated() && 
+                         get(/databases/$(database)/documents/goals/$(goalId)).data.user_id == request.auth.uid;
+      }
+      
+      // Progress updates subcollection
+      match /progress_updates/{progressId} {
+        // Users can read progress updates if they own the parent goal
+        allow read: if isAuthenticated() && 
+                       get(/databases/$(database)/documents/goals/$(goalId)).data.user_id == request.auth.uid;
+        
+        // Users can create progress updates if they own the parent goal
+        allow create: if isAuthenticated() && 
+                         get(/databases/$(database)/documents/goals/$(goalId)).data.user_id == request.auth.uid &&
+                         request.resource.data.keys().hasAll(['goal_id', 'content', 'created_at']) &&
+                         request.resource.data.goal_id == goalId &&
+                         request.resource.data.content.size() > 0 &&
+                         request.resource.data.content.size() <= 2000;
+        
+        // Users can update progress updates if they own the parent goal
+        allow update: if isAuthenticated() && 
+                         get(/databases/$(database)/documents/goals/$(goalId)).data.user_id == request.auth.uid &&
+                         request.resource.data.goal_id == goalId &&
+                         (!request.resource.data.keys().hasAny(['content']) || (request.resource.data.content.size() > 0 && request.resource.data.content.size() <= 2000));
+        
+        // Users can delete progress updates if they own the parent goal
+        allow delete: if isAuthenticated() && 
+                         get(/databases/$(database)/documents/goals/$(goalId)).data.user_id == request.auth.uid;
+      }
+    }
+    
+    // Goal-journal links collection
+    match /goal_journal_links/{linkId} {
+      // Users can read their own goal-journal links
+      allow read: if isAuthenticated() && 
+                     resource.data.user_id == request.auth.uid;
+      
+      // Users can create goal-journal links with their own user_id
+      // Must verify ownership of both goal and journal entry
+      allow create: if isAuthenticated() && 
+                       request.resource.data.user_id == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['goal_id', 'journal_entry_id', 'user_id', 'created_at']) &&
+                       get(/databases/$(database)/documents/goals/$(request.resource.data.goal_id)).data.user_id == request.auth.uid &&
+                       get(/databases/$(database)/documents/journal_entries/$(request.resource.data.journal_entry_id)).data.user_id == request.auth.uid;
+      
+      // Users can update their own goal-journal links
+      allow update: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid &&
+                       request.resource.data.user_id == request.auth.uid;
+      
+      // Users can delete their own goal-journal links
+      allow delete: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+    }
   }
 }
 

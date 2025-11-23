@@ -1,5 +1,6 @@
 import AppHeader from './app-header'
 import { AuthProvider } from '@/lib/contexts/auth-context'
+import { GoalProvider } from '@/lib/contexts/goal-context'
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -20,10 +21,12 @@ export default function AppLayout({
   
   return (
     <AuthProvider>
-      <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))', color: 'hsl(var(--foreground))' }}>
-        <AppHeader />
-        <main>{children}</main>
-      </div>
+      <GoalProvider>
+        <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))', color: 'hsl(var(--foreground))' }}>
+          <AppHeader />
+          <main>{children}</main>
+        </div>
+      </GoalProvider>
     </AuthProvider>
   )
 }

@@ -67,5 +67,16 @@ export class ChatController {
   async suggestPrompts(@CurrentUser() user: any) {
     return this.chatService.suggestPrompts(user.uid)
   }
+
+  @Post('suggest-goals')
+  @HttpCode(HttpStatus.OK)
+  async suggestGoals(@CurrentUser() user: any) {
+    return this.chatService.suggestGoals(user.uid)
+  }
+
+  @Get('goal-insights/:goalId')
+  async getGoalInsights(@CurrentUser() user: any, @Param('goalId') goalId: string) {
+    return this.chatService.getGoalInsights(user.uid, goalId)
+  }
 }
 

@@ -9,6 +9,10 @@ export interface JournalEntry {
   updated_at: Date
 }
 
+export interface JournalEntryWithGoals extends JournalEntry {
+  linked_goal_ids?: string[]
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'

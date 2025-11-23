@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ArrowLeft, Loader2, Mic, Square } from 'lucide-react'
+import { GoalSelector } from '@/components/goal-selector'
+import { apiClient } from '@/lib/api/client'
 
 export default function NewEntryPage() {
   const router = useRouter()
@@ -18,6 +20,7 @@ export default function NewEntryPage() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [mood, setMood] = useState('')
+  const [linkedGoalIds, setLinkedGoalIds] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [recordingField, setRecordingField] = useState<'title' | 'content' | 'mood' | null>(null)
@@ -54,11 +57,22 @@ export default function NewEntryPage() {
     setLoading(true)
 
     try {
-      await createEntry({
+      // Create the journal entry
+      const newEntry = await createEntry({
         title,
         content,
         mood: mood || undefined,
       })
+
+      // Link goals if any are selected
+      if (linkedGoalIds.length > 0) {
+        await Promise.all(
+          linkedGoalIds.map((goalId) =>
+            apiClient.linkJournalEntry(goalId, newEntry.id)
+          )
+        )
+      }
+
       router.push('/app/journal')
     } catch (err: any) {
       setError(err.message || 'Failed to create entry')
@@ -210,6 +224,12 @@ export default function NewEntryPage() {
                 e.g., happy, reflective, anxious, grateful
               </p>
             </div>
+
+            <GoalSelector
+              selectedGoalIds={linkedGoalIds}
+              onGoalsChange={setLinkedGoalIds}
+              disabled={loading || isRecording || isProcessing}
+            />
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <Button type="submit" disabled={loading} className="w-full sm:w-auto">

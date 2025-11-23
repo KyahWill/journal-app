@@ -200,6 +200,8 @@ export class FirebaseService implements OnModuleInit {
     filters?: Array<{ field: string; operator: FirebaseFirestore.WhereFilterOp; value: any }>,
     orderByField?: string,
     orderDirection?: 'asc' | 'desc',
+    limit?: number,
+    startAfter?: string,
   ): Promise<any[]> {
     let query: FirebaseFirestore.Query = this.firestore.collection(collectionPath)
 
@@ -211,6 +213,18 @@ export class FirebaseService implements OnModuleInit {
 
     if (orderByField) {
       query = query.orderBy(orderByField, orderDirection || 'asc')
+    }
+
+    // Add pagination support
+    if (startAfter) {
+      const startDoc = await this.firestore.collection(collectionPath).doc(startAfter).get()
+      if (startDoc.exists) {
+        query = query.startAfter(startDoc)
+      }
+    }
+
+    if (limit) {
+      query = query.limit(limit)
     }
 
     const snapshot = await query.get()

@@ -67,5 +67,10 @@ export class JournalController {
   async remove(@CurrentUser() user: any, @Param('id') id: string) {
     return this.journalService.remove(id, user.uid)
   }
+
+  @Get(':id/goals')
+  async getLinkedGoals(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.journalService.getLinkedGoals(user.uid, id)
+  }
 }
 

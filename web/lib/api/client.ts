@@ -123,6 +123,74 @@ export interface UserTheme {
   updated_at: string | Date
 }
 
+// ============================================================================
+// Goal Types
+// ============================================================================
+
+export type GoalCategory = 'career' | 'health' | 'personal' | 'financial' | 'relationships' | 'learning' | 'other'
+export type GoalStatus = 'not_started' | 'in_progress' | 'completed' | 'abandoned'
+
+export interface Goal {
+  id: string
+  user_id: string
+  title: string
+  description: string
+  category: GoalCategory
+  status: GoalStatus
+  target_date: string | Date
+  created_at: string | Date
+  updated_at: string | Date
+  completed_at: string | Date | null
+  status_changed_at: string | Date
+  last_activity: string | Date
+  progress_percentage: number
+}
+
+export interface Milestone {
+  id: string
+  goal_id: string
+  title: string
+  due_date: string | Date | null
+  completed: boolean
+  completed_at: string | Date | null
+  order: number
+  created_at: string | Date
+}
+
+export interface ProgressUpdate {
+  id: string
+  goal_id: string
+  content: string
+  created_at: string | Date
+}
+
+export interface GoalJournalLink {
+  id: string
+  goal_id: string
+  journal_entry_id: string
+  user_id: string
+  created_at: string | Date
+}
+
+export interface CreateGoalData {
+  title: string
+  description?: string
+  category: GoalCategory
+  target_date: string
+}
+
+export interface UpdateGoalData {
+  title?: string
+  description?: string
+  category?: GoalCategory
+  target_date?: string
+}
+
+export interface GoalFilters {
+  category?: string
+  status?: string
+}
+
 class ApiClient {
   private baseUrl: string
   private getToken: (() => Promise<string | null>) | null = null
@@ -401,6 +469,16 @@ class ApiClient {
     return this.request<{ prompts: string[] }>('/chat/prompts')
   }
 
+  async suggestGoals(): Promise<{ suggestions: any[]; usageInfo?: UsageInfo; message?: string }> {
+    return this.request('/chat/suggest-goals', {
+      method: 'POST',
+    })
+  }
+
+  async getGoalInsights(goalId: string): Promise<{ insights: string; usageInfo?: UsageInfo }> {
+    return this.request(`/chat/goal-insights/${goalId}`)
+  }
+
   // ============================================================================
   // Prompt APIs
   // ============================================================================
@@ -651,6 +729,162 @@ class ApiClient {
 
     const data = await response.json()
     return data.text
+  }
+
+  // ============================================================================
+  // Goal APIs
+  // ============================================================================
+
+  async getGoals(filters?: GoalFilters): Promise<Goal[]> {
+    const params = new URLSearchParams()
+    if (filters?.category) params.append('category', filters.category)
+    if (filters?.status) params.append('status', filters.status)
+    
+    const queryString = params.toString()
+    return this.request<Goal[]>(`/goal${queryString ? `?${queryString}` : ''}`)
+  }
+
+  async getGoal(id: string): Promise<Goal> {
+    return this.request<Goal>(`/goal/${id}`)
+  }
+
+  async createGoal(data: CreateGoalData): Promise<Goal> {
+    return this.request<Goal>('/goal', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateGoal(id: string, data: UpdateGoalData): Promise<Goal> {
+    return this.request<Goal>(`/goal/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async getGoalDeletionInfo(id: string): Promise<{
+    milestonesCount: number
+    progressUpdatesCount: number
+    linkedJournalEntriesCount: number
+  }> {
+    return this.request(`/goal/${id}/deletion-info`)
+  }
+
+  async deleteGoal(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/goal/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async updateGoalStatus(id: string, status: GoalStatus): Promise<Goal> {
+    return this.request<Goal>(`/goal/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    })
+  }
+
+  async getOverdueGoals(): Promise<Goal[]> {
+    return this.request<Goal[]>('/goal/overdue')
+  }
+
+  async getGoalsByCategory(category: string): Promise<Goal[]> {
+    return this.request<Goal[]>(`/goal/category/${category}`)
+  }
+
+  // ============================================================================
+  // Milestone APIs
+  // ============================================================================
+
+  async addMilestone(
+    goalId: string,
+    data: { title: string; due_date?: string }
+  ): Promise<Milestone> {
+    return this.request<Milestone>(`/goal/${goalId}/milestone`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async getMilestones(goalId: string): Promise<Milestone[]> {
+    return this.request<Milestone[]>(`/goal/${goalId}/milestone`)
+  }
+
+  async updateMilestone(
+    goalId: string,
+    milestoneId: string,
+    data: { title?: string; due_date?: string }
+  ): Promise<Milestone> {
+    return this.request<Milestone>(`/goal/${goalId}/milestone/${milestoneId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async toggleMilestone(goalId: string, milestoneId: string): Promise<Milestone> {
+    return this.request<Milestone>(`/goal/${goalId}/milestone/${milestoneId}/complete`, {
+      method: 'PATCH',
+    })
+  }
+
+  async deleteMilestone(
+    goalId: string,
+    milestoneId: string
+  ): Promise<{ success: boolean; message: string }> {
+    return this.request(`/goal/${goalId}/milestone/${milestoneId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // ============================================================================
+  // Progress Update APIs
+  // ============================================================================
+
+  async addProgressUpdate(goalId: string, content: string): Promise<ProgressUpdate> {
+    return this.request<ProgressUpdate>(`/goal/${goalId}/progress`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    })
+  }
+
+  async getProgressUpdates(goalId: string): Promise<ProgressUpdate[]> {
+    return this.request<ProgressUpdate[]>(`/goal/${goalId}/progress`)
+  }
+
+  async deleteProgressUpdate(
+    goalId: string,
+    progressId: string
+  ): Promise<{ success: boolean; message: string }> {
+    return this.request(`/goal/${goalId}/progress/${progressId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // ============================================================================
+  // Goal-Journal Linking APIs
+  // ============================================================================
+
+  async linkJournalEntry(goalId: string, journalEntryId: string): Promise<GoalJournalLink> {
+    return this.request<GoalJournalLink>(`/goal/${goalId}/link-journal`, {
+      method: 'POST',
+      body: JSON.stringify({ journal_entry_id: journalEntryId }),
+    })
+  }
+
+  async unlinkJournalEntry(
+    goalId: string,
+    entryId: string
+  ): Promise<{ success: boolean; message: string }> {
+    return this.request(`/goal/${goalId}/link-journal/${entryId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async getLinkedJournalEntries(goalId: string): Promise<JournalEntry[]> {
+    return this.request<JournalEntry[]>(`/goal/${goalId}/linked-journals`)
+  }
+
+  async getLinkedGoalsForJournal(journalEntryId: string): Promise<Goal[]> {
+    return this.request<Goal[]>(`/journal/${journalEntryId}/goals`)
   }
 
   // ============================================================================

@@ -3,15 +3,29 @@
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
+import { useGoals } from '@/lib/contexts/goal-context'
 
 export default function AppHeader() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, signOut } = useAuth()
+  
+  // Safely get notification counts (may not be available in all contexts)
+  let notificationCounts = { urgent: 0, overdue: 0, total: 0 }
+  let hasNotifications = false
+  
+  try {
+    const { getNotificationCounts } = useGoals()
+    notificationCounts = getNotificationCounts()
+    hasNotifications = notificationCounts.total > 0
+  } catch (error) {
+    // GoalProvider not available in this context, skip notifications
+  }
 
   async function handleSignOut() {
     try {
@@ -39,6 +53,20 @@ export default function AppHeader() {
                 className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
               >
                 Journal
+              </Link>
+              <Link
+                href="/app/goals"
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium relative"
+              >
+                Goals
+                {hasNotifications && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    {notificationCounts.total}
+                  </Badge>
+                )}
               </Link>
               <Link
                 href="/app/coach"
@@ -92,6 +120,18 @@ export default function AppHeader() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Journal
+              </Link>
+              <Link
+                href="/app/goals"
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center justify-between"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span>Goals</span>
+                {hasNotifications && (
+                  <Badge variant="destructive" className="ml-2">
+                    {notificationCounts.total}
+                  </Badge>
+                )}
               </Link>
               <Link
                 href="/app/coach"

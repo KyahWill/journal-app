@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common'
 import { FirebaseService } from '@/firebase/firebase.service'
 import { CreateJournalDto, UpdateJournalDto } from '@/common/dto/journal.dto'
-import { JournalEntry } from '@/common/types/journal.types'
+import { JournalEntry, JournalEntryWithGoals } from '@/common/types/journal.types'
 
 @Injectable()
 export class JournalService {
   private readonly logger = new Logger(JournalService.name)
   private readonly collectionName = 'journal-entries'
+  private readonly linksCollection = 'goal_journal_links'
 
   constructor(private readonly firebaseService: FirebaseService) {}
 
@@ -67,7 +68,7 @@ export class JournalService {
     }
   }
 
-  async findOne(id: string, userId: string): Promise<JournalEntry> {
+  async findOne(id: string, userId: string): Promise<JournalEntryWithGoals> {
     try {
       const entry = await this.firebaseService.getDocument(this.collectionName, id)
 
@@ -80,6 +81,9 @@ export class JournalService {
         throw new ForbiddenException('You do not have access to this journal entry')
       }
 
+      // Fetch linked goals
+      const linkedGoalIds = await this.getLinkedGoals(userId, id)
+
       return {
         id: entry.id,
         user_id: entry.user_id,
@@ -89,6 +93,7 @@ export class JournalService {
         tags: entry.tags || [],
         created_at: entry.created_at?.toDate() || new Date(),
         updated_at: entry.updated_at?.toDate() || new Date(),
+        linked_goal_ids: linkedGoalIds,
       }
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
@@ -212,6 +217,52 @@ export class JournalService {
       return grouped
     } catch (error) {
       this.logger.error('Error fetching grouped journal entries', error)
+      throw error
+    }
+  }
+
+  async getLinkedGoals(userId: string, journalEntryId: string): Promise<any[]> {
+    try {
+      const firestore = this.firebaseService.getFirestore()
+      const linksRef = firestore.collection(this.linksCollection)
+      
+      const linksSnapshot = await linksRef
+        .where('journal_entry_id', '==', journalEntryId)
+        .where('user_id', '==', userId)
+        .get()
+
+      const goalIds = linksSnapshot.docs.map((doc) => {
+        const data = doc.data()
+        return data.goal_id
+      })
+
+      this.logger.log(`Found ${goalIds.length} linked goals for journal entry ${journalEntryId}`)
+
+      // Fetch full goal objects
+      if (goalIds.length === 0) {
+        return []
+      }
+
+      const goalsRef = firestore.collection('goals')
+      const goalsPromises = goalIds.map((goalId) => goalsRef.doc(goalId).get())
+      const goalDocs = await Promise.all(goalsPromises)
+
+      const goals = goalDocs
+        .filter((doc) => doc.exists && doc.data()?.user_id === userId)
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          created_at: doc.data()?.created_at?.toDate() || new Date(),
+          updated_at: doc.data()?.updated_at?.toDate() || new Date(),
+          target_date: doc.data()?.target_date?.toDate() || new Date(),
+          completed_at: doc.data()?.completed_at?.toDate() || null,
+          status_changed_at: doc.data()?.status_changed_at?.toDate() || new Date(),
+          last_activity: doc.data()?.last_activity?.toDate() || new Date(),
+        }))
+
+      return goals
+    } catch (error) {
+      this.logger.error('Error fetching linked goals for journal entry', error)
       throw error
     }
   }

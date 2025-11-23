@@ -1,0 +1,236 @@
+# Firestore Goal Collections Setup
+
+This directory contains schema definitions and migration scripts for the goal-related Firestore collections.
+
+## Collections Structure
+
+### 1. `goals` Collection
+
+Main collection for storing user goals.
+
+**Schema:**
+```typescript
+{
+  id: string
+  user_id: string
+  title: string                    // 3-200 characters
+  description: string              // max 2000 characters
+  category: GoalCategory           // career, health, personal, financial, relationships, learning, other
+  status: GoalStatus               // not_started, in_progress, completed, abandoned
+  target_date: Timestamp
+  created_at: Timestamp
+  updated_at: Timestamp
+  completed_at: Timestamp | null
+  status_changed_at: Timestamp
+  last_activity: Timestamp
+  progress_percentage: number      // 0-100
+}
+```
+
+**Subcollections:**
+- `milestones` - Milestones for the goal
+- `progress_updates` - Progress updates for the goal
+
+### 2. `goals/{goalId}/milestones` Subcollection
+
+Stores milestones for each goal.
+
+**Schema:**
+```typescript
+{
+  id: string
+  goal_id: string
+  title: string                    // max 200 characters
+  due_date: Timestamp | null
+  completed: boolean
+  completed_at: Timestamp | null
+  order: number
+  created_at: Timestamp
+}
+```
+
+### 3. `goals/{goalId}/progress_updates` Subcollection
+
+Stores progress updates for each goal.
+
+**Schema:**
+```typescript
+{
+  id: string
+  goal_id: string
+  content: string                  // max 2000 characters
+  created_at: Timestamp
+}
+```
+
+### 4. `goal_journal_links` Collection
+
+Links goals to journal entries.
+
+**Schema:**
+```typescript
+{
+  id: string
+  goal_id: string
+  journal_entry_id: string
+  user_id: string
+  created_at: Timestamp
+}
+```
+
+## Security Rules
+
+Security rules are defined in `web/firestore.rules` and enforce:
+
+1. **User Isolation**: Users can only access their own goals
+2. **Parent Ownership**: Subcollections (milestones, progress_updates) verify parent goal ownership
+3. **Field Validation**: Title length, description length, valid categories/statuses
+4. **Cross-Reference Validation**: Goal-journal links verify ownership of both resources
+
+## Indexes
+
+Composite indexes are defined in `web/firestore.indexes.json`:
+
+1. **Goals by user, status, and target date** - For filtering and sorting goals
+2. **Goals by user, category, and created date** - For category-based queries
+3. **Milestones by goal and order** - For ordered milestone lists
+4. **Progress updates by goal and created date** - For chronological progress history
+5. **Goal-journal links by user and goal** - For finding journal entries linked to a goal
+6. **Goal-journal links by user and journal entry** - For finding goals linked to a journal entry
+
+## Deployment
+
+### Deploy Security Rules
+
+```bash
+cd web
+firebase deploy --only firestore:rules
+```
+
+### Deploy Indexes
+
+```bash
+cd web
+./scripts/deploy-firestore-indexes.sh
+```
+
+Or manually:
+
+```bash
+cd web
+firebase deploy --only firestore:indexes
+```
+
+**Note:** Index creation can take several minutes. Monitor progress in the [Firebase Console](https://console.firebase.google.com).
+
+## Validation
+
+The `setup-goal-collections.ts` file provides validation functions:
+
+- `validateGoalDocument()` - Validates goal document structure
+- `validateMilestoneDocument()` - Validates milestone document structure
+- `validateProgressUpdateDocument()` - Validates progress update document structure
+- `validateGoalJournalLinkDocument()` - Validates goal-journal link document structure
+
+These validators are used in the application layer (DTOs) to ensure data integrity before writing to Firestore.
+
+## Usage in Application
+
+### Creating a Goal
+
+```typescript
+const goalData = {
+  user_id: userId,
+  title: 'Complete marathon training',
+  description: 'Train for and complete a full marathon',
+  category: 'health',
+  status: 'not_started',
+  target_date: admin.firestore.Timestamp.fromDate(new Date('2024-12-31')),
+  created_at: admin.firestore.Timestamp.now(),
+  updated_at: admin.firestore.Timestamp.now(),
+  completed_at: null,
+  status_changed_at: admin.firestore.Timestamp.now(),
+  last_activity: admin.firestore.Timestamp.now(),
+  progress_percentage: 0
+}
+
+const docRef = await firestore.collection('goals').add(goalData)
+```
+
+### Adding a Milestone
+
+```typescript
+const milestoneData = {
+  goal_id: goalId,
+  title: 'Run 10K without stopping',
+  due_date: admin.firestore.Timestamp.fromDate(new Date('2024-06-30')),
+  completed: false,
+  completed_at: null,
+  order: 1,
+  created_at: admin.firestore.Timestamp.now()
+}
+
+await firestore
+  .collection('goals')
+  .doc(goalId)
+  .collection('milestones')
+  .add(milestoneData)
+```
+
+### Querying Goals
+
+```typescript
+// Get all active goals for a user, sorted by target date
+const snapshot = await firestore
+  .collection('goals')
+  .where('user_id', '==', userId)
+  .where('status', '==', 'in_progress')
+  .orderBy('target_date', 'asc')
+  .get()
+
+const goals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+```
+
+## Testing
+
+Before deploying to production:
+
+1. Test security rules using the Firebase Emulator Suite
+2. Verify indexes are created successfully
+3. Test queries to ensure they use the correct indexes
+4. Validate data integrity with the provided validation functions
+
+## Monitoring
+
+Monitor your Firestore usage in the Firebase Console:
+
+- **Database Usage**: Check document reads/writes
+- **Index Status**: Verify all indexes are built
+- **Security Rules**: Review rule evaluation metrics
+- **Performance**: Monitor query performance
+
+## Troubleshooting
+
+### Index Creation Failed
+
+If index creation fails:
+1. Check the Firebase Console for error messages
+2. Verify you have sufficient permissions
+3. Ensure the index definition is valid
+4. Try deploying indexes individually
+
+### Security Rules Errors
+
+If security rules are rejecting valid requests:
+1. Check the Firebase Console security rules logs
+2. Verify the user is authenticated
+3. Ensure the document has the required fields
+4. Test rules in the Firebase Emulator
+
+### Query Performance Issues
+
+If queries are slow:
+1. Check if the query is using an index (Firebase Console)
+2. Create additional indexes if needed
+3. Consider denormalizing data for frequently accessed queries
+4. Use pagination for large result sets

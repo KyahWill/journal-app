@@ -6,6 +6,8 @@ import { usePrompts } from '@/lib/hooks/usePrompts'
 import { useAuthReady } from '@/lib/hooks/useAuthReady'
 import { useTextToSpeech } from '@/lib/hooks/useTextToSpeech'
 import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
+import { useGoalChat, GoalSuggestion } from '@/lib/hooks/useGoalChat'
+import { useGoals } from '@/lib/contexts/goal-context'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
@@ -18,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, Brain, Volume2, VolumeX, Mic, Square, ChevronDown, ChevronUp } from 'lucide-react'
+import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, Brain, Volume2, VolumeX, Mic, Square, ChevronDown, ChevronUp, Target, TrendingUp } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { useState } from 'react'
 import { CoachSessionsSidebar } from '@/components/coach-sessions-sidebar'
@@ -65,13 +67,24 @@ export default function CoachChatPage() {
   const [showInsights, setShowInsights] = useState(false)
   const [insights, setInsights] = useState<string | null>(null)
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([])
-  const [loadingInsights, setLoadingInsights] = useState(false)
+  const [loadingJournalInsights, setLoadingJournalInsights] = useState(false)
   const [loadingPrompts, setLoadingPrompts] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null)
   const [showMobileSuggestions, setShowMobileSuggestions] = useState(false)
+  const [showGoalSuggestions, setShowGoalSuggestions] = useState(false)
+  const [goalSuggestions, setGoalSuggestions] = useState<GoalSuggestion[]>([])
+  const [showGoalInsights, setShowGoalInsights] = useState(false)
+  const [goalInsights, setGoalInsights] = useState<string | null>(null)
+  const [selectedGoalForInsights, setSelectedGoalForInsights] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Goal chat hook
+  const { getGoalSuggestions, getGoalInsights, loadingSuggestions, loadingInsights } = useGoalChat()
+  
+  // Goals context
+  const { goals } = useGoals()
   
   // Text-to-speech hook
   const { play: playAudio, stop: stopAudio, isLoading: isTTSLoading, isPlaying } = useTextToSpeech()
@@ -154,14 +167,14 @@ export default function CoachChatPage() {
 
   async function handleGetInsights() {
     try {
-      setLoadingInsights(true)
+      setLoadingJournalInsights(true)
       const insightsData = await getInsights()
       setInsights(insightsData)
       setShowInsights(true)
     } catch (err: any) {
       console.error('Failed to get insights:', err)
     } finally {
-      setLoadingInsights(false)
+      setLoadingJournalInsights(false)
     }
   }
 
@@ -244,6 +257,29 @@ export default function CoachChatPage() {
     }
   }
 
+  // Handle goal suggestions
+  async function handleGetGoalSuggestions() {
+    try {
+      const suggestions = await getGoalSuggestions()
+      setGoalSuggestions(suggestions)
+      setShowGoalSuggestions(true)
+    } catch (err) {
+      console.error('Failed to get goal suggestions:', err)
+    }
+  }
+
+  // Handle goal insights
+  async function handleGetGoalInsights(goalId: string) {
+    try {
+      setSelectedGoalForInsights(goalId)
+      const insights = await getGoalInsights(goalId)
+      setGoalInsights(insights)
+      setShowGoalInsights(true)
+    } catch (err) {
+      console.error('Failed to get goal insights:', err)
+    }
+  }
+
   return (
     <div className="flex flex-col lg:flex-row h-screen overflow-hidden">
       {/* Sessions Sidebar - Left */}
@@ -272,16 +308,31 @@ export default function CoachChatPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleGetInsights}
-                disabled={loadingInsights}
+                disabled={loadingJournalInsights}
                 className="flex-1 sm:flex-none"
               >
-                {loadingInsights ? (
+                {loadingJournalInsights ? (
                   <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
                 ) : (
                   <Sparkles className="h-4 w-4 sm:mr-2" />
                 )}
                 <span className="hidden sm:inline">Generate Insights</span>
                 <span className="sm:hidden">Insights</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGetGoalSuggestions}
+                disabled={loadingSuggestions}
+                className="flex-1 sm:flex-none"
+              >
+                {loadingSuggestions ? (
+                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                ) : (
+                  <Target className="h-4 w-4 sm:mr-2" />
+                )}
+                <span className="hidden sm:inline">Suggest Goals</span>
+                <span className="sm:hidden">Goals</span>
               </Button>
               {messages.length > 0 && (
                 <Button
@@ -369,6 +420,109 @@ export default function CoachChatPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowInsights(false)}
+                      className="mt-2"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Goal Suggestions Panel */}
+          {showGoalSuggestions && goalSuggestions.length > 0 && (
+            <Card className="mb-6 bg-gradient-to-r from-green-50 to-teal-50 border-green-200">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <Target className="h-5 w-5 text-green-600 mt-1 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-2">Suggested Goals</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Based on your journal entries, here are some goals you might want to pursue:
+                    </p>
+                    <div className="space-y-4">
+                      {goalSuggestions.map((suggestion, index) => (
+                        <div key={index} className="bg-white rounded-lg p-4 border border-green-200">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <h4 className="font-semibold text-base">{suggestion.title}</h4>
+                            <Badge variant="secondary" className="text-xs">
+                              {suggestion.category}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-700 mb-2">{suggestion.description}</p>
+                          {suggestion.milestones && suggestion.milestones.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-xs font-medium text-gray-600 mb-1">Suggested Milestones:</p>
+                              <ul className="text-sm text-gray-600 ml-4 list-disc space-y-1">
+                                {suggestion.milestones.map((milestone, mIndex) => (
+                                  <li key={mIndex}>{milestone}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {suggestion.reasoning && (
+                            <p className="text-xs text-gray-500 mt-3 italic">{suggestion.reasoning}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowGoalSuggestions(false)}
+                      className="mt-4"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Goal Insights Panel */}
+          {showGoalInsights && goalInsights && (
+            <Card className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <TrendingUp className="h-5 w-5 text-blue-600 mt-1 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-2">Goal Insights</h3>
+                    <div className="prose prose-sm max-w-none prose-p:leading-relaxed text-gray-700">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={
+                          {
+                            p: ({ children }: any) => (
+                              <p className="mb-2 last:mb-0">{children}</p>
+                            ),
+                            ul: ({ children }: any) => (
+                              <ul className="mb-2 ml-4 list-disc">{children}</ul>
+                            ),
+                            ol: ({ children }: any) => (
+                              <ol className="mb-2 ml-4 list-decimal">{children}</ol>
+                            ),
+                            li: ({ children }: any) => (
+                              <li className="mb-1">{children}</li>
+                            ),
+                            strong: ({ children }: any) => (
+                              <strong className="font-semibold text-blue-900">{children}</strong>
+                            ),
+                          } as Components
+                        }
+                      >
+                        {goalInsights}
+                      </ReactMarkdown>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowGoalInsights(false)
+                        setGoalInsights(null)
+                        setSelectedGoalForInsights(null)
+                      }}
                       className="mt-2"
                     >
                       Dismiss
@@ -628,41 +782,86 @@ export default function CoachChatPage() {
 
       {/* Suggested Prompts Sidebar - Right (Hidden on mobile) */}
       <div className="hidden lg:block w-80 border-l bg-gray-50/50 overflow-y-auto">
-        <div className="p-6 space-y-4">
-          <div className="flex items-start gap-3 mb-4">
-            <Lightbulb className="h-5 w-5 text-yellow-600 mt-1 flex-shrink-0" />
-            <div>
-              <h3 className="font-semibold text-lg">Suggested Questions</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Click any question to start
-              </p>
+        <div className="p-6 space-y-6">
+          {/* Suggested Questions Section */}
+          <div>
+            <div className="flex items-start gap-3 mb-4">
+              <Lightbulb className="h-5 w-5 text-yellow-600 mt-1 flex-shrink-0" />
+              <div>
+                <h3 className="font-semibold text-lg">Suggested Questions</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Click any question to start
+                </p>
+              </div>
             </div>
+            
+            {loadingPrompts ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <span className="ml-2 text-sm text-gray-500 mt-2">Loading suggestions...</span>
+              </div>
+            ) : suggestedPrompts.length > 0 ? (
+              <div className="space-y-2">
+                {suggestedPrompts.map((prompt, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    className="w-full text-left justify-start h-auto min-h-[3rem] py-3 px-4 whitespace-normal leading-relaxed hover:bg-white hover:shadow-sm transition-all"
+                    onClick={() => handlePromptClick(prompt)}
+                  >
+                    <span className="text-sm">{prompt}</span>
+                  </Button>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="py-8">
+                  <p className="text-sm text-gray-500 text-center">No suggestions available</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
-          
-          {loadingPrompts ? (
-            <div className="flex flex-col items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-              <span className="ml-2 text-sm text-gray-500 mt-2">Loading suggestions...</span>
+
+          {/* Goal Insights Section */}
+          {goals.length > 0 && (
+            <div className="border-t pt-6">
+              <div className="flex items-start gap-3 mb-4">
+                <TrendingUp className="h-5 w-5 text-blue-600 mt-1 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-lg">Goal Insights</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Get AI insights on your goals
+                  </p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                {goals.slice(0, 5).map((goal) => (
+                  <Button
+                    key={goal.id}
+                    variant="outline"
+                    className="w-full text-left justify-start h-auto min-h-[3rem] py-3 px-4 whitespace-normal leading-relaxed hover:bg-white hover:shadow-sm transition-all"
+                    onClick={() => handleGetGoalInsights(goal.id)}
+                    disabled={loadingInsights && selectedGoalForInsights === goal.id}
+                  >
+                    {loadingInsights && selectedGoalForInsights === goal.id ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin flex-shrink-0" />
+                    ) : (
+                      <Target className="h-4 w-4 mr-2 flex-shrink-0" />
+                    )}
+                    <div className="flex-1">
+                      <span className="text-sm font-medium block">{goal.title}</span>
+                      <span className="text-xs text-gray-500">{goal.progress_percentage}% complete</span>
+                    </div>
+                  </Button>
+                ))}
+                {goals.length > 5 && (
+                  <p className="text-xs text-gray-500 text-center mt-2">
+                    Showing 5 of {goals.length} goals
+                  </p>
+                )}
+              </div>
             </div>
-          ) : suggestedPrompts.length > 0 ? (
-            <div className="space-y-2">
-              {suggestedPrompts.map((prompt, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  className="w-full text-left justify-start h-auto min-h-[3rem] py-3 px-4 whitespace-normal leading-relaxed hover:bg-white hover:shadow-sm transition-all"
-                  onClick={() => handlePromptClick(prompt)}
-                >
-                  <span className="text-sm">{prompt}</span>
-                </Button>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="py-8">
-                <p className="text-sm text-gray-500 text-center">No suggestions available</p>
-              </CardContent>
-            </Card>
           )}
         </div>
       </div>

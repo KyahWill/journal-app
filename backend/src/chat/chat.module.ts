@@ -1,13 +1,20 @@
-import { Module } from '@nestjs/common'
+import { Module, forwardRef } from '@nestjs/common'
 import { ChatController } from './chat.controller'
 import { ChatService } from './chat.service'
 import { FirebaseModule } from '@/firebase/firebase.module'
 import { GeminiModule } from '@/gemini/gemini.module'
 import { JournalModule } from '@/journal/journal.module'
 import { PromptModule } from '@/prompt/prompt.module'
+import { GoalModule } from '@/goal/goal.module'
 
 @Module({
-  imports: [FirebaseModule, GeminiModule, JournalModule, PromptModule],
+  imports: [
+    FirebaseModule,
+    GeminiModule,
+    JournalModule,
+    PromptModule,
+    forwardRef(() => GoalModule),
+  ],
   controllers: [ChatController],
   providers: [ChatService],
   exports: [ChatService],

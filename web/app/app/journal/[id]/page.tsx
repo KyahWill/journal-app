@@ -12,8 +12,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Edit2, Save, X, Loader2, Mic, Square } from 'lucide-react'
-import { JournalEntry } from '@/lib/api/client'
+import { JournalEntry, apiClient } from '@/lib/api/client'
 import { format } from 'date-fns'
+import { GoalSelector } from '@/components/goal-selector'
+import { LinkedGoalsDisplay } from '@/components/linked-goals-display'
 
 export default function EntryDetailPage() {
   const router = useRouter()
@@ -26,6 +28,8 @@ export default function EntryDetailPage() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [mood, setMood] = useState('')
+  const [linkedGoalIds, setLinkedGoalIds] = useState<string[]>([])
+  const [originalLinkedGoalIds, setOriginalLinkedGoalIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -69,6 +73,12 @@ export default function EntryDetailPage() {
       setTitle(data.title)
       setContent(data.content)
       setMood(data.mood || '')
+      
+      // Fetch linked goals
+      const linkedGoals = await apiClient.getLinkedGoalsForJournal(id).catch(() => [])
+      const goalIds = linkedGoals.map((g: any) => g.id)
+      setLinkedGoalIds(goalIds)
+      setOriginalLinkedGoalIds(goalIds)
     } catch (err: any) {
       setError(err.message || 'Failed to fetch entry')
     } finally {
@@ -87,6 +97,23 @@ export default function EntryDetailPage() {
         mood: mood || undefined 
       })
       setEntry(updated)
+
+      // Handle goal linking changes
+      const goalsToAdd = linkedGoalIds.filter((gId) => !originalLinkedGoalIds.includes(gId))
+      const goalsToRemove = originalLinkedGoalIds.filter((gId) => !linkedGoalIds.includes(gId))
+
+      // Add new links
+      await Promise.all(
+        goalsToAdd.map((goalId) => apiClient.linkJournalEntry(goalId, id))
+      )
+
+      // Remove old links
+      await Promise.all(
+        goalsToRemove.map((goalId) => apiClient.unlinkJournalEntry(goalId, id))
+      )
+
+      // Update original linked goals
+      setOriginalLinkedGoalIds(linkedGoalIds)
       setIsEditing(false)
     } catch (err: any) {
       setError(err.message || 'Failed to update entry')
@@ -100,6 +127,7 @@ export default function EntryDetailPage() {
       setTitle(entry.title)
       setContent(entry.content)
       setMood(entry.mood || '')
+      setLinkedGoalIds(originalLinkedGoalIds)
     }
     setIsEditing(false)
     setRecordingField(null)
@@ -330,10 +358,18 @@ export default function EntryDetailPage() {
                   </Button>
                 </div>
               </div>
+              <GoalSelector
+                selectedGoalIds={linkedGoalIds}
+                onGoalsChange={setLinkedGoalIds}
+                disabled={saving || isRecording || isProcessing}
+              />
             </div>
           ) : (
-            <div className="prose max-w-none">
-              <p className="whitespace-pre-wrap">{entry.content}</p>
+            <div className="space-y-6">
+              <div className="prose max-w-none">
+                <p className="whitespace-pre-wrap">{entry.content}</p>
+              </div>
+              <LinkedGoalsDisplay journalEntryId={id} />
             </div>
           )}
         </CardContent>
