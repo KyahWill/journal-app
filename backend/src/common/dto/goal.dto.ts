@@ -12,8 +12,10 @@ export class CreateGoalDto {
   @MaxLength(2000)
   description?: string
 
-  @IsEnum(['career', 'health', 'personal', 'financial', 'relationships', 'learning', 'other'])
-  category: GoalCategory
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  category: string // Can be a default category or custom category ID
 
   @IsDateString()
   target_date: string
@@ -32,8 +34,10 @@ export class UpdateGoalDto {
   description?: string
 
   @IsOptional()
-  @IsEnum(['career', 'health', 'personal', 'financial', 'relationships', 'learning', 'other'])
-  category?: GoalCategory
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  category?: string // Can be a default category or custom category ID
 
   @IsOptional()
   @IsDateString()

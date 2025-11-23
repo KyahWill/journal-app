@@ -124,6 +124,38 @@ export interface UserTheme {
 }
 
 // ============================================================================
+// Category Types
+// ============================================================================
+
+export type DefaultGoalCategory = 'career' | 'health' | 'personal' | 'financial' | 'relationships' | 'learning' | 'other'
+
+export interface CustomCategory {
+  id: string
+  user_id: string
+  name: string
+  color?: string
+  icon?: string
+  created_at: string | Date
+  updated_at: string | Date
+}
+
+export interface CategoryWithType extends CustomCategory {
+  is_default: boolean
+}
+
+export interface CreateCategoryData {
+  name: string
+  color?: string
+  icon?: string
+}
+
+export interface UpdateCategoryData {
+  name?: string
+  color?: string
+  icon?: string
+}
+
+// ============================================================================
 // Goal Types
 // ============================================================================
 
@@ -135,7 +167,7 @@ export interface Goal {
   user_id: string
   title: string
   description: string
-  category: GoalCategory
+  category: string // Can be a default category or custom category ID
   status: GoalStatus
   target_date: string | Date
   created_at: string | Date
@@ -175,14 +207,14 @@ export interface GoalJournalLink {
 export interface CreateGoalData {
   title: string
   description?: string
-  category: GoalCategory
+  category: string // Can be a default category or custom category ID
   target_date: string
 }
 
 export interface UpdateGoalData {
   title?: string
   description?: string
-  category?: GoalCategory
+  category?: string // Can be a default category or custom category ID
   target_date?: string
 }
 
@@ -986,6 +1018,38 @@ class ApiClient {
   }
 
   // ============================================================================
+  // Category APIs
+  // ============================================================================
+
+  async getCategories(): Promise<CategoryWithType[]> {
+    return this.request<CategoryWithType[]>('/category')
+  }
+
+  async getCategory(id: string): Promise<CustomCategory> {
+    return this.request<CustomCategory>(`/category/${id}`)
+  }
+
+  async createCategory(data: CreateCategoryData): Promise<CustomCategory> {
+    return this.request<CustomCategory>('/category', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateCategory(id: string, data: UpdateCategoryData): Promise<CustomCategory> {
+    return this.request<CustomCategory>(`/category/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteCategory(id: string): Promise<{ success: boolean; message: string; goalsAffected: number }> {
+    return this.request<{ success: boolean; message: string; goalsAffected: number }>(`/category/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // ============================================================================
   // Goal APIs
   // ============================================================================
 
@@ -995,7 +1059,10 @@ class ApiClient {
     if (filters?.status) params.append('status', filters.status)
     
     const queryString = params.toString()
-    return this.request<Goal[]>(`/goal${queryString ? `?${queryString}` : ''}`)
+    const response = await this.request<{ goals: Goal[]; nextCursor: string | null }>(`/goal${queryString ? `?${queryString}` : ''}`)
+    
+    // Handle paginated response
+    return response.goals || []
   }
 
   async getGoal(id: string): Promise<Goal> {

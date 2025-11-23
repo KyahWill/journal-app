@@ -2,8 +2,6 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react'
 import { apiClient, Goal, GoalStatus, CreateGoalData, UpdateGoalData, Milestone, ProgressUpdate, GoalFilters } from '@/lib/api/client'
-import { getDbInstance } from '@/lib/firebase/config'
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore'
 import { useAuth } from './auth-context'
 
 interface GoalState {
@@ -383,59 +381,53 @@ export function GoalProvider({ children }: { children: ReactNode }) {
   // Real-time Synchronization
   // ============================================================================
 
+  const fetchGoals = useCallback(async () => {
+    if (!user?.uid) {
+      console.warn('Cannot fetch goals: user not authenticated')
+      return
+    }
+
+    try {
+      setGoalState((prev) => ({ ...prev, loading: true, error: null }))
+      
+      // Fetch goals from REST API
+      const goals = await apiClient.getGoals()
+      
+      setGoalState((prev) => ({
+        ...prev,
+        goals: Array.isArray(goals) ? goals : [],
+        loading: false,
+        connected: true,
+        error: null,
+      }))
+    } catch (error: any) {
+      console.error('Failed to fetch goals:', error)
+      setGoalState((prev) => ({
+        ...prev,
+        loading: false,
+        connected: false,
+        error: error.message || 'Failed to fetch goals',
+      }))
+    }
+  }, [user?.uid])
+
   const subscribeToGoals = useCallback(() => {
     if (!user?.uid) {
       console.warn('Cannot subscribe to goals: user not authenticated')
       return
     }
 
-    try {
-      const db = getDbInstance()
-      const goalsRef = collection(db, 'goals')
-      const q = query(
-        goalsRef,
-        where('user_id', '==', user.uid),
-        orderBy('created_at', 'desc')
-      )
+    // Initial fetch
+    fetchGoals()
 
-      const unsubscribeFn = onSnapshot(
-        q,
-        (snapshot) => {
-          const goals = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as Goal[]
+    // Set up polling for updates (every 30 seconds)
+    const intervalId = setInterval(() => {
+      fetchGoals()
+    }, 30000)
 
-          setGoalState((prev) => ({
-            ...prev,
-            goals,
-            loading: false,
-            connected: true,
-            error: null,
-          }))
-        },
-        (error) => {
-          console.error('Real-time goals error:', error)
-          setGoalState((prev) => ({
-            ...prev,
-            loading: false,
-            connected: false,
-            error: 'Failed to sync goals in real-time',
-          }))
-        }
-      )
-
-      setUnsubscribe(() => unsubscribeFn)
-    } catch (error: any) {
-      console.error('Failed to subscribe to goals:', error)
-      setGoalState((prev) => ({
-        ...prev,
-        loading: false,
-        connected: false,
-        error: 'Failed to set up real-time sync',
-      }))
-    }
-  }, [user?.uid])
+    // Store cleanup function
+    setUnsubscribe(() => () => clearInterval(intervalId))
+  }, [user?.uid, fetchGoals])
 
   const unsubscribeFromGoals = useCallback(() => {
     if (unsubscribe) {
@@ -451,21 +443,47 @@ export function GoalProvider({ children }: { children: ReactNode }) {
 
   // Subscribe to goals when user is authenticated
   useEffect(() => {
-    if (isAuthenticated && user?.uid) {
-      subscribeToGoals()
-    } else {
-      unsubscribeFromGoals()
+    if (!isAuthenticated || !user?.uid) {
       setGoalState({
         goals: [],
         loading: false,
         error: null,
         connected: false,
       })
+      return
     }
+
+    // Fetch goals immediately
+    const fetchGoalsNow = async () => {
+      try {
+        setGoalState((prev) => ({ ...prev, loading: true, error: null }))
+        const goals = await apiClient.getGoals()
+        setGoalState((prev) => ({
+          ...prev,
+          goals: Array.isArray(goals) ? goals : [],
+          loading: false,
+          connected: true,
+          error: null,
+        }))
+      } catch (error: any) {
+        console.error('Failed to fetch goals:', error)
+        setGoalState((prev) => ({
+          ...prev,
+          loading: false,
+          connected: false,
+          error: error.message || 'Failed to fetch goals',
+        }))
+      }
+    }
+
+    fetchGoalsNow()
+
+    // Set up polling for updates (every 30 seconds)
+    const intervalId = setInterval(fetchGoalsNow, 30000)
 
     // Cleanup on unmount
     return () => {
-      unsubscribeFromGoals()
+      clearInterval(intervalId)
     }
   }, [isAuthenticated, user?.uid])
 

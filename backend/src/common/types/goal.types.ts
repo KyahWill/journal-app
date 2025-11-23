@@ -7,7 +7,7 @@ export interface Goal {
   user_id: string
   title: string
   description: string
-  category: GoalCategory
+  category: string // Can be a default category or custom category ID
   status: GoalStatus
   target_date: Date
   created_at: Date

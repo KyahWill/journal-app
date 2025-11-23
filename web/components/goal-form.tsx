@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useGoals } from '@/lib/contexts/goal-context'
-import { Goal, GoalCategory, CreateGoalData, UpdateGoalData } from '@/lib/api/client'
+import { Goal, CreateGoalData, UpdateGoalData, apiClient, CategoryWithType } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -39,33 +39,44 @@ interface FormErrors {
   milestones?: { [key: string]: string }
 }
 
-const CATEGORIES: { value: GoalCategory; label: string }[] = [
-  { value: 'career', label: 'Career' },
-  { value: 'health', label: 'Health' },
-  { value: 'personal', label: 'Personal' },
-  { value: 'financial', label: 'Financial' },
-  { value: 'relationships', label: 'Relationships' },
-  { value: 'learning', label: 'Learning' },
-  { value: 'other', label: 'Other' },
-]
-
 export function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
   const { createGoal, updateGoal, addMilestone } = useGoals()
   
   // Form state
   const [title, setTitle] = useState(goal?.title || '')
   const [description, setDescription] = useState(goal?.description || '')
-  const [category, setCategory] = useState<GoalCategory>(goal?.category || 'personal')
+  const [category, setCategory] = useState<string>(goal?.category || 'personal')
   const [targetDate, setTargetDate] = useState(
     goal?.target_date ? format(new Date(goal.target_date), 'yyyy-MM-dd') : ''
   )
   const [milestones, setMilestones] = useState<MilestoneInput[]>([])
+  
+  // Categories state
+  const [categories, setCategories] = useState<CategoryWithType[]>([])
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true)
   
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  // Load categories on mount
+  useEffect(() => {
+    loadCategories()
+  }, [])
+
+  const loadCategories = async () => {
+    try {
+      setIsLoadingCategories(true)
+      const data = await apiClient.getCategories()
+      setCategories(data)
+    } catch (error) {
+      console.error('Failed to load categories:', error)
+    } finally {
+      setIsLoadingCategories(false)
+    }
+  }
 
   const isEditMode = !!goal
 
@@ -359,17 +370,26 @@ export function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
             </Label>
             <Select
               value={category}
-              onValueChange={(value) => setCategory(value as GoalCategory)}
-              disabled={isSubmitting}
+              onValueChange={(value) => setCategory(value)}
+              disabled={isSubmitting || isLoadingCategories}
               required
             >
               <SelectTrigger id="category" aria-label="Select goal category">
-                <SelectValue placeholder="Select a category" />
+                <SelectValue placeholder={isLoadingCategories ? "Loading..." : "Select a category"} />
               </SelectTrigger>
               <SelectContent>
-                {CATEGORIES.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    <div className="flex items-center gap-2">
+                      {cat.color && !cat.is_default && (
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: cat.color }}
+                        />
+                      )}
+                      {cat.icon && <span>{cat.icon}</span>}
+                      <span>{cat.name}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>

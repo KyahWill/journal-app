@@ -78,6 +78,31 @@ Links goals to journal entries.
 }
 ```
 
+### 5. `custom_categories` Collection
+
+Stores user-defined custom goal categories.
+
+**Schema:**
+```typescript
+{
+  id: string
+  user_id: string
+  name: string                     // 1-50 characters, unique per user
+  color: string | null             // Hex color (#RRGGBB)
+  icon: string | null              // Emoji or icon name, max 50 characters
+  created_at: Timestamp
+  updated_at: Timestamp
+}
+```
+
+**Features:**
+- Users can create custom categories beyond the default ones
+- Each category can have a custom color and icon
+- Category names must be unique per user
+- When a category is deleted, associated goals are moved to "other"
+
+**Migration Script:** `setup-custom-categories.ts`
+
 ## Security Rules
 
 Security rules are defined in `web/firestore.rules` and enforce:
@@ -97,6 +122,8 @@ Composite indexes are defined in `web/firestore.indexes.json`:
 4. **Progress updates by goal and created date** - For chronological progress history
 5. **Goal-journal links by user and goal** - For finding journal entries linked to a goal
 6. **Goal-journal links by user and journal entry** - For finding goals linked to a journal entry
+7. **Custom categories by user and name** - For unique category name validation
+8. **Custom categories by user and created date** - For listing user categories
 
 ## Deployment
 

@@ -9,6 +9,7 @@ import { PromptModule } from './prompt/prompt.module'
 import { ThemeModule } from './theme/theme.module'
 import { ElevenLabsModule } from './elevenlabs/elevenlabs.module'
 import { GoalModule } from './goal/goal.module'
+import { CategoryModule } from './category/category.module'
 import { CommonModule } from './common/common.module'
 import { AppController } from './app.controller'
 
@@ -28,6 +29,7 @@ import { AppController } from './app.controller'
     ThemeModule,
     ElevenLabsModule,
     GoalModule,
+    CategoryModule,
   ],
   controllers: [AppController],
 })

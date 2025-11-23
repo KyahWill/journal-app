@@ -17,7 +17,9 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from '@/components/ui/dialog'
+import { VisuallyHidden } from '@/components/ui/visually-hidden'
 import { Plus, Search, Grid3x3, List, AlertCircle } from 'lucide-react'
 import { GoalCard } from '@/components/goal-card'
 import { GoalStats } from '@/components/goal-stats'
@@ -109,14 +111,24 @@ export default function GoalsPage() {
             Track and achieve your personal and professional objectives
           </p>
         </div>
-        <Button 
-          className="w-full sm:w-auto" 
-          onClick={() => setShowCreateDialog(true)}
-          aria-label="Create new goal"
-        >
-          <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-          New Goal
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button 
+            variant="outline"
+            className="flex-1 sm:flex-initial" 
+            onClick={() => window.location.href = '/app/goals/settings'}
+            aria-label="Goal settings"
+          >
+            Settings
+          </Button>
+          <Button 
+            className="flex-1 sm:flex-initial" 
+            onClick={() => setShowCreateDialog(true)}
+            aria-label="Create new goal"
+          >
+            <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
+            New Goal
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -269,6 +281,9 @@ export default function GoalsPage() {
       {/* Create Goal Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <VisuallyHidden>
+            <DialogTitle>Create New Goal</DialogTitle>
+          </VisuallyHidden>
           <GoalForm
             onSuccess={() => {
               setShowCreateDialog(false)
