@@ -1073,8 +1073,8 @@ export class GoalService {
   async getGoalsForAIContext(userId: string): Promise<any[]> {
     try {
       // Get all active goals (not_started or in_progress)
-      const activeGoals = await this.getGoals(userId, { status: 'in_progress' })
-      const notStartedGoals = await this.getGoals(userId, { status: 'not_started' })
+      const activeGoals = await this.getAllGoals(userId, { status: 'in_progress' })
+      const notStartedGoals = await this.getAllGoals(userId, { status: 'not_started' })
       const allActiveGoals = [...activeGoals, ...notStartedGoals]
 
       const goalsWithDetails = await Promise.all(
@@ -1122,7 +1122,7 @@ export class GoalService {
 
   async getInactiveGoals(userId: string): Promise<any[]> {
     try {
-      const goals = await this.getGoals(userId)
+      const goals = await this.getAllGoals(userId)
       const now = new Date()
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
@@ -1156,7 +1156,7 @@ export class GoalService {
 
   async getRecentCompletions(userId: string, days: number = 30): Promise<any[]> {
     try {
-      const completedGoals = await this.getGoals(userId, { status: 'completed' })
+      const completedGoals = await this.getAllGoals(userId, { status: 'completed' })
       const now = new Date()
       const cutoffDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
 

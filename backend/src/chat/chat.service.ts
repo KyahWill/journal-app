@@ -126,6 +126,122 @@ export class ChatService {
     }
   }
 
+  async *sendMessageStream(userId: string, sendMessageDto: SendMessageDto): AsyncGenerator<any, void, unknown> {
+    try {
+      // Check rate limit first
+      const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'chat')
+      if (!usageInfo.allowed) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: usageInfo.warning || 'Daily chat limit reached',
+            error: 'Too Many Requests',
+            usageInfo,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        )
+      }
+
+      const { message, sessionId, promptId } = sendMessageDto
+
+      // Get or create session
+      let session: ChatSession
+      if (sessionId) {
+        session = await this.getSession(sessionId, userId)
+      } else {
+        session = await this.createSession(userId, promptId)
+      }
+
+      // Get user's journal entries for context
+      const journalEntries = await this.journalService.getRecent(userId, 20)
+
+      // Build goal context for AI
+      const goalContext = await this.buildGoalContext(userId)
+
+      // Get custom prompt if specified
+      let customPromptText: string | undefined
+      const effectivePromptId = promptId || session.prompt_id
+      
+      if (effectivePromptId) {
+        try {
+          const prompt = await this.promptService.getPrompt(effectivePromptId, userId)
+          customPromptText = prompt.prompt_text
+        } catch (error) {
+          this.logger.warn(`Could not load prompt ${effectivePromptId}, using default`)
+        }
+      }
+
+      // Create user message
+      const userMessage: ChatMessage = {
+        id: uuidv4(),
+        role: 'user',
+        content: message,
+        timestamp: new Date(),
+      }
+
+      // Send session info first
+      yield {
+        type: 'session',
+        sessionId: session.id,
+        userMessage,
+        usageInfo,
+      }
+
+      // Stream AI response
+      let fullResponse = ''
+      for await (const chunk of this.geminiService.sendMessageStream(
+        message,
+        journalEntries,
+        session.messages,
+        customPromptText,
+        goalContext,
+      )) {
+        fullResponse += chunk
+        yield {
+          type: 'chunk',
+          content: chunk,
+        }
+      }
+
+      // Create assistant message with full response
+      const assistantMessage: ChatMessage = {
+        id: uuidv4(),
+        role: 'assistant',
+        content: fullResponse,
+        timestamp: new Date(),
+      }
+
+      // Update session with new messages
+      session.messages.push(userMessage, assistantMessage)
+      
+      // Auto-generate title from first user message if not set
+      if (!session.title && session.messages.length === 2) {
+        session.title = this.generateTitle(message)
+        const updateData: any = {
+          messages: session.messages,
+          title: session.title,
+        }
+        if (effectivePromptId) {
+          updateData.prompt_id = effectivePromptId
+        }
+        await this.firebaseService.updateDocument(this.collectionName, session.id, updateData)
+      } else {
+        await this.updateSession(session.id, userId, session.messages, effectivePromptId)
+      }
+
+      // Send completion
+      yield {
+        type: 'done',
+        assistantMessage,
+      }
+
+      this.logger.log(`Message sent in session: ${session.id} for user: ${userId}`)
+    } catch (error) {
+      this.logger.error('Error sending message stream', error)
+      throw error
+    }
+  }
+
   async createSession(userId: string, promptId?: string): Promise<ChatSession> {
     try {
       const session: any = {
@@ -285,6 +401,39 @@ export class ChatService {
     }
   }
 
+  async *generateInsightsStream(userId: string): AsyncGenerator<string, void, unknown> {
+    try {
+      // Check rate limit
+      const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'insights')
+      if (!usageInfo.allowed) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: usageInfo.warning || 'Daily insights limit reached',
+            error: 'Too Many Requests',
+            usageInfo,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        )
+      }
+
+      const journalEntries = await this.journalService.getRecent(userId, 30)
+
+      if (journalEntries.length === 0) {
+        yield 'No journal entries available to generate insights. Start writing to get personalized insights!'
+        return
+      }
+
+      for await (const chunk of this.geminiService.generateInsightsStream(journalEntries)) {
+        yield chunk
+      }
+
+    } catch (error) {
+      this.logger.error('Error generating insights stream', error)
+      throw error
+    }
+  }
+
   async suggestPrompts(userId: string) {
     try {
       // Check rate limit
@@ -436,6 +585,67 @@ export class ChatService {
       return { insights, usageInfo }
     } catch (error) {
       this.logger.error('Error generating goal insights', error)
+      throw error
+    }
+  }
+
+  async *getGoalInsightsStream(userId: string, goalId: string): AsyncGenerator<string, void, unknown> {
+    try {
+      // Check rate limit
+      const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'goal_insights')
+      if (!usageInfo.allowed) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: usageInfo.warning || 'Daily goal insights limit reached',
+            error: 'Too Many Requests',
+            usageInfo,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        )
+      }
+
+      // Get goal details
+      const goal = await this.goalService.getGoalById(userId, goalId)
+      const milestones = await this.goalService.getMilestones(userId, goalId)
+      const progressUpdates = await this.goalService.getProgressUpdates(userId, goalId)
+
+      // Format goal data for AI
+      const now = new Date()
+      const daysRemaining = Math.ceil(
+        (goal.target_date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      )
+
+      const goalData = {
+        title: goal.title,
+        description: goal.description,
+        category: goal.category,
+        status: goal.status,
+        targetDate: goal.target_date.toISOString().split('T')[0],
+        daysRemaining,
+        progress: goal.progress_percentage,
+      }
+
+      const formattedMilestones = milestones.map((m) => ({
+        title: m.title,
+        completed: m.completed,
+        dueDate: m.due_date ? m.due_date.toISOString().split('T')[0] : null,
+      }))
+
+      const formattedProgress = progressUpdates.slice(0, 5).map((p) => ({
+        content: p.content,
+        date: p.created_at.toISOString().split('T')[0],
+      }))
+
+      for await (const chunk of this.geminiService.generateGoalInsightsStream(
+        goalData,
+        formattedMilestones,
+        formattedProgress
+      )) {
+        yield chunk
+      }
+    } catch (error) {
+      this.logger.error('Error generating goal insights stream', error)
       throw error
     }
   }

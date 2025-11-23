@@ -101,7 +101,7 @@ export default function CoachChatPage() {
   } = useSpeechToText()
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' })
   }
 
   useEffect(() => {
@@ -168,11 +168,16 @@ export default function CoachChatPage() {
   async function handleGetInsights() {
     try {
       setLoadingJournalInsights(true)
-      const insightsData = await getInsights()
-      setInsights(insightsData)
+      setInsights('') // Clear previous insights
       setShowInsights(true)
+      
+      // Use streaming to update insights in real-time
+      await getInsights(true, (chunk) => {
+        setInsights((prev) => (prev || '') + chunk)
+      })
     } catch (err: any) {
       console.error('Failed to get insights:', err)
+      setShowInsights(false)
     } finally {
       setLoadingJournalInsights(false)
     }
@@ -268,15 +273,20 @@ export default function CoachChatPage() {
     }
   }
 
-  // Handle goal insights
+  // Handle goal insights with streaming
   async function handleGetGoalInsights(goalId: string) {
     try {
       setSelectedGoalForInsights(goalId)
-      const insights = await getGoalInsights(goalId)
-      setGoalInsights(insights)
+      setGoalInsights('') // Clear previous insights
       setShowGoalInsights(true)
+      
+      // Use streaming to update insights in real-time
+      await getGoalInsights(goalId, true, (chunk) => {
+        setGoalInsights((prev) => (prev || '') + chunk)
+      })
     } catch (err) {
       console.error('Failed to get goal insights:', err)
+      setShowGoalInsights(false)
     }
   }
 
@@ -623,7 +633,7 @@ export default function CoachChatPage() {
                 <>
                   {messages.map((message, index) => (
                     <div
-                      key={message.id || index}
+                      key={message.id || `msg-${index}-${message.role}`}
                       className={`flex ${
                         message.role === 'user' ? 'justify-end' : 'justify-start'
                       }`}
@@ -713,15 +723,9 @@ export default function CoachChatPage() {
                     </div>
                   ))}
                   {loading && (
-                    <div className="flex justify-start">
-                      <div className="bg-secondary rounded-lg p-4">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-sm text-gray-600">
-                            Coach is thinking...
-                          </span>
-                        </div>
-                      </div>
+                    <div className="flex justify-start items-center gap-2 text-sm text-gray-500 italic px-2">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Coach is thinking...</span>
                     </div>
                   )}
                   <div ref={messagesEndRef} />

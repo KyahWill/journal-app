@@ -213,6 +213,69 @@ ${goalContext}`
     }
   }
 
+  async *sendMessageStream(
+    userMessage: string,
+    journalEntries: JournalEntry[],
+    history: ChatMessage[] = [],
+    customPrompt?: string,
+    goalContext?: any,
+  ): AsyncGenerator<string, void, unknown> {
+    try {
+      const journalContext = this.formatJournalContext(journalEntries)
+      const formattedGoalContext = goalContext ? this.formatGoalContext(goalContext) : ''
+      const systemPrompt = this.getSystemPrompt(journalContext, formattedGoalContext, customPrompt)
+
+      // Build conversation history
+      const conversationHistory: string[] = []
+
+      // Add system prompt
+      conversationHistory.push(`System: ${systemPrompt}\n`)
+
+      // Add conversation history
+      for (const msg of history) {
+        if (msg.role === 'user') {
+          conversationHistory.push(`User: ${msg.content}`)
+        } else if (msg.role === 'assistant') {
+          conversationHistory.push(`Assistant: ${msg.content}`)
+        }
+      }
+
+      // Add current user message
+      conversationHistory.push(`User: ${userMessage}`)
+
+      // Create the full prompt
+      const fullPrompt = conversationHistory.join('\n\n')
+
+      // Generate streaming response
+      const result = await this.model.generateContentStream(fullPrompt)
+
+      let buffer = ''
+      const maxChunkSize = 5 // Send chunks of ~5 characters for smoother streaming
+      
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text()
+        if (chunkText) {
+          buffer += chunkText
+          
+          // Send smaller chunks for smoother streaming
+          while (buffer.length >= maxChunkSize) {
+            const toSend = buffer.slice(0, maxChunkSize)
+            buffer = buffer.slice(maxChunkSize)
+            yield toSend
+          }
+        }
+      }
+      
+      // Send any remaining buffered content
+      if (buffer.length > 0) {
+        yield buffer
+      }
+    } catch (error) {
+      this.logger.error('Error generating AI response stream', error)
+      throw error
+    }
+  }
+
   async generateInsights(journalEntries: JournalEntry[]): Promise<string> {
     try {
       if (journalEntries.length === 0) {
@@ -236,6 +299,52 @@ Please provide a thoughtful analysis in 3-5 paragraphs.`
       return response.text()
     } catch (error) {
       this.logger.error('Error generating insights', error)
+      throw error
+    }
+  }
+
+  async *generateInsightsStream(journalEntries: JournalEntry[]): AsyncGenerator<string, void, unknown> {
+    try {
+      if (journalEntries.length === 0) {
+        yield 'No journal entries available to generate insights.'
+        return
+      }
+
+      const journalContext = this.formatJournalContext(journalEntries)
+      const prompt = `Based on the following journal entries, provide key insights, patterns, and themes you observe. Focus on:
+1. Emotional patterns and trends
+2. Recurring challenges or concerns
+3. Areas of growth and progress
+4. Potential blind spots
+5. Actionable recommendations
+
+${journalContext}
+
+Please provide a thoughtful analysis in 3-5 paragraphs.`
+
+      const result = await this.model.generateContentStream(prompt)
+
+      let buffer = ''
+      const maxChunkSize = 5
+      
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text()
+        if (chunkText) {
+          buffer += chunkText
+          
+          while (buffer.length >= maxChunkSize) {
+            const toSend = buffer.slice(0, maxChunkSize)
+            buffer = buffer.slice(maxChunkSize)
+            yield toSend
+          }
+        }
+      }
+      
+      if (buffer.length > 0) {
+        yield buffer
+      }
+    } catch (error) {
+      this.logger.error('Error generating insights stream', error)
       throw error
     }
   }
@@ -385,6 +494,61 @@ Keep your response conversational, supportive, and actionable (3-4 paragraphs).`
       return response.text()
     } catch (error) {
       this.logger.error('Error generating goal insights', error)
+      throw error
+    }
+  }
+
+  async *generateGoalInsightsStream(goal: any, milestones: any[], progressUpdates: any[]): AsyncGenerator<string, void, unknown> {
+    try {
+      const prompt = `You are an executive coach analyzing a user's goal progress. Provide insightful, actionable feedback.
+
+GOAL DETAILS:
+Title: ${goal.title}
+Description: ${goal.description || 'No description provided'}
+Category: ${goal.category}
+Status: ${goal.status}
+Target Date: ${goal.targetDate}
+Days Remaining: ${goal.daysRemaining}
+Progress: ${goal.progress}%
+
+MILESTONES:
+${milestones.length > 0 ? milestones.map((m: any) => `${m.completed ? '✓' : '○'} ${m.title}${m.dueDate ? ` (due: ${m.dueDate})` : ''}`).join('\n') : 'No milestones set'}
+
+RECENT PROGRESS UPDATES:
+${progressUpdates.length > 0 ? progressUpdates.map((p: any) => `${p.date}: ${p.content}`).join('\n') : 'No progress updates yet'}
+
+Provide a thoughtful analysis covering:
+1. Progress Assessment: How is the user doing? What patterns do you see?
+2. Momentum Analysis: Is progress accelerating, steady, or stalling?
+3. Potential Obstacles: What might be blocking progress?
+4. Actionable Recommendations: 2-3 specific next steps
+5. Encouragement: Acknowledge wins and provide motivation
+
+Keep your response conversational, supportive, and actionable (3-4 paragraphs).`
+
+      const result = await this.model.generateContentStream(prompt)
+
+      let buffer = ''
+      const maxChunkSize = 5
+      
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text()
+        if (chunkText) {
+          buffer += chunkText
+          
+          while (buffer.length >= maxChunkSize) {
+            const toSend = buffer.slice(0, maxChunkSize)
+            buffer = buffer.slice(maxChunkSize)
+            yield toSend
+          }
+        }
+      }
+      
+      if (buffer.length > 0) {
+        yield buffer
+      }
+    } catch (error) {
+      this.logger.error('Error generating goal insights stream', error)
       throw error
     }
   }

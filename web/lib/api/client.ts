@@ -479,6 +479,260 @@ class ApiClient {
     return this.request(`/chat/goal-insights/${goalId}`)
   }
 
+  /**
+   * Stream chat message response using Server-Sent Events
+   */
+  async *sendChatMessageStream(
+    message: string,
+    sessionId?: string,
+    promptId?: string,
+    onChunk?: (chunk: string) => void
+  ): AsyncGenerator<{ type: string; content?: string; sessionId?: string; userMessage?: ChatMessage; assistantMessage?: ChatMessage; usageInfo?: UsageInfo }, void, unknown> {
+    console.log('[apiClient] sendChatMessageStream called:', { message, sessionId, promptId })
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    }
+
+    if (this.getToken) {
+      try {
+        const token = await this.getToken()
+        if (token) {
+          (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+        }
+      } catch (error) {
+        console.error('Failed to get Firebase token:', error)
+      }
+    }
+
+    const url = `${this.baseUrl}/chat/message/stream`
+    console.log('[apiClient] Fetching:', url)
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message, sessionId, promptId }),
+      credentials: 'include',
+    })
+
+    console.log('[apiClient] Response status:', response.status, response.ok)
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('[apiClient] Error response:', errorData)
+      throw new Error(errorData.message || 'Failed to send message')
+    }
+
+    const reader = response.body?.getReader()
+    const decoder = new TextDecoder()
+
+    if (!reader) {
+      throw new Error('Response body is not readable')
+    }
+
+    try {
+      console.log('[apiClient] ========== STARTING SSE STREAM ==========')
+      let eventCount = 0
+      let chunkCount = 0
+      
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          console.log('[apiClient] ========== STREAM COMPLETE ==========')
+          console.log(`[apiClient] Total events received: ${eventCount}`)
+          console.log(`[apiClient] Total chunks received: ${chunkCount}`)
+          break
+        }
+
+        const chunk = decoder.decode(value, { stream: true })
+        console.log(`[apiClient] 📦 Raw SSE data (${chunk.length} bytes):`, chunk)
+        
+        const lines = chunk.split('\n')
+        console.log(`[apiClient] Split into ${lines.length} lines`)
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          console.log(`[apiClient] Line ${i}: "${line}"`)
+          
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            console.log(`[apiClient] 🔍 Found SSE data line:`, data)
+            
+            try {
+              const parsed = JSON.parse(data)
+              eventCount++
+              
+              console.log(`[apiClient] ✅ SSE Event #${eventCount}:`, {
+                type: parsed.type,
+                hasContent: !!parsed.content,
+                contentLength: parsed.content?.length || 0,
+                contentPreview: parsed.content?.substring(0, 100),
+                hasSessionId: !!parsed.sessionId,
+                sessionId: parsed.sessionId,
+                hasUserMessage: !!parsed.userMessage,
+                hasAssistantMessage: !!parsed.assistantMessage,
+                hasUsageInfo: !!parsed.usageInfo,
+                fullEvent: parsed
+              })
+              
+              if (parsed.type === 'chunk') {
+                chunkCount++
+                console.log(`[apiClient] 📝 Chunk #${chunkCount}: "${parsed.content}"`)
+                if (onChunk) {
+                  onChunk(parsed.content)
+                }
+              } else if (parsed.type === 'session') {
+                console.log('[apiClient] 🎯 Session event:', {
+                  sessionId: parsed.sessionId,
+                  userMessage: parsed.userMessage,
+                  usageInfo: parsed.usageInfo
+                })
+              } else if (parsed.type === 'done') {
+                console.log('[apiClient] ✔️ Done event:', {
+                  assistantMessage: parsed.assistantMessage,
+                  messageLength: parsed.assistantMessage?.content?.length
+                })
+              }
+              
+              yield parsed
+            } catch (e) {
+              console.error('[apiClient] ❌ Failed to parse JSON:', {
+                error: e,
+                data: data.substring(0, 200),
+                fullData: data
+              })
+              // Skip invalid JSON
+            }
+          } else if (line.trim() === '') {
+            console.log(`[apiClient] Line ${i}: (empty line - SSE separator)`)
+          } else if (line.startsWith(':')) {
+            console.log(`[apiClient] Line ${i}: (SSE comment)`)
+          } else {
+            console.log(`[apiClient] Line ${i}: (non-data line)`)
+          }
+        }
+      }
+    } finally {
+      console.log('[apiClient] 🔒 Releasing reader lock')
+      reader.releaseLock()
+    }
+  }
+
+  /**
+   * Stream insights generation using Server-Sent Events
+   */
+  async *generateInsightsStream(onChunk?: (chunk: string) => void): AsyncGenerator<string, void, unknown> {
+    const headers: HeadersInit = {}
+
+    if (this.getToken) {
+      try {
+        const token = await this.getToken()
+        if (token) {
+          (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+        }
+      } catch (error) {
+        console.error('Failed to get Firebase token:', error)
+      }
+    }
+
+    const url = `${this.baseUrl}/chat/insights/stream`
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || 'Failed to generate insights')
+    }
+
+    const reader = response.body?.getReader()
+    const decoder = new TextDecoder()
+
+    if (!reader) {
+      throw new Error('Response body is not readable')
+    }
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim()
+            if (data && onChunk) {
+              onChunk(data)
+            }
+            yield data
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock()
+    }
+  }
+
+  /**
+   * Stream goal insights generation using Server-Sent Events
+   */
+  async *getGoalInsightsStream(goalId: string, onChunk?: (chunk: string) => void): AsyncGenerator<string, void, unknown> {
+    const headers: HeadersInit = {}
+
+    if (this.getToken) {
+      try {
+        const token = await this.getToken()
+        if (token) {
+          (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+        }
+      } catch (error) {
+        console.error('Failed to get Firebase token:', error)
+      }
+    }
+
+    const url = `${this.baseUrl}/chat/goal-insights/${goalId}/stream`
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || 'Failed to generate goal insights')
+    }
+
+    const reader = response.body?.getReader()
+    const decoder = new TextDecoder()
+
+    if (!reader) {
+      throw new Error('Response body is not readable')
+    }
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim()
+            if (data && onChunk) {
+              onChunk(data)
+            }
+            yield data
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock()
+    }
+  }
+
   // ============================================================================
   // Prompt APIs
   // ============================================================================

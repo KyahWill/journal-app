@@ -19,9 +19,9 @@ export class RateLimitService {
     chat: 20,
     insights: 3,
     tts: 5,
-    prompt_suggestions: 5,
-    goal_suggestions: 3,
-    goal_insights: 5,
+    prompt_suggestions: 20,
+    goal_suggestions: 10,
+    goal_insights: 10,
   }
 
   // Warning thresholds (when to start showing warnings)
