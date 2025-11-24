@@ -1,8 +1,9 @@
 'use client'
 
-import { memo, useRef, useEffect, useState } from 'react'
+import { memo, useRef, useEffect, useState, useMemo } from 'react'
 import { Goal } from '@/lib/api/client'
 import { GoalCard } from './goal-card'
+import { useMilestoneCounts } from '@/lib/hooks/useMilestoneCounts'
 
 interface VirtualizedGoalListProps {
   goals: Goal[]
@@ -12,6 +13,9 @@ interface VirtualizedGoalListProps {
 // Simple virtualization for goal lists
 // Only renders goals that are visible in the viewport
 function VirtualizedGoalListComponent({ goals, viewMode }: VirtualizedGoalListProps) {
+  // Fetch milestone counts for all goals
+  const goalIds = useMemo(() => goals.map((g) => g.id), [goals])
+  const { counts: milestoneCounts } = useMilestoneCounts(goalIds)
   const containerRef = useRef<HTMLDivElement>(null)
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 20 })
   
@@ -62,11 +66,19 @@ function VirtualizedGoalListComponent({ goals, viewMode }: VirtualizedGoalListPr
         role="list"
         aria-label={`${goals.length} goals`}
       >
-        {goals.map((goal) => (
-          <div key={goal.id} role="listitem">
-            <GoalCard goal={goal} viewMode={viewMode} />
-          </div>
-        ))}
+        {goals.map((goal) => {
+          const milestoneData = milestoneCounts[goal.id] || { total: 0, completed: 0 }
+          return (
+            <div key={goal.id} role="listitem">
+              <GoalCard 
+                goal={goal} 
+                viewMode={viewMode}
+                milestonesCompleted={milestoneData.completed}
+                milestonesTotal={milestoneData.total}
+              />
+            </div>
+          )
+        })}
       </div>
     )
   }
@@ -94,11 +106,19 @@ function VirtualizedGoalListComponent({ goals, viewMode }: VirtualizedGoalListPr
             : 'space-y-4'
         }
       >
-        {visibleGoals.map((goal) => (
-          <div key={goal.id} role="listitem">
-            <GoalCard goal={goal} viewMode={viewMode} />
-          </div>
-        ))}
+        {visibleGoals.map((goal) => {
+          const milestoneData = milestoneCounts[goal.id] || { total: 0, completed: 0 }
+          return (
+            <div key={goal.id} role="listitem">
+              <GoalCard 
+                goal={goal} 
+                viewMode={viewMode}
+                milestonesCompleted={milestoneData.completed}
+                milestonesTotal={milestoneData.total}
+              />
+            </div>
+          )
+        })}
       </div>
     </div>
   )

@@ -16,9 +16,11 @@ import { cn } from '@/lib/utils'
 interface GoalCardProps {
   goal: Goal
   viewMode?: 'grid' | 'list'
+  milestonesCompleted?: number
+  milestonesTotal?: number
 }
 
-function GoalCardComponent({ goal, viewMode = 'grid' }: GoalCardProps) {
+function GoalCardComponent({ goal, viewMode = 'grid', milestonesCompleted = 0, milestonesTotal = 0 }: GoalCardProps) {
   const router = useRouter()
   const { updateStatus, deleteGoal } = useGoals()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -145,8 +147,8 @@ function GoalCardComponent({ goal, viewMode = 'grid' }: GoalCardProps) {
         {/* Progress Bar */}
         <GoalProgressBar
           progress={goal.progress_percentage}
-          milestonesCompleted={0}
-          milestonesTotal={0}
+          milestonesCompleted={milestonesCompleted}
+          milestonesTotal={milestonesTotal}
           size="md"
         />
 
@@ -172,7 +174,7 @@ function GoalCardComponent({ goal, viewMode = 'grid' }: GoalCardProps) {
         {/* Milestone Count */}
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Target className="h-4 w-4" />
-          <span>Milestones: 0 / 0</span>
+          <span>Milestones: {milestonesCompleted} / {milestonesTotal}</span>
         </div>
 
         {/* Action Buttons */}
@@ -257,6 +259,8 @@ export const GoalCard = memo(GoalCardComponent, (prevProps, nextProps) => {
     prevProps.goal.progress_percentage === nextProps.goal.progress_percentage &&
     prevProps.goal.target_date === nextProps.goal.target_date &&
     prevProps.goal.updated_at === nextProps.goal.updated_at &&
-    prevProps.viewMode === nextProps.viewMode
+    prevProps.viewMode === nextProps.viewMode &&
+    prevProps.milestonesCompleted === nextProps.milestonesCompleted &&
+    prevProps.milestonesTotal === nextProps.milestonesTotal
   )
 })

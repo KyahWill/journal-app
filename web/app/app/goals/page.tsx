@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@/components/ui/visually-hidden'
 import { Plus, Search, Grid3x3, List, AlertCircle } from 'lucide-react'
-import { GoalCard } from '@/components/goal-card'
 import { GoalStats } from '@/components/goal-stats'
 import { GoalForm } from '@/components/goal-form'
 import { ErrorBoundary } from '@/components/error-boundary'
