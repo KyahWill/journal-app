@@ -24,6 +24,7 @@ export class RateLimitService {
     goal_insights: 10,
     rag_embedding: 100, // Embedding generation per day
     rag_search: 200, // Semantic search queries per day
+    voice_coach_session: 10, // Voice coaching sessions per day
   }
 
   // Warning thresholds (when to start showing warnings)
@@ -36,6 +37,7 @@ export class RateLimitService {
     goal_insights: 1,
     rag_embedding: 10,
     rag_search: 20,
+    voice_coach_session: 2,
   }
 
   constructor(private readonly firebaseService: FirebaseService) {}
@@ -151,6 +153,7 @@ export class RateLimitService {
       case 'goal_insights': return 'goal insights'
       case 'rag_embedding': return 'content embedding generation'
       case 'rag_search': return 'semantic search queries'
+      case 'voice_coach_session': return 'voice coaching sessions'
       default: return feature
     }
   }
@@ -165,6 +168,7 @@ export class RateLimitService {
       case 'goal_insights': return 'uses'
       case 'rag_embedding': return 'embeddings'
       case 'rag_search': return 'searches'
+      case 'voice_coach_session': return 'sessions'
       default: return 'uses'
     }
   }

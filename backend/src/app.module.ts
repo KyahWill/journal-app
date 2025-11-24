@@ -12,6 +12,8 @@ import { GoalModule } from './goal/goal.module'
 import { CategoryModule } from './category/category.module'
 import { CommonModule } from './common/common.module'
 import { RagModule } from './rag/rag.module'
+import { VoiceCoachModule } from './voice-coach/voice-coach.module'
+import { CoachPersonalityModule } from './coach-personality/coach-personality.module'
 import { AppController } from './app.controller'
 
 @Module({
@@ -32,6 +34,8 @@ import { AppController } from './app.controller'
     GoalModule,
     CategoryModule,
     RagModule,
+    VoiceCoachModule,
+    CoachPersonalityModule,
   ],
   controllers: [AppController],
 })

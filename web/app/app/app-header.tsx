@@ -1,16 +1,19 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { LogOut, Menu, X } from 'lucide-react'
+import { LogOut, Menu, X, Mic } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { useGoals } from '@/lib/contexts/goal-context'
+import { cn } from '@/lib/utils'
+import { isFeatureEnabled } from '@/lib/config/features'
 
 export default function AppHeader() {
   const router = useRouter()
+  const pathname = usePathname()
   const [loading, setLoading] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, signOut } = useAuth()
@@ -26,6 +29,9 @@ export default function AppHeader() {
   } catch (error) {
     // GoalProvider not available in this context, skip notifications
   }
+
+  const isActive = (path: string) => pathname === path || pathname?.startsWith(path + '/')
+  const voiceCoachEnabled = isFeatureEnabled('voiceCoach')
 
   async function handleSignOut() {
     try {
@@ -50,13 +56,23 @@ export default function AppHeader() {
             <nav className="hidden md:flex space-x-4">
               <Link
                 href="/app/journal"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  isActive('/app/journal')
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
               >
                 Journal
               </Link>
               <Link
                 href="/app/goals"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium relative"
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium relative transition-colors",
+                  isActive('/app/goals')
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
               >
                 Goals
                 {hasNotifications && (
@@ -70,13 +86,37 @@ export default function AppHeader() {
               </Link>
               <Link
                 href="/app/coach"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  isActive('/app/coach')
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
               >
                 AI Coach
               </Link>
+              {voiceCoachEnabled && (
+                <Link
+                  href="/app/ai-agent"
+                  className={cn(
+                    "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5",
+                    isActive('/app/ai-agent')
+                      ? "bg-gray-100 text-gray-900"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  )}
+                >
+                  <Mic className="h-4 w-4" />
+                  Voice Coach
+                </Link>
+              )}
               <Link
                 href="/app/settings"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  isActive('/app/settings')
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
               >
                 Settings
               </Link>
@@ -116,14 +156,24 @@ export default function AppHeader() {
             <nav className="flex flex-col space-y-2">
               <Link
                 href="/app/journal"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  isActive('/app/journal')
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Journal
               </Link>
               <Link
                 href="/app/goals"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center justify-between"
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium flex items-center justify-between transition-colors",
+                  isActive('/app/goals')
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <span>Goals</span>
@@ -135,14 +185,39 @@ export default function AppHeader() {
               </Link>
               <Link
                 href="/app/coach"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  isActive('/app/coach')
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 AI Coach
               </Link>
+              {voiceCoachEnabled && (
+                <Link
+                  href="/app/ai-agent"
+                  className={cn(
+                    "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5",
+                    isActive('/app/ai-agent')
+                      ? "bg-gray-100 text-gray-900"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  )}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Mic className="h-4 w-4" />
+                  Voice Coach
+                </Link>
+              )}
               <Link
                 href="/app/settings"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  isActive('/app/settings')
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Settings

@@ -222,6 +222,104 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && 
                        resource.data.user_id == request.auth.uid;
     }
+    
+    // Voice conversations collection
+    match /voice_conversations/{conversationId} {
+      // Users can read their own voice conversations
+      allow read: if isAuthenticated() && 
+                     resource.data.user_id == request.auth.uid;
+      
+      // Users can create voice conversations with their own user_id
+      allow create: if isAuthenticated() && 
+                       request.resource.data.user_id == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['user_id', 'conversation_id', 'agent_id', 'transcript', 'duration', 'started_at', 'ended_at', 'created_at']) &&
+                       request.resource.data.duration >= 0 &&
+                       request.resource.data.duration <= 1800; // Max 30 minutes
+      
+      // Users can update their own voice conversations
+      allow update: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid &&
+                       request.resource.data.user_id == request.auth.uid;
+      
+      // Users can delete their own voice conversations
+      allow delete: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+    }
+    
+    // Voice sessions collection
+    match /voice_sessions/{sessionId} {
+      // Helper function to check if session is not expired
+      function isSessionValid() {
+        return request.time < resource.data.expires_at;
+      }
+      
+      // Users can read their own voice sessions
+      allow read: if isAuthenticated() && 
+                     resource.data.user_id == request.auth.uid;
+      
+      // Users can create voice sessions with their own user_id
+      allow create: if isAuthenticated() && 
+                       request.resource.data.user_id == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['user_id', 'agent_id', 'status', 'started_at', 'last_activity', 'expires_at']) &&
+                       request.resource.data.status in ['active', 'completed', 'abandoned'] &&
+                       request.resource.data.expires_at > request.time; // Expiration must be in the future
+      
+      // Users can update their own voice sessions only if not expired
+      allow update: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid &&
+                       request.resource.data.user_id == request.auth.uid &&
+                       isSessionValid() &&
+                       (!request.resource.data.keys().hasAny(['status']) || request.resource.data.status in ['active', 'completed', 'abandoned']);
+      
+      // Users can delete their own voice sessions
+      allow delete: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+    }
+    
+    // Custom categories collection
+    match /custom_categories/{categoryId} {
+      // Users can read their own custom categories
+      allow read: if isAuthenticated() && 
+                     resource.data.user_id == request.auth.uid;
+      
+      // Users can create custom categories with their own user_id
+      allow create: if isAuthenticated() && 
+                       request.resource.data.user_id == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['user_id', 'name', 'created_at']) &&
+                       request.resource.data.name.size() > 0 &&
+                       request.resource.data.name.size() <= 50;
+      
+      // Users can update their own custom categories
+      allow update: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid &&
+                       request.resource.data.user_id == request.auth.uid &&
+                       (!request.resource.data.keys().hasAny(['name']) || (request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 50));
+      
+      // Users can delete their own custom categories
+      allow delete: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+    }
+    
+    // Embeddings collection (for RAG system)
+    match /embeddings/{embeddingId} {
+      // Users can read their own embeddings
+      allow read: if isAuthenticated() && 
+                     resource.data.user_id == request.auth.uid;
+      
+      // Users can create embeddings with their own user_id
+      allow create: if isAuthenticated() && 
+                       request.resource.data.user_id == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['user_id', 'content_type', 'content_id', 'created_at']);
+      
+      // Users can update their own embeddings
+      allow update: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid &&
+                       request.resource.data.user_id == request.auth.uid;
+      
+      // Users can delete their own embeddings
+      allow delete: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+    }
   }
 }
 

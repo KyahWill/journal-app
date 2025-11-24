@@ -1209,6 +1209,88 @@ class ApiClient {
   }
 
   // ============================================================================
+  // Voice Coach APIs
+  // ============================================================================
+
+  async createVoiceCoachSession(): Promise<{
+    sessionId: string
+    agentId: string
+    context: any
+  }> {
+    return this.request('/voice-coach/session', {
+      method: 'POST',
+    })
+  }
+
+  async getVoiceCoachSignedUrl(): Promise<{
+    signedUrl: string
+    expiresAt: string
+  }> {
+    return this.request('/voice-coach/signed-url')
+  }
+
+  async saveVoiceCoachConversation(data: {
+    conversationId: string
+    transcript: Array<{
+      role: 'user' | 'agent'
+      content: string
+      timestamp: string
+      audioUrl?: string
+    }>
+    duration: number
+    startedAt: string
+    endedAt: string
+  }): Promise<{ success: boolean; message: string; conversationId: string }> {
+    return this.request('/voice-coach/conversation', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async getVoiceConversationHistory(params?: {
+    limit?: number
+    search?: string
+    startDate?: string
+    endDate?: string
+    sortBy?: 'newest' | 'oldest' | 'longest' | 'shortest'
+  }): Promise<{
+    conversations: any[]
+    total: number
+  }> {
+    const queryParams = new URLSearchParams()
+    if (params?.limit) {
+      queryParams.append('limit', params.limit.toString())
+    }
+    if (params?.search) {
+      queryParams.append('search', params.search)
+    }
+    if (params?.startDate) {
+      queryParams.append('startDate', params.startDate)
+    }
+    if (params?.endDate) {
+      queryParams.append('endDate', params.endDate)
+    }
+    if (params?.sortBy) {
+      queryParams.append('sortBy', params.sortBy)
+    }
+    const queryString = queryParams.toString()
+    return this.request(`/voice-coach/history${queryString ? `?${queryString}` : ''}`)
+  }
+
+  async getVoiceConversation(conversationId: string): Promise<any> {
+    return this.request(`/voice-coach/conversation/${conversationId}`)
+  }
+
+  async deleteVoiceConversation(conversationId: string): Promise<{
+    success: boolean
+    message: string
+  }> {
+    return this.request(`/voice-coach/conversation/${conversationId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // ============================================================================
   // Health Check
   // ============================================================================
 
