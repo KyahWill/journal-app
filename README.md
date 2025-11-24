@@ -22,22 +22,23 @@ pnpm dev
 
 ## 📚 Documentation
 
-**→ [Complete Documentation Index](docs/INDEX.md)** - Full navigation guide
+**→ [📖 Complete Documentation Hub](docs/README.md)** - Your central navigation guide for all documentation
 
-### Quick Links
+Our documentation is organized to help you find what you need quickly:
 
-#### Authentication
-- **[Authentication Summary](docs/AUTHENTICATION_SUMMARY.md)** ⚡ - 5-minute overview (Start here!)
-- **[Authentication Architecture](docs/AUTHENTICATION_ARCHITECTURE.md)** ⭐ - Complete auth system overview
-- **[Quick Reference](docs/web/AUTH_QUICK_REFERENCE.md)** - Code examples & patterns
-- **[Server-Side Auth Details](docs/web/SERVER_SIDE_AUTH.md)** - Implementation details
+- **[🏗️ Architecture](docs/ARCHITECTURE.md)** - System design and technical architecture
+- **[✨ Features](docs/FEATURES.md)** - Complete feature reference and capabilities
+- **[🛠️ Setup Guide](docs/SETUP.md)** - Installation and configuration
+- **[🔌 API Reference](docs/API_REFERENCE.md)** - Complete API documentation
 
-#### Architecture & Features
-- **[System Architecture](docs/ARCHITECTURE.md)** - Overall system design
-- **[Feature Set](docs/FEATURE_SET.md)** - Complete feature reference
+### Documentation by Role
 
-#### Setup
-- **[Firestore Setup](docs/backend/FIRESTORE_SETUP.md)** - Database configuration
+- **New Developer?** Start with [Setup Guide](docs/SETUP.md) → [Architecture](docs/ARCHITECTURE.md)
+- **Frontend Developer?** See [Web Architecture](docs/architecture/web-architecture.md) and [Features](docs/FEATURES.md)
+- **Backend Developer?** See [Backend Architecture](docs/architecture/backend-architecture.md) and [API Reference](docs/API_REFERENCE.md)
+- **DevOps?** See [Deployment Guide](docs/setup/deployment.md) and [Database Setup](docs/setup/database-setup.md)
+
+Visit the **[Documentation Hub](docs/README.md)** for complete navigation and search tips.
 
 ## ✨ Features
 
