@@ -83,7 +83,7 @@ See [WEB_SETUP.md](docs/WEB_SETUP.md) for detailed deployment instructions.
 
 ## 📝 Environment Variables
 
-Create `web/.env.local`:
+### Web Frontend (`web/.env.local`)
 
 ```env
 # Firebase Configuration
@@ -101,8 +101,27 @@ FIREBASE_SERVICE_ACCOUNT_KEY='{"type":"service_account",...}'
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
+### Backend API (`backend/.env`)
+
+```env
+# Firebase Configuration
+FIREBASE_SERVICE_ACCOUNT_KEY='{"type":"service_account",...}'
+FIREBASE_PROJECT_ID=your_project_id
+
+# Google Gemini API
+GEMINI_API_KEY=your_gemini_api_key
+
+# RAG Configuration (Optional - defaults shown)
+RAG_ENABLED=true                        # Enable/disable RAG features
+RAG_EMBEDDING_MODEL=text-embedding-004  # Gemini embedding model
+RAG_SIMILARITY_THRESHOLD=0.7            # Minimum similarity score (0-1)
+RAG_MAX_RETRIEVED_DOCS=5                # Max documents per query
+```
+
 Get your Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey).
 Get your Firebase credentials from [Firebase Console](https://console.firebase.google.com).
+
+See [Backend README](docs/backend/BACKEND_README.md) for complete backend configuration options.
 
 ## 🤝 Contributing
 

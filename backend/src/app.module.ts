@@ -11,6 +11,7 @@ import { ElevenLabsModule } from './elevenlabs/elevenlabs.module'
 import { GoalModule } from './goal/goal.module'
 import { CategoryModule } from './category/category.module'
 import { CommonModule } from './common/common.module'
+import { RagModule } from './rag/rag.module'
 import { AppController } from './app.controller'
 
 @Module({
@@ -30,6 +31,7 @@ import { AppController } from './app.controller'
     ElevenLabsModule,
     GoalModule,
     CategoryModule,
+    RagModule,
   ],
   controllers: [AppController],
 })

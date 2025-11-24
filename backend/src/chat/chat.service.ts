@@ -8,6 +8,8 @@ import { v4 as uuidv4 } from 'uuid'
 import { PromptService } from '@/prompt/prompt.service'
 import { RateLimitService } from '@/common/services/rate-limit.service'
 import { GoalService } from '@/goal/goal.service'
+import { RagService } from '@/rag/rag.service'
+import { RagRateLimitException } from '@/rag/exceptions/rate-limit.exception'
 
 @Injectable()
 export class ChatService {
@@ -22,6 +24,7 @@ export class ChatService {
     private readonly rateLimitService: RateLimitService,
     @Inject(forwardRef(() => GoalService))
     private readonly goalService: GoalService,
+    private readonly ragService: RagService,
   ) {}
 
   async sendMessage(userId: string, sendMessageDto: SendMessageDto) {
@@ -56,6 +59,9 @@ export class ChatService {
       // Build goal context for AI
       const goalContext = await this.buildGoalContext(userId)
 
+      // Retrieve RAG context using semantic search
+      const { ragContext, warning: ragWarning } = await this.retrieveRagContext(userId, message)
+
       // Get custom prompt if specified
       let customPromptText: string | undefined
       const effectivePromptId = promptId || session.prompt_id
@@ -77,14 +83,20 @@ export class ChatService {
         timestamp: new Date(),
       }
 
-      // Get AI response with custom prompt and goal context
-      const aiResponse = await this.geminiService.sendMessage(
+      // Get AI response with custom prompt, goal context, and RAG context
+      let aiResponse = await this.geminiService.sendMessage(
         message,
         journalEntries,
         session.messages,
         customPromptText,
         goalContext,
+        ragContext,
       )
+
+      // Append rate limit warning if present
+      if (ragWarning) {
+        aiResponse = `${aiResponse}\n\n---\n${ragWarning}`
+      }
 
       // Create assistant message
       const assistantMessage: ChatMessage = {
@@ -158,6 +170,9 @@ export class ChatService {
       // Build goal context for AI
       const goalContext = await this.buildGoalContext(userId)
 
+      // Retrieve RAG context using semantic search
+      const { ragContext, warning: ragWarning } = await this.retrieveRagContext(userId, message)
+
       // Get custom prompt if specified
       let customPromptText: string | undefined
       const effectivePromptId = promptId || session.prompt_id
@@ -187,7 +202,7 @@ export class ChatService {
         usageInfo,
       }
 
-      // Stream AI response
+      // Stream AI response with RAG context
       let fullResponse = ''
       for await (const chunk of this.geminiService.sendMessageStream(
         message,
@@ -195,11 +210,22 @@ export class ChatService {
         session.messages,
         customPromptText,
         goalContext,
+        ragContext,
       )) {
         fullResponse += chunk
         yield {
           type: 'chunk',
           content: chunk,
+        }
+      }
+
+      // Send rate limit warning if present
+      if (ragWarning) {
+        const warningChunk = `\n\n---\n${ragWarning}`
+        fullResponse += warningChunk
+        yield {
+          type: 'chunk',
+          content: warningChunk,
         }
       }
 
@@ -647,6 +673,55 @@ export class ChatService {
     } catch (error) {
       this.logger.error('Error generating goal insights stream', error)
       throw error
+    }
+  }
+
+  /**
+   * Retrieve RAG context with rate limit handling
+   * @param userId - User ID
+   * @param message - User message to search for
+   * @returns Object with ragContext and optional warning message
+   */
+  private async retrieveRagContext(
+    userId: string,
+    message: string,
+  ): Promise<{ ragContext?: string; warning?: string }> {
+    try {
+      const retrievedContext = await this.ragService.retrieveContext(message, {
+        userId,
+        limit: 5,
+        similarityThreshold: 0.7,
+        includeRecent: true,
+        recentDays: 30,
+      })
+
+      if (retrievedContext.documents.length > 0) {
+        const ragContext = this.ragService.formatContextForAI(retrievedContext)
+        this.logger.debug(
+          `Retrieved ${retrievedContext.documents.length} relevant documents for RAG context`,
+        )
+        return { ragContext }
+      }
+
+      return {}
+    } catch (error) {
+      // Check if it's a rate limit error
+      if (error instanceof RagRateLimitException) {
+        this.logger.warn('RAG search rate limit exceeded', {
+          userId,
+          remaining: error.remaining,
+          limit: error.limit,
+          resetsAt: error.resetsAt,
+        })
+        const resetTime = new Date(error.resetsAt).toLocaleTimeString()
+        return {
+          warning: `Note: Semantic search is temporarily unavailable due to rate limits. Your response may be less personalized. Limit resets at ${resetTime}.`,
+        }
+      }
+
+      this.logger.error('Failed to retrieve RAG context, continuing without it', error)
+      // Continue without RAG context - graceful fallback
+      return {}
     }
   }
 

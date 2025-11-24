@@ -6,6 +6,7 @@ import { GeminiModule } from '@/gemini/gemini.module'
 import { JournalModule } from '@/journal/journal.module'
 import { PromptModule } from '@/prompt/prompt.module'
 import { GoalModule } from '@/goal/goal.module'
+import { RagModule } from '@/rag/rag.module'
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { GoalModule } from '@/goal/goal.module'
     JournalModule,
     PromptModule,
     forwardRef(() => GoalModule),
+    RagModule,
   ],
   controllers: [ChatController],
   providers: [ChatService],

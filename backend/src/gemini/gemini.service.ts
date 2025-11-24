@@ -135,7 +135,7 @@ export class GeminiService implements OnModuleInit {
     return buffer.join('\n')
   }
 
-  private getSystemPrompt(journalContext: string, goalContext: string, customPrompt?: string): string {
+  private getSystemPrompt(journalContext: string, goalContext: string, ragContext?: string, customPrompt?: string): string {
     const basePrompt = customPrompt || `You are an experienced executive coach with expertise in leadership development, personal growth, and professional success. Your role is to have meaningful one-on-one coaching sessions with the user based on their journal entries and goals.
 
 Guidelines for your coaching:
@@ -161,11 +161,23 @@ Goal-Specific Coaching Guidelines:
 
 Remember: You're here to support their personal and professional growth journey.`
 
-    return `${basePrompt}
-
-${journalContext}
-
-${goalContext}`
+    // Build the full system prompt with all context
+    const promptParts = [basePrompt];
+    
+    if (journalContext) {
+      promptParts.push('\n' + journalContext);
+    }
+    
+    if (goalContext) {
+      promptParts.push('\n' + goalContext);
+    }
+    
+    // Add RAG context if available - this provides semantically relevant historical context
+    if (ragContext) {
+      promptParts.push('\n' + ragContext);
+    }
+    
+    return promptParts.join('\n');
   }
 
   async sendMessage(
@@ -174,11 +186,12 @@ ${goalContext}`
     history: ChatMessage[] = [],
     customPrompt?: string,
     goalContext?: any,
+    ragContext?: string,
   ): Promise<string> {
     try {
       const journalContext = this.formatJournalContext(journalEntries)
       const formattedGoalContext = goalContext ? this.formatGoalContext(goalContext) : ''
-      const systemPrompt = this.getSystemPrompt(journalContext, formattedGoalContext, customPrompt)
+      const systemPrompt = this.getSystemPrompt(journalContext, formattedGoalContext, ragContext, customPrompt)
 
       // Build conversation history
       const conversationHistory: string[] = []
@@ -219,11 +232,12 @@ ${goalContext}`
     history: ChatMessage[] = [],
     customPrompt?: string,
     goalContext?: any,
+    ragContext?: string,
   ): AsyncGenerator<string, void, unknown> {
     try {
       const journalContext = this.formatJournalContext(journalEntries)
       const formattedGoalContext = goalContext ? this.formatGoalContext(goalContext) : ''
-      const systemPrompt = this.getSystemPrompt(journalContext, formattedGoalContext, customPrompt)
+      const systemPrompt = this.getSystemPrompt(journalContext, formattedGoalContext, ragContext, customPrompt)
 
       // Build conversation history
       const conversationHistory: string[] = []

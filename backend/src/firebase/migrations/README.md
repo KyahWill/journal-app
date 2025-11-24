@@ -116,6 +116,8 @@ Security rules are defined in `web/firestore.rules` and enforce:
 
 Composite indexes are defined in `web/firestore.indexes.json`:
 
+### Goal-Related Indexes
+
 1. **Goals by user, status, and target date** - For filtering and sorting goals
 2. **Goals by user, category, and created date** - For category-based queries
 3. **Milestones by goal and order** - For ordered milestone lists
@@ -124,6 +126,13 @@ Composite indexes are defined in `web/firestore.indexes.json`:
 6. **Goal-journal links by user and journal entry** - For finding goals linked to a journal entry
 7. **Custom categories by user and name** - For unique category name validation
 8. **Custom categories by user and created date** - For listing user categories
+
+### RAG Embeddings Indexes
+
+9. **Embeddings by user, content type, and created date** - For filtered semantic search
+10. **Embeddings by user and created date** - For retrieving all user embeddings
+
+For detailed RAG index documentation, see [backend/src/rag/INDEXES.md](../../rag/INDEXES.md).
 
 ## Deployment
 

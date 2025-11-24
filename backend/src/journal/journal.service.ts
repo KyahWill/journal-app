@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common'
 import { FirebaseService } from '@/firebase/firebase.service'
+import { RagService } from '@/rag/rag.service'
 import { CreateJournalDto, UpdateJournalDto } from '@/common/dto/journal.dto'
 import { JournalEntry, JournalEntryWithGoals } from '@/common/types/journal.types'
 
@@ -9,7 +10,10 @@ export class JournalService {
   private readonly collectionName = 'journal-entries'
   private readonly linksCollection = 'goal_journal_links'
 
-  constructor(private readonly firebaseService: FirebaseService) {}
+  constructor(
+    private readonly firebaseService: FirebaseService,
+    private readonly ragService: RagService,
+  ) {}
 
   async create(userId: string, createJournalDto: CreateJournalDto): Promise<JournalEntry> {
     try {
@@ -30,6 +34,28 @@ export class JournalService {
       const result = await this.firebaseService.addDocument(this.collectionName, data)
 
       this.logger.log(`Journal entry created: ${result.id} for user: ${userId}`)
+
+      // Generate embedding for the journal entry (non-blocking)
+      const embeddingText = `${createJournalDto.title}\n\n${createJournalDto.content}`
+      const metadata: Record<string, any> = {
+        tags: createJournalDto.tags || [],
+      }
+      
+      if (createJournalDto.mood) {
+        metadata.mood = createJournalDto.mood
+      }
+
+      this.ragService
+        .embedContent({
+          userId,
+          contentType: 'journal',
+          documentId: result.id,
+          text: embeddingText,
+          metadata,
+        })
+        .catch((err) => {
+          this.logger.error(`Failed to embed journal entry ${result.id}`, err)
+        })
 
       return {
         id: result.id,
@@ -107,7 +133,7 @@ export class JournalService {
   async update(id: string, userId: string, updateJournalDto: UpdateJournalDto): Promise<JournalEntry> {
     try {
       // First check if the entry exists and belongs to the user
-      await this.findOne(id, userId)
+      const existingEntry = await this.findOne(id, userId)
 
       const updateData: any = {}
 
@@ -131,6 +157,38 @@ export class JournalService {
 
       this.logger.log(`Journal entry updated: ${id} for user: ${userId}`)
 
+      // Update embedding if title or content changed
+      if (updateJournalDto.title !== undefined || updateJournalDto.content !== undefined) {
+        const updatedTitle = updateJournalDto.title ?? existingEntry.title
+        const updatedContent = updateJournalDto.content ?? existingEntry.content
+        const embeddingText = `${updatedTitle}\n\n${updatedContent}`
+        
+        const metadata: Record<string, any> = {
+          tags: updateJournalDto.tags ?? existingEntry.tags ?? [],
+        }
+        
+        const updatedMood = updateJournalDto.mood ?? existingEntry.mood
+        if (updatedMood) {
+          metadata.mood = updatedMood
+        }
+
+        // Delete old embedding and create new one with updated metadata
+        this.ragService
+          .deleteEmbeddings(userId, id)
+          .then(() => {
+            return this.ragService.embedContent({
+              userId,
+              contentType: 'journal',
+              documentId: id,
+              text: embeddingText,
+              metadata,
+            })
+          })
+          .catch((err) => {
+            this.logger.error(`Failed to update embedding for journal entry ${id}`, err)
+          })
+      }
+
       // Return the updated entry
       return this.findOne(id, userId)
     } catch (error) {
@@ -146,6 +204,15 @@ export class JournalService {
     try {
       // First check if the entry exists and belongs to the user
       await this.findOne(id, userId)
+
+      // Delete embeddings before deleting the document
+      try {
+        await this.ragService.deleteEmbeddings(userId, id)
+        this.logger.log(`Embeddings deleted for journal entry: ${id}`)
+      } catch (err) {
+        this.logger.error(`Failed to delete embeddings for journal entry ${id}`, err)
+        // Continue with document deletion even if embedding deletion fails
+      }
 
       await this.firebaseService.deleteDocument(this.collectionName, id)
 

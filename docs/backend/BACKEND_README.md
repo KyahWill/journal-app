@@ -97,6 +97,15 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:3001
 
 # API Configuration
 API_PREFIX=api/v1
+
+# RAG Configuration (Retrieval-Augmented Generation)
+RAG_ENABLED=true                        # Enable/disable RAG features (default: true)
+RAG_EMBEDDING_MODEL=text-embedding-004  # Gemini embedding model (default: text-embedding-004)
+RAG_EMBEDDING_DIMENSIONS=768            # Vector dimensions (default: 768)
+RAG_SIMILARITY_THRESHOLD=0.7            # Minimum similarity score for search results (default: 0.7)
+RAG_MAX_RETRIEVED_DOCS=5                # Maximum documents retrieved per query (default: 5)
+RAG_CACHE_TTL_SECONDS=3600              # Cache time-to-live in seconds (default: 3600)
+RAG_BATCH_SIZE=50                       # Batch processing size for embeddings (default: 50)
 ```
 
 ### 3. Get Firebase Service Account Key
@@ -322,6 +331,83 @@ Authorization: Bearer <firebase-id-token>
 ```
 
 To get a Firebase ID token, users must authenticate through Firebase Auth (typically done in the web app frontend).
+
+## 🧠 RAG Configuration
+
+The backend includes a Retrieval-Augmented Generation (RAG) system that enhances AI coaching by enabling semantic search over user content (journal entries, goals, milestones, progress updates).
+
+### RAG Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `RAG_ENABLED` | Enable/disable RAG features globally | `true` | No |
+| `RAG_EMBEDDING_MODEL` | Gemini embedding model to use | `text-embedding-004` | No |
+| `RAG_EMBEDDING_DIMENSIONS` | Vector dimensions for embeddings | `768` | No |
+| `RAG_SIMILARITY_THRESHOLD` | Minimum similarity score (0-1) for search results | `0.7` | No |
+| `RAG_MAX_RETRIEVED_DOCS` | Maximum documents retrieved per query | `5` | No |
+| `RAG_CACHE_TTL_SECONDS` | Cache time-to-live in seconds | `3600` | No |
+| `RAG_BATCH_SIZE` | Batch size for embedding generation | `50` | No |
+
+### RAG Feature Flag
+
+The `RAG_ENABLED` environment variable acts as a feature flag to enable or disable RAG functionality:
+
+- **`true`**: RAG features are active. Content will be embedded and semantic search will be used for AI coaching.
+- **`false`**: RAG features are disabled. The system will fall back to traditional context retrieval methods.
+
+This allows you to:
+- Test the system without RAG
+- Disable RAG temporarily for troubleshooting
+- Gradually roll out RAG to users
+- Reduce API costs during development
+
+### Configuration Examples
+
+**Development (RAG enabled with verbose logging):**
+```env
+RAG_ENABLED=true
+RAG_EMBEDDING_MODEL=text-embedding-004
+RAG_SIMILARITY_THRESHOLD=0.6
+RAG_MAX_RETRIEVED_DOCS=10
+```
+
+**Production (RAG enabled with optimized settings):**
+```env
+RAG_ENABLED=true
+RAG_EMBEDDING_MODEL=text-embedding-004
+RAG_SIMILARITY_THRESHOLD=0.7
+RAG_MAX_RETRIEVED_DOCS=5
+RAG_CACHE_TTL_SECONDS=7200
+```
+
+**Testing (RAG disabled):**
+```env
+RAG_ENABLED=false
+```
+
+### How RAG Works
+
+1. **Content Creation**: When users create journal entries, goals, or milestones, the content is automatically converted to vector embeddings
+2. **Storage**: Embeddings are stored in Firestore with metadata (user ID, content type, timestamps)
+3. **Semantic Search**: When the AI coach responds to queries, it performs semantic search to find relevant past content
+4. **Context Enhancement**: Retrieved content is included in the AI prompt for more personalized responses
+
+### Migration
+
+To backfill embeddings for existing content, use the CLI command:
+
+```bash
+# Migrate all users
+pnpm cli migrate:rag
+
+# Migrate specific user
+pnpm cli migrate:rag --userId=user123
+
+# Dry run (test without making changes)
+pnpm cli migrate:rag --dryRun
+```
+
+See `backend/src/rag/MIGRATION_GUIDE.md` for detailed migration instructions.
 
 ## 🧪 Testing
 

@@ -9,6 +9,7 @@ import {
   CreateProgressDto,
 } from '@/common/dto/goal.dto'
 import { Goal, Milestone, GoalStatus, ProgressUpdate } from '@/common/types/goal.types'
+import { RagService } from '@/rag/rag.service'
 
 @Injectable()
 export class GoalService {
@@ -20,7 +21,10 @@ export class GoalService {
   private readonly goalCountsCache = new Map<string, { counts: any; timestamp: number }>()
   private readonly CACHE_TTL = 60000 // 1 minute cache TTL
 
-  constructor(private readonly firebaseService: FirebaseService) {}
+  constructor(
+    private readonly firebaseService: FirebaseService,
+    private readonly ragService: RagService,
+  ) {}
 
   async createGoal(userId: string, createGoalDto: CreateGoalDto): Promise<Goal> {
     try {
@@ -51,6 +55,25 @@ export class GoalService {
       this.clearUserCache(userId)
 
       this.logger.log(`Goal created: ${result.id} for user: ${userId}`)
+
+      // Generate embedding for the goal (async, non-blocking)
+      this.ragService.embedContent({
+        userId,
+        contentType: 'goal',
+        documentId: result.id,
+        text: `${createGoalDto.title}\n\n${createGoalDto.description || ''}`,
+        metadata: {
+          category: createGoalDto.category,
+          status: 'not_started',
+          target_date: targetDate.toISOString(),
+        },
+      }, true).catch(err => {
+        this.logger.error('Failed to embed goal', {
+          error: err.message,
+          goalId: result.id,
+          userId,
+        });
+      });
 
       return {
         id: result.id,
@@ -112,6 +135,29 @@ export class GoalService {
       this.clearUserCache(userId)
 
       this.logger.log(`Batch created ${goalsData.length} goals for user: ${userId}`)
+
+      // Generate embeddings for all created goals (async, non-blocking)
+      createdGoals.forEach((goal, index) => {
+        const goalDto = goalsData[index];
+        this.ragService.embedContent({
+          userId,
+          contentType: 'goal',
+          documentId: goal.id,
+          text: `${goalDto.title}\n\n${goalDto.description || ''}`,
+          metadata: {
+            category: goalDto.category,
+            status: 'not_started',
+            target_date: goal.target_date.toISOString(),
+          },
+        }, true).catch(err => {
+          this.logger.error('Failed to embed goal in batch', {
+            error: err.message,
+            goalId: goal.id,
+            userId,
+          });
+        });
+      });
+
       return createdGoals
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -310,6 +356,28 @@ export class GoalService {
 
       this.logger.log(`Goal updated: ${goalId} for user: ${userId}`)
 
+      // Update embedding if title or description changed
+      if (updateGoalDto.title !== undefined || updateGoalDto.description !== undefined) {
+        const updatedGoal = await this.getGoalById(userId, goalId);
+        this.ragService.embedContent({
+          userId,
+          contentType: 'goal',
+          documentId: goalId,
+          text: `${updatedGoal.title}\n\n${updatedGoal.description || ''}`,
+          metadata: {
+            category: updatedGoal.category,
+            status: updatedGoal.status,
+            target_date: updatedGoal.target_date.toISOString(),
+          },
+        }, true).catch(err => {
+          this.logger.error('Failed to update goal embedding', {
+            error: err.message,
+            goalId,
+            userId,
+          });
+        });
+      }
+
       return this.getGoalById(userId, goalId)
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof BadRequestException) {
@@ -402,6 +470,40 @@ export class GoalService {
       this.clearUserCache(userId)
 
       this.logger.log(`Goal deleted with cascade: ${goalId} for user: ${userId}`)
+
+      // Delete embeddings for goal and all related content (async, non-blocking)
+      // Delete goal embedding
+      this.ragService.deleteEmbeddings(userId, goalId).catch(err => {
+        this.logger.error('Failed to delete goal embedding', {
+          error: err.message,
+          goalId,
+          userId,
+        });
+      });
+
+      // Delete milestone embeddings
+      milestonesSnapshot.docs.forEach((doc) => {
+        this.ragService.deleteEmbeddings(userId, doc.id).catch(err => {
+          this.logger.error('Failed to delete milestone embedding', {
+            error: err.message,
+            milestoneId: doc.id,
+            goalId,
+            userId,
+          });
+        });
+      });
+
+      // Delete progress update embeddings
+      progressSnapshot.docs.forEach((doc) => {
+        this.ragService.deleteEmbeddings(userId, doc.id).catch(err => {
+          this.logger.error('Failed to delete progress update embedding', {
+            error: err.message,
+            progressId: doc.id,
+            goalId,
+            userId,
+          });
+        });
+      });
 
       return { success: true, message: 'Goal deleted successfully' }
     } catch (error) {
@@ -576,6 +678,27 @@ export class GoalService {
 
       this.logger.log(`Milestone added: ${docRef.id} to goal: ${goalId}`)
 
+      // Generate embedding for the milestone (async, non-blocking)
+      this.ragService.embedContent({
+        userId,
+        contentType: 'milestone',
+        documentId: docRef.id,
+        text: createMilestoneDto.title,
+        metadata: {
+          goal_id: goalId,
+          due_date: milestoneData.due_date ? milestoneData.due_date.toISOString() : null,
+          completed: false,
+          order: milestoneData.order,
+        },
+      }, true).catch(err => {
+        this.logger.error('Failed to embed milestone', {
+          error: err.message,
+          milestoneId: docRef.id,
+          goalId,
+          userId,
+        });
+      });
+
       return {
         id: docRef.id,
         ...milestoneData,
@@ -666,6 +789,29 @@ export class GoalService {
 
       if (!data) {
         throw new NotFoundException('Milestone not found after update')
+      }
+
+      // Update embedding if title changed
+      if (updateMilestoneDto.title !== undefined) {
+        this.ragService.embedContent({
+          userId,
+          contentType: 'milestone',
+          documentId: milestoneId,
+          text: data.title,
+          metadata: {
+            goal_id: goalId,
+            due_date: data.due_date ? data.due_date.toDate().toISOString() : null,
+            completed: data.completed || false,
+            order: data.order || 0,
+          },
+        }, true).catch(err => {
+          this.logger.error('Failed to update milestone embedding', {
+            error: err.message,
+            milestoneId,
+            goalId,
+            userId,
+          });
+        });
       }
 
       return {
@@ -787,6 +933,16 @@ export class GoalService {
 
       this.logger.log(`Milestone deleted: ${milestoneId} from goal: ${goalId}`)
 
+      // Delete milestone embedding (async, non-blocking)
+      this.ragService.deleteEmbeddings(userId, milestoneId).catch(err => {
+        this.logger.error('Failed to delete milestone embedding', {
+          error: err.message,
+          milestoneId,
+          goalId,
+          userId,
+        });
+      });
+
       return { success: true, message: 'Milestone deleted successfully' }
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
@@ -858,6 +1014,25 @@ export class GoalService {
 
       this.logger.log(`Progress update added: ${docRef.id} to goal: ${goalId}`)
 
+      // Generate embedding for the progress update (async, non-blocking)
+      this.ragService.embedContent({
+        userId,
+        contentType: 'progress_update',
+        documentId: docRef.id,
+        text: createProgressDto.content,
+        metadata: {
+          goal_id: goalId,
+          created_at: now.toISOString(),
+        },
+      }, true).catch(err => {
+        this.logger.error('Failed to embed progress update', {
+          error: err.message,
+          progressId: docRef.id,
+          goalId,
+          userId,
+        });
+      });
+
       return {
         id: docRef.id,
         ...progressData,
@@ -922,6 +1097,16 @@ export class GoalService {
       await progressRef.delete()
 
       this.logger.log(`Progress update deleted: ${progressId} from goal: ${goalId}`)
+
+      // Delete progress update embedding (async, non-blocking)
+      this.ragService.deleteEmbeddings(userId, progressId).catch(err => {
+        this.logger.error('Failed to delete progress update embedding', {
+          error: err.message,
+          progressId,
+          goalId,
+          userId,
+        });
+      });
 
       return { success: true, message: 'Progress update deleted successfully' }
     } catch (error) {
