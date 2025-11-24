@@ -429,7 +429,14 @@ export class GoalService {
 
       // If marking as completed, set completed_at
       if (updateStatusDto.status === 'completed') {
+        const milestones = await this.getMilestones(userId,goalId)
+        milestones.map( async (milestone) => {
+          if( !milestone.completed) {
+            await this.toggleMilestone(userId,goalId,milestone.id)
+          }
+        });
         updateData.completed_at = new Date()
+        updateData.progress_percentage = 100
       } else {
         updateData.completed_at = null
       }
