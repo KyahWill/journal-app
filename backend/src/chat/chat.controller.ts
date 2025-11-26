@@ -104,8 +104,8 @@ export class ChatController {
     return new Observable((subscriber) => {
       (async () => {
         try {
-          for await (const chunk of this.chatService.generateInsightsStream(user.uid)) {
-            subscriber.next({ data: chunk } as MessageEvent)
+          for await (const event of this.chatService.generateInsightsStream(user.uid)) {
+            subscriber.next({ data: JSON.stringify(event) } as MessageEvent)
           }
           subscriber.complete()
         } catch (error) {
@@ -139,8 +139,8 @@ export class ChatController {
     return new Observable((subscriber) => {
       (async () => {
         try {
-          for await (const chunk of this.chatService.getGoalInsightsStream(user.uid, goalId)) {
-            subscriber.next({ data: chunk } as MessageEvent)
+          for await (const event of this.chatService.getGoalInsightsStream(user.uid, goalId)) {
+            subscriber.next({ data: JSON.stringify(event) } as MessageEvent)
           }
           subscriber.complete()
         } catch (error) {

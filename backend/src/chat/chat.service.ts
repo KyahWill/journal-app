@@ -427,11 +427,16 @@ export class ChatService {
     }
   }
 
-  async *generateInsightsStream(userId: string): AsyncGenerator<string, void, unknown> {
+  async *generateInsightsStream(userId: string): AsyncGenerator<any, void, unknown> {
+    this.logger.log(`[Insights Stream] Starting streaming insight generation for user: ${userId}`)
+    
     try {
       // Check rate limit
+      this.logger.debug(`[Insights Stream] Checking rate limit for user: ${userId}`)
       const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'insights')
+      
       if (!usageInfo.allowed) {
+        this.logger.warn(`[Insights Stream] Rate limit exceeded for user: ${userId}`)
         throw new HttpException(
           {
             statusCode: HttpStatus.TOO_MANY_REQUESTS,
@@ -443,19 +448,53 @@ export class ChatService {
         )
       }
 
+      this.logger.debug(`[Insights Stream] Rate limit check passed. Remaining: ${usageInfo.remaining}/${usageInfo.limit}`)
+
+      // Send initial event with usage info
+      yield {
+        type: 'start',
+        usageInfo,
+      }
+
+      this.logger.debug(`[Insights Stream] Fetching recent journal entries for user: ${userId}`)
       const journalEntries = await this.journalService.getRecent(userId, 30)
+      this.logger.log(`[Insights Stream] Retrieved ${journalEntries.length} journal entries for user: ${userId}`)
 
       if (journalEntries.length === 0) {
-        yield 'No journal entries available to generate insights. Start writing to get personalized insights!'
+        this.logger.warn(`[Insights Stream] No journal entries found for user: ${userId}`)
+        yield {
+          type: 'chunk',
+          content: 'No journal entries available to generate insights. Start writing to get personalized insights!',
+        }
+        yield {
+          type: 'done',
+        }
         return
       }
 
+      this.logger.debug(`[Insights Stream] Starting streaming response from Gemini for user: ${userId}`)
+      let chunkCount = 0
+      
       for await (const chunk of this.geminiService.generateInsightsStream(journalEntries)) {
-        yield chunk
+        chunkCount++
+        yield {
+          type: 'chunk',
+          content: chunk,
+        }
+      }
+
+      this.logger.log(`[Insights Stream] Successfully completed streaming insights for user: ${userId}`, {
+        chunkCount,
+        entryCount: journalEntries.length,
+      })
+
+      // Send completion event
+      yield {
+        type: 'done',
       }
 
     } catch (error) {
-      this.logger.error('Error generating insights stream', error)
+      this.logger.error(`[Insights Stream] Error generating insights stream for user: ${userId}`, error.stack || error)
       throw error
     }
   }
@@ -615,11 +654,16 @@ export class ChatService {
     }
   }
 
-  async *getGoalInsightsStream(userId: string, goalId: string): AsyncGenerator<string, void, unknown> {
+  async *getGoalInsightsStream(userId: string, goalId: string): AsyncGenerator<any, void, unknown> {
+    this.logger.log(`[Goal Insights Stream] Starting streaming goal insight generation for user: ${userId}, goal: ${goalId}`)
+    
     try {
       // Check rate limit
+      this.logger.debug(`[Goal Insights Stream] Checking rate limit for user: ${userId}`)
       const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'goal_insights')
+      
       if (!usageInfo.allowed) {
+        this.logger.warn(`[Goal Insights Stream] Rate limit exceeded for user: ${userId}`)
         throw new HttpException(
           {
             statusCode: HttpStatus.TOO_MANY_REQUESTS,
@@ -631,10 +675,26 @@ export class ChatService {
         )
       }
 
+      this.logger.debug(`[Goal Insights Stream] Rate limit check passed. Remaining: ${usageInfo.remaining}/${usageInfo.limit}`)
+
+      // Send initial event with usage info and goal ID
+      yield {
+        type: 'start',
+        goalId,
+        usageInfo,
+      }
+
       // Get goal details
+      this.logger.debug(`[Goal Insights Stream] Fetching goal data for goal: ${goalId}`)
       const goal = await this.goalService.getGoalById(userId, goalId)
       const milestones = await this.goalService.getMilestones(userId, goalId)
       const progressUpdates = await this.goalService.getProgressUpdates(userId, goalId)
+      
+      this.logger.log(`[Goal Insights Stream] Retrieved goal data for goal: ${goalId}`, {
+        goalTitle: goal.title,
+        milestoneCount: milestones.length,
+        progressUpdateCount: progressUpdates.length,
+      })
 
       // Format goal data for AI
       const now = new Date()
@@ -663,15 +723,32 @@ export class ChatService {
         date: p.created_at.toISOString().split('T')[0],
       }))
 
+      this.logger.debug(`[Goal Insights Stream] Starting streaming response from Gemini for goal: ${goalId}`)
+      let chunkCount = 0
+      
       for await (const chunk of this.geminiService.generateGoalInsightsStream(
         goalData,
         formattedMilestones,
         formattedProgress
       )) {
-        yield chunk
+        chunkCount++
+        yield {
+          type: 'chunk',
+          content: chunk,
+        }
+      }
+
+      this.logger.log(`[Goal Insights Stream] Successfully completed streaming goal insights for goal: ${goalId}`, {
+        chunkCount,
+        goalProgress: goal.progress_percentage,
+      })
+
+      // Send completion event
+      yield {
+        type: 'done',
       }
     } catch (error) {
-      this.logger.error('Error generating goal insights stream', error)
+      this.logger.error(`[Goal Insights Stream] Error generating goal insights stream for goal: ${goalId}, user: ${userId}`, error.stack || error)
       throw error
     }
   }

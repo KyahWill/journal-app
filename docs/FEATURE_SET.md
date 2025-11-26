@@ -424,7 +424,7 @@ web/
 - Email auth enabled
 
 ### 12.2 Gemini Configuration
-- **Model**: gemini-2.5-pro
+- **Model**: gemini-2.5-flash
 - **Temperature**: 0.7
 - **Framework**: LangChain
 - API key required from Google AI Studio

@@ -33,6 +33,7 @@ export interface GoalContextValue extends GoalState {
   
   // Notification methods
   getNotificationCounts: () => { urgent: number; overdue: number; total: number }
+  
 }
 
 const GoalContext = createContext<GoalContextValue | undefined>(undefined)
@@ -448,13 +449,6 @@ export function GoalProvider({ children }: { children: ReactNode }) {
 
     fetchGoalsNow()
 
-    // Set up polling for updates (every 30 seconds)
-    const intervalId = setInterval(fetchGoalsNow, 30000)
-
-    // Cleanup on unmount
-    return () => {
-      clearInterval(intervalId)
-    }
   }, [isAuthenticated, user?.uid])
 
   // Memoize the context value to prevent unnecessary re-renders

@@ -612,19 +612,7 @@ class ApiClient {
                 if (onChunk) {
                   onChunk(parsed.content)
                 }
-              } else if (parsed.type === 'session') {
-                console.log('[apiClient] 🎯 Session event:', {
-                  sessionId: parsed.sessionId,
-                  userMessage: parsed.userMessage,
-                  usageInfo: parsed.usageInfo
-                })
-              } else if (parsed.type === 'done') {
-                console.log('[apiClient] ✔️ Done event:', {
-                  assistantMessage: parsed.assistantMessage,
-                  messageLength: parsed.assistantMessage?.content?.length
-                })
-              }
-              
+              }               
               yield parsed
             } catch (e) {
               console.error('[apiClient] ❌ Failed to parse JSON:', {
@@ -634,13 +622,7 @@ class ApiClient {
               })
               // Skip invalid JSON
             }
-          } else if (line.trim() === '') {
-            console.log(`[apiClient] Line ${i}: (empty line - SSE separator)`)
-          } else if (line.startsWith(':')) {
-            console.log(`[apiClient] Line ${i}: (SSE comment)`)
-          } else {
-            console.log(`[apiClient] Line ${i}: (non-data line)`)
-          }
+          } 
         }
       }
     } finally {
@@ -652,7 +634,7 @@ class ApiClient {
   /**
    * Stream insights generation using Server-Sent Events
    */
-  async *generateInsightsStream(onChunk?: (chunk: string) => void): AsyncGenerator<string, void, unknown> {
+  async *generateInsightsStream(onChunk?: (chunk: string) => void): AsyncGenerator<any, void, unknown> {
     const headers: HeadersInit = {}
 
     if (this.getToken) {
@@ -696,10 +678,24 @@ class ApiClient {
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6).trim()
-            if (data && onChunk) {
-              onChunk(data)
+            if (data) {
+              try {
+                const event = JSON.parse(data)
+                
+                // Handle chunk events - call onChunk callback
+                if (event.type === 'chunk' && event.content && onChunk) {
+                  onChunk(event.content)
+                }
+                
+                yield event
+              } catch (e) {
+                // If not JSON, treat as raw string (backward compatibility)
+                if (onChunk) {
+                  onChunk(data)
+                }
+                yield { type: 'chunk', content: data }
+              }
             }
-            yield data
           }
         }
       }
@@ -711,7 +707,7 @@ class ApiClient {
   /**
    * Stream goal insights generation using Server-Sent Events
    */
-  async *getGoalInsightsStream(goalId: string, onChunk?: (chunk: string) => void): AsyncGenerator<string, void, unknown> {
+  async *getGoalInsightsStream(goalId: string, onChunk?: (chunk: string) => void): AsyncGenerator<any, void, unknown> {
     const headers: HeadersInit = {}
 
     if (this.getToken) {
@@ -755,10 +751,24 @@ class ApiClient {
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6).trim()
-            if (data && onChunk) {
-              onChunk(data)
+            if (data) {
+              try {
+                const event = JSON.parse(data)
+                
+                // Handle chunk events - call onChunk callback
+                if (event.type === 'chunk' && event.content && onChunk) {
+                  onChunk(event.content)
+                }
+                
+                yield event
+              } catch (e) {
+                // If not JSON, treat as raw string (backward compatibility)
+                if (onChunk) {
+                  onChunk(data)
+                }
+                yield { type: 'chunk', content: data }
+              }
             }
-            yield data
           }
         }
       }

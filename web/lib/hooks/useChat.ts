@@ -269,25 +269,50 @@ export function useChat(initialSessionId?: string) {
 
   // Get AI insights with streaming
   const getInsights = useCallback(async (useStreaming: boolean = true, onChunk?: (chunk: string) => void) => {
+    console.log('[useChat] Getting insights:', { useStreaming })
     setState((prev) => ({ ...prev, loading: true, error: null, usageWarning: null }))
+    
     try {
       if (useStreaming) {
         let fullInsights = ''
-        for await (const chunk of apiClient.generateInsightsStream((c) => {
-          console.log(c)
-          fullInsights += c
-          if (onChunk) onChunk(c)
+        let usageInfoFromStream: UsageInfo | null = null
+        
+        for await (const event of apiClient.generateInsightsStream((c) => {
+          if (onChunk) {
+            onChunk(c)
+          }
         })) {
-          // Chunks are already handled by the callback
+          if (event.type === 'start') {
+            usageInfoFromStream = event.usageInfo || null
+            console.log('[useChat] Insights stream started:', { 
+              usageRemaining: usageInfoFromStream?.remaining,
+              usageLimit: usageInfoFromStream?.limit
+            })
+          } else if (event.type === 'chunk') {
+            fullInsights += event.content
+          } else if (event.type === 'done') {
+            console.log('[useChat] Insights stream completed:', { length: fullInsights.length })
+          }
         }
-        setState((prev) => ({ ...prev, loading: false, error: null }))
+        
+        setState((prev) => ({ 
+          ...prev, 
+          loading: false, 
+          error: null,
+          usageWarning: usageInfoFromStream?.warning || null
+        }))
+        
         return fullInsights
       } else {
         const response = await apiClient.generateInsights()
+        console.log('[useChat] Insights received:', { length: response.insights.length })
+        
         setState((prev) => ({ ...prev, loading: false, error: null }))
         return response.insights
       }
     } catch (error: any) {
+      console.error('[useChat] Error generating insights:', error.message)
+      
       setState((prev) => ({
         ...prev,
         loading: false,

@@ -21,7 +21,7 @@ export class GeminiService implements OnModuleInit {
 
       this.genAI = new GoogleGenerativeAI(apiKey)
       this.model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-2.5-flash-lite',
       })
 
       this.logger.log('Google Gemini AI initialized successfully')
