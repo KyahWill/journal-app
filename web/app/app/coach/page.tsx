@@ -173,7 +173,7 @@ export default function CoachChatPage() {
       
       // Use streaming to update insights in real-time
       await getInsights(true, (chunk) => {
-        setInsights((prev) => (prev || '') + chunk)
+        setInsights((prev) => (prev + '' || '') + chunk)
       })
     } catch (err: any) {
       console.error('Failed to get insights:', err)

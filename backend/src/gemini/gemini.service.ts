@@ -21,7 +21,7 @@ export class GeminiService implements OnModuleInit {
 
       this.genAI = new GoogleGenerativeAI(apiKey)
       this.model = this.genAI.getGenerativeModel({
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-2.5-flash',
       })
 
       this.logger.log('Google Gemini AI initialized successfully')
@@ -339,12 +339,12 @@ Please provide a thoughtful analysis in 3-5 paragraphs.`
       const result = await this.model.generateContentStream(prompt)
 
       let buffer = ''
-      const maxChunkSize = 5
+      const maxChunkSize = 100
       
       for await (const chunk of result.stream) {
         const chunkText = chunk.text()
         if (chunkText) {
-          buffer += chunkText
+          buffer += chunkText 
           
           while (buffer.length >= maxChunkSize) {
             const toSend = buffer.slice(0, maxChunkSize)
@@ -543,7 +543,7 @@ Keep your response conversational, supportive, and actionable (3-4 paragraphs).`
       const result = await this.model.generateContentStream(prompt)
 
       let buffer = ''
-      const maxChunkSize = 5
+      const maxChunkSize = 20
       
       for await (const chunk of result.stream) {
         const chunkText = chunk.text()

@@ -274,6 +274,7 @@ export function useChat(initialSessionId?: string) {
       if (useStreaming) {
         let fullInsights = ''
         for await (const chunk of apiClient.generateInsightsStream((c) => {
+          console.log(c)
           fullInsights += c
           if (onChunk) onChunk(c)
         })) {

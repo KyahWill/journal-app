@@ -33,10 +33,6 @@ export interface GoalContextValue extends GoalState {
   
   // Notification methods
   getNotificationCounts: () => { urgent: number; overdue: number; total: number }
-  
-  // Real-time synchronization
-  subscribeToGoals: () => void
-  unsubscribeFromGoals: () => void
 }
 
 const GoalContext = createContext<GoalContextValue | undefined>(undefined)
@@ -411,32 +407,6 @@ export function GoalProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.uid])
 
-  const subscribeToGoals = useCallback(() => {
-    if (!user?.uid) {
-      console.warn('Cannot subscribe to goals: user not authenticated')
-      return
-    }
-
-    // Initial fetch
-    fetchGoals()
-
-    // Set up polling for updates (every 30 seconds)
-    const intervalId = setInterval(() => {
-      fetchGoals()
-    }, 30000)
-
-    // Store cleanup function
-    setUnsubscribe(() => () => clearInterval(intervalId))
-  }, [user?.uid, fetchGoals])
-
-  const unsubscribeFromGoals = useCallback(() => {
-    if (unsubscribe) {
-      unsubscribe()
-      setUnsubscribe(null)
-      setGoalState((prev) => ({ ...prev, connected: false }))
-    }
-  }, [unsubscribe])
-
   // ============================================================================
   // Effects
   // ============================================================================
@@ -505,8 +475,6 @@ export function GoalProvider({ children }: { children: ReactNode }) {
     getUrgentGoals: getUrgentGoalsFn,
     sortGoals,
     getNotificationCounts: () => getNotificationCounts,
-    subscribeToGoals,
-    unsubscribeFromGoals,
   }), [
     goalState.goals,
     goalState.loading,
@@ -524,8 +492,6 @@ export function GoalProvider({ children }: { children: ReactNode }) {
     getUrgentGoalsFn,
     sortGoals,
     getNotificationCounts,
-    subscribeToGoals,
-    unsubscribeFromGoals,
   ])
 
   return <GoalContext.Provider value={value}>{children}</GoalContext.Provider>

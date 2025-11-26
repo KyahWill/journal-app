@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useGoals } from '@/lib/contexts/goal-context'
-import { Goal } from '@/lib/api/client'
+import { CustomCategory, Goal } from '@/lib/api/client'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -55,18 +55,93 @@ export function GoalSelector({ selectedGoalIds, onGoalsChange, disabled }: GoalS
   const handleRemoveGoal = (goalId: string) => {
     onGoalsChange(selectedGoalIds.filter((id) => id !== goalId))
   }
+  /**
+   * Calculates appropriate text and border colors based on a background hex.
+   * @param {string} hex - The background color (e.g. "#ffffff", "000")
+   * @param {number} borderContrast - Percent to darken/lighten border (default 20%)
+   */
+  function getDynamicColors(hex:string, borderContrast = 20) {
+      // 1. Normalize Hex (remove hash, handle 3-digit codes)
+      hex = hex.replace('#', '');
+      if (hex.length === 3) {
+          hex = hex.split('').map(char => char + char).join('');
+      }
 
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      career: 'bg-purple-100 text-purple-800 border-purple-200',
-      health: 'bg-green-100 text-green-800 border-green-200',
-      personal: 'bg-blue-100 text-blue-800 border-blue-200',
-      financial: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      relationships: 'bg-pink-100 text-pink-800 border-pink-200',
-      learning: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-      other: 'bg-gray-100 text-gray-800 border-gray-200',
+      // 2. Convert to RGB
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+
+      // 3. Calculate Brightness (YIQ formula)
+      // Formula: ((R*299) + (G*587) + (B*114)) / 1000
+      // If yiq >= 128, the background is "light".
+      const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+      const isLight = yiq >= 128;
+
+      // 4. Determine Text Color (Black or White)
+      const textColor = isLight ? '#000000' : '#ffffff';
+
+      // 5. Generate Border Color
+      // If background is light, we darken the border.
+      // If background is dark, we lighten the border.
+      const borderHex = shadeColor(hex, isLight ? -borderContrast : borderContrast);
+
+      return {
+          background: `#${hex}`,
+          text: textColor,
+          border: borderHex,
+          isLight: isLight
+      };
+  }
+
+  /**
+   * Helper: Lightens or Darkens a hex color by a percentage
+   * @param {string} color - The hex color
+   * @param {number} percent - Positive to lighten, negative to darken
+   */
+  function shadeColor(color:string, percent:number) {
+      let R: number = parseInt(color.substring(0, 2), 16);
+      let G = parseInt(color.substring(2, 4), 16);
+      let B = parseInt(color.substring(4, 6), 16);
+
+      R = (R * (100 + percent) / 100);
+      G = (G * (100 + percent) / 100);
+      B = (B * (100 + percent) / 100);
+
+      // Ensure values stay within 0-255 range
+      R = (R < 255) ? R : 255;
+      G = (G < 255) ? G : 255;
+      B = (B < 255) ? B : 255;
+
+      R = Math.round(R);
+      G = Math.round(G);
+      B = Math.round(B);
+
+      // Convert back to Hex
+      const RR = ((R.toString(16).length == 1) ? "0" + R.toString(16) : R.toString(16));
+      const GG = ((G.toString(16).length == 1) ? "0" + G.toString(16) : G.toString(16));
+      const BB = ((B.toString(16).length == 1) ? "0" + B.toString(16) : B.toString(16));
+
+      return `#${RR}${GG}${BB}`;
+  }
+      
+  const getCategoryColor = (category: string | CustomCategory) => {
+    if (typeof (category) == "string") {
+      const colors: Record<string, string> = {
+        career: 'bg-purple-100 text-purple-800 border-purple-200',
+        health: 'bg-green-100 text-green-800 border-green-200',
+        personal: 'bg-blue-100 text-blue-800 border-blue-200',
+        financial: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        relationships: 'bg-pink-100 text-pink-800 border-pink-200',
+        learning: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+        other: 'bg-gray-100 text-gray-800 border-gray-200',
+      }
+      return colors[category] || colors.other
+    } else {
+      const dynamicColors = getDynamicColors(category.color || "ffffff");
+      return `bg-[${category.color}] text-[${dynamicColors.text}] border-[${dynamicColors.border}]
+      `
     }
-    return colors[category] || colors.other
   }
 
   return (
@@ -158,7 +233,7 @@ export function GoalSelector({ selectedGoalIds, onGoalsChange, disabled }: GoalS
                             variant="outline"
                             className={`${getCategoryColor(goal.category)} text-xs px-1 py-0`}
                           >
-                            {goal.category}
+                            {typeof (goal.category) == "string"? goal.category: goal.category.name}
                           </Badge>
                           <span>{Math.round(goal.progress_percentage)}% complete</span>
                         </div>

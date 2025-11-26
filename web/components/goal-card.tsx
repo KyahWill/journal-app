@@ -60,22 +60,39 @@ function GoalCardComponent({ goal, viewMode = 'grid', milestonesCompleted = 0, m
   }
 
   // Get category color
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'career':
-        return 'bg-purple-100 text-purple-800'
-      case 'health':
-        return 'bg-green-100 text-green-800'
-      case 'personal':
-        return 'bg-blue-100 text-blue-800'
-      case 'financial':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'relationships':
-        return 'bg-pink-100 text-pink-800'
-      case 'learning':
-        return 'bg-indigo-100 text-indigo-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
+  const getCategoryColor = (category: string | import('@/lib/api/client').CustomCategory) => {
+    if (typeof category === 'string') {
+      switch (category) {
+        case 'career':
+          return 'bg-purple-100 text-purple-800'
+        case 'health':
+          return 'bg-green-100 text-green-800'
+        case 'personal':
+          return 'bg-blue-100 text-blue-800'
+        case 'financial':
+          return 'bg-yellow-100 text-yellow-800'
+        case 'relationships':
+          return 'bg-pink-100 text-pink-800'
+        case 'learning':
+          return 'bg-indigo-100 text-indigo-800'
+        default:
+          return 'bg-gray-100 text-gray-800'
+      }
+    } else {
+      // Custom category with color
+      const getDynamicColors = (hex: string) => {
+        hex = hex.replace('#', '')
+        if (hex.length === 3) {
+          hex = hex.split('').map(char => char + char).join('')
+        }
+        const r = parseInt(hex.substring(0, 2), 16)
+        const g = parseInt(hex.substring(2, 4), 16)
+        const b = parseInt(hex.substring(4, 6), 16)
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000
+        return yiq >= 128 ? 'text-black' : 'text-white'
+      }
+      const textColor = getDynamicColors(category.color || 'ffffff')
+      return `${textColor}`
     }
   }
 
@@ -85,8 +102,12 @@ function GoalCardComponent({ goal, viewMode = 'grid', milestonesCompleted = 0, m
   }
 
   // Format category text
-  const formatCategory = (category: string) => {
-    return category.charAt(0).toUpperCase() + category.slice(1)
+  const formatCategory = (category: string | import('@/lib/api/client').CustomCategory) => {
+    if (typeof category === 'string') {
+      return category.charAt(0).toUpperCase() + category.slice(1)
+    } else {
+      return category.name
+    }
   }
 
   // Handle complete goal
@@ -132,7 +153,10 @@ function GoalCardComponent({ goal, viewMode = 'grid', milestonesCompleted = 0, m
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-base sm:text-lg mb-2 break-words line-clamp-2">{goal.title}</h3>
             <div className="flex flex-wrap gap-2">
-              <Badge className={getCategoryColor(goal.category)}>
+              <Badge 
+                className={getCategoryColor(goal.category)}
+                style={typeof goal.category !== 'string' ? { backgroundColor: goal.category.color } : undefined}
+              >
                 {formatCategory(goal.category)}
               </Badge>
               <Badge className={getStatusColor(goal.status)}>

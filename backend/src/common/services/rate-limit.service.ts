@@ -17,7 +17,7 @@ export class RateLimitService {
   // Rate limits configuration
   private readonly LIMITS = {
     chat: 20,
-    insights: 3,
+    insights: 25,
     tts: 5,
     prompt_suggestions: 20,
     goal_suggestions: 10,
