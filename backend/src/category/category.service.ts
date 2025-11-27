@@ -104,7 +104,6 @@ export class CategoryService {
   async getCategoryById(userId: string, categoryId: string): Promise<CustomCategory> {
     try {
       const category = await this.firebaseService.getDocument(this.categoriesCollection, categoryId)
-
       if (!category) {
         throw new NotFoundException('Category not found')
       }

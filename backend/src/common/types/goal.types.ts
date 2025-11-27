@@ -1,3 +1,5 @@
+import { CustomCategory } from "./category.types"
+
 export type GoalCategory = 'career' | 'health' | 'personal' | 'financial' | 'relationships' | 'learning' | 'other'
 
 export type GoalStatus = 'not_started' | 'in_progress' | 'completed' | 'abandoned'
@@ -7,7 +9,7 @@ export interface Goal {
   user_id: string
   title: string
   description: string
-  category: string // Can be a default category or custom category ID
+  category: string | CustomCategory // Can be a default category or custom category ID
   status: GoalStatus
   target_date: Date
   created_at: Date

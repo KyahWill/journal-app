@@ -235,7 +235,11 @@ export default function GoalDetailPage() {
 
   // Format category text
   const formatCategory = () => {
-    return goal.category.charAt(0).toUpperCase() + goal.category.slice(1)
+    if (typeof goal.category === 'string') {
+      return goal.category.charAt(0).toUpperCase() + goal.category.slice(1)
+    } else {
+      return goal.category.name
+    }
   }
 
   return (

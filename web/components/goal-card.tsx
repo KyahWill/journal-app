@@ -3,7 +3,7 @@
 import { useState, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useGoals } from '@/lib/contexts/goal-context'
-import { Goal, GoalStatus } from '@/lib/api/client'
+import { CustomCategory, Goal, GoalStatus } from '@/lib/api/client'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -102,7 +102,7 @@ function GoalCardComponent({ goal, viewMode = 'grid', milestonesCompleted = 0, m
   }
 
   // Format category text
-  const formatCategory = (category: string | import('@/lib/api/client').CustomCategory) => {
+  const formatCategory = (category: string | CustomCategory) => {
     if (typeof category === 'string') {
       return category.charAt(0).toUpperCase() + category.slice(1)
     } else {

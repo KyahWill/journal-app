@@ -280,7 +280,7 @@ export class ContextBuilderService {
             id: goal.id,
             title: goal.title,
             description: goal.description,
-            category: goal.category,
+            category: (typeof goal.category == 'string')?goal.category: goal.category.name,
             status: goal.status,
             progress: goal.progress_percentage || 0,
             targetDate: goal.target_date.toISOString().split('T')[0],

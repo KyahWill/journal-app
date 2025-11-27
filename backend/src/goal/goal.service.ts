@@ -10,6 +10,7 @@ import {
 } from '@/common/dto/goal.dto'
 import { Goal, Milestone, GoalStatus, ProgressUpdate } from '@/common/types/goal.types'
 import { RagService } from '@/rag/rag.service'
+import { CategoryService } from '@/category/category.service'
 
 @Injectable()
 export class GoalService {
@@ -24,7 +25,9 @@ export class GoalService {
   constructor(
     private readonly firebaseService: FirebaseService,
     private readonly ragService: RagService,
+    private readonly categoryService: CategoryService,
   ) {}
+
 
   async createGoal(userId: string, createGoalDto: CreateGoalDto): Promise<Goal> {
     try {
@@ -39,13 +42,23 @@ export class GoalService {
         user_id: userId,
         title: createGoalDto.title,
         description: createGoalDto.description || '',
-        category: createGoalDto.category,
         status: 'not_started' as GoalStatus,
         target_date: targetDate,
         completed_at: null,
         status_changed_at: now,
         last_activity: now,
         progress_percentage: 0,
+      }
+      if (await this.categoryService.isDefaultCategory(createGoalDto.category)) {
+        data.category = createGoalDto.category
+      }else {
+        try {
+          data.categoryService = await this.categoryService.getCategoryById(userId, data.categoryService);
+        } catch (e) {
+          this.logger.error(`Invalid category: ${createGoalDto.category}`)
+        } finally {
+          data.category = createGoalDto.category
+        }
       }
 
       this.logger.log(`Creating goal for user: ${userId}`)
@@ -257,23 +270,33 @@ export class GoalService {
       const goalsToReturn = hasMore ? goals.slice(0, pageLimit) : goals
       const nextCursor = hasMore ? goalsToReturn[goalsToReturn.length - 1].id : null
 
-      const mappedGoals = goalsToReturn.map((goal: any) => ({
-        id: goal.id,
-        user_id: goal.user_id,
-        title: goal.title,
-        description: goal.description,
-        category: goal.category,
-        status: goal.status,
-        target_date: goal.target_date?.toDate() || new Date(),
-        created_at: goal.created_at?.toDate() || new Date(),
-        updated_at: goal.updated_at?.toDate() || new Date(),
-        completed_at: goal.completed_at?.toDate() || null,
-        status_changed_at: goal.status_changed_at?.toDate() || new Date(),
-        last_activity: goal.last_activity?.toDate() || new Date(),
-        progress_percentage: goal.progress_percentage || 0,
-      }))
+      const mappedGoals = await Promise.all(
+        goalsToReturn.map(async (goal: any) => {
+
+          const goalCategory = this.categoryService.isDefaultCategory(goal.category)?
+            goal.category:
+            await this.categoryService.getCategoryById(userId, goal.category)
+
+          return {
+            id: goal.id,
+            user_id: goal.user_id,
+            title: goal.title,
+            description: goal.description,
+            category: goalCategory,
+            status: goal.status,
+            target_date: goal.target_date?.toDate() || new Date(),
+            created_at: goal.created_at?.toDate() || new Date(),
+            updated_at: goal.updated_at?.toDate() || new Date(),
+            completed_at: goal.completed_at?.toDate() || null,
+            status_changed_at: goal.status_changed_at?.toDate() || new Date(),
+            last_activity: goal.last_activity?.toDate() || new Date(),
+            progress_percentage: goal.progress_percentage || 0,
+          }
+        })
+      )
 
       return { goals: mappedGoals, nextCursor }
+
     } catch (error) {
       this.logger.error('Error fetching goals', error)
       throw error
@@ -297,6 +320,10 @@ export class GoalService {
       if (goal.user_id !== userId) {
         throw new ForbiddenException('You do not have access to this goal')
       }
+
+      goal.category = this.categoryService.isDefaultCategory(goal.category)?
+        goal.category:
+        await this.categoryService.getCategoryById(userId, goal.category)
 
       return {
         id: goal.id,
