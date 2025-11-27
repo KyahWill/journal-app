@@ -248,53 +248,6 @@ export class ThemeService {
       throw error
     }
   }
-
-  async getRecommendations(
-    userId: string,
-    recommendThemeDto: RecommendThemeDto,
-  ): Promise<{ suggestions: string }> {
-    try {
-      const { mood, preferences } = recommendThemeDto
-
-      const prompt = `You are a UI/UX design expert specializing in color theory and theme design.
-
-User context:
-${mood ? `- Current mood/preference: ${mood}` : ''}
-${preferences ? `- Additional preferences: ${preferences}` : ''}
-
-Generate a color scheme recommendation for a journaling application theme. Provide:
-1. A color palette with background, foreground, primary, secondary, accent, and muted colors
-2. Explanation of the psychology behind your color choices
-3. Suggestions for typography (font pairing, sizes)
-4. Spacing and density recommendations
-
-Format your response as JSON with this structure:
-{
-  "colors": {
-    "background": "HSL value (e.g., '0 0% 100%')",
-    "foreground": "HSL value",
-    "primary": "HSL value",
-    "secondary": "HSL value",
-    "accent": "HSL value",
-    "muted": "HSL value"
-  },
-  "explanation": "Brief explanation of color psychology",
-  "typography": {
-    "suggestion": "Font pairing suggestion",
-    "baseFontSize": 16
-  },
-  "spacing": "Recommendation for density and spacing"
-}`
-
-      const result = await this.geminiService.analyzePrompt(prompt)
-
-      return { suggestions: result.suggestions }
-    } catch (error) {
-      this.logger.error('Error generating theme recommendations', error)
-      throw error
-    }
-  }
-
   private async unsetAllDefaults(userId: string): Promise<void> {
     try {
       const defaultThemes = await this.firebaseService.getCollection(

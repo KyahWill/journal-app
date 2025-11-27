@@ -49,14 +49,6 @@ export class ThemeController {
     return this.themeService.createTheme(user.uid, createThemeDto)
   }
 
-  @Post('recommend')
-  async getRecommendations(
-    @Body() recommendThemeDto: RecommendThemeDto,
-    @CurrentUser() user: any,
-  ): Promise<{ suggestions: string }> {
-    return this.themeService.getRecommendations(user.uid, recommendThemeDto)
-  }
-
   @Patch(':id')
   async updateTheme(
     @Param('id') id: string,
