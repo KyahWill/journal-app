@@ -434,6 +434,18 @@ AppModule (Root)
 │     ├─ uses: GeminiService
 │     └─ uses: JournalService
 │
+├─ ThemeModule
+│  ├─ ThemeController
+│  └─ ThemeService
+│     └─ uses: FirebaseService
+│
+├─ GoalModule
+│  ├─ GoalController
+│  │  └─ uses: AuthGuard
+│  └─ GoalService
+│     ├─ uses: FirebaseService
+│     └─ uses: CategoryService 
+│
 └─ VoiceCoachModule
    ├─ VoiceCoachController
    │  └─ uses: AuthGuard
