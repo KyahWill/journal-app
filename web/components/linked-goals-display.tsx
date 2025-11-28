@@ -188,9 +188,9 @@ export function LinkedGoalsDisplay({ journalEntryId }: LinkedGoalsDisplayProps) 
                     <div className="flex items-center gap-1">
                       <Badge
                         variant="outline"
-                        className={`${getCategoryColor(goal.category)} text-xs`}
+                        className={`${typeof goal.category == 'string'?  getCategoryColor(goal.category) : `bg-[${goal.category.color}]`} text-xs`}
                       >
-                        {goal.category}
+                        {typeof goal.category == 'string'? goal.category : goal.category.name}
                       </Badge>
                     </div>
 
