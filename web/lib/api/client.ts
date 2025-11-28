@@ -209,14 +209,14 @@ export interface GoalJournalLink {
 export interface CreateGoalData {
   title: string
   description?: string
-  category: string // Can be a default category or custom category ID
+  category: string | CustomCategory 
   target_date: string
 }
 
 export interface UpdateGoalData {
   title?: string
   description?: string
-  category?: string // Can be a default category or custom category ID
+  category?: string | CustomCategory
   target_date?: string
 }
 

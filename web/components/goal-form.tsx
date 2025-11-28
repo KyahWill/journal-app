@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useGoals } from '@/lib/contexts/goal-context'
-import { Goal, CreateGoalData, UpdateGoalData, apiClient, CategoryWithType } from '@/lib/api/client'
+import { Goal, CreateGoalData, UpdateGoalData, apiClient, CategoryWithType, CustomCategory } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -45,7 +45,7 @@ export function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
   // Form state
   const [title, setTitle] = useState(goal?.title || '')
   const [description, setDescription] = useState(goal?.description || '')
-  const [category, setCategory] = useState<string>(goal?.category || 'personal')
+  const [category, setCategory] = useState<string | CustomCategory>(goal?.category || 'personal')
   const [targetDate, setTargetDate] = useState(
     goal?.target_date ? format(new Date(goal.target_date), 'yyyy-MM-dd') : ''
   )
@@ -369,7 +369,7 @@ export function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
               Category <span className="text-red-500" aria-label="required">*</span>
             </Label>
             <Select
-              value={category}
+              value={(typeof goal?.category == "string")? goal?.category : goal?.category.name}
               onValueChange={(value) => setCategory(value)}
               disabled={isSubmitting || isLoadingCategories}
               required
