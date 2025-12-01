@@ -36,7 +36,7 @@ Before you begin, ensure you have the following installed and configured:
   - Service account key generated
 - **Google Gemini API Key** - For AI coaching features
 - **ElevenLabs API Key** (Optional) - For voice coaching features
-- **Supabase Account** (Optional) - For RAG vector storage
+- **Firebase Account** - For database and vector storage
 
 **→ [Detailed Prerequisites Guide](setup/prerequisites.md)**
 

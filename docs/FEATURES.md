@@ -425,7 +425,7 @@ Real-time voice coaching with ElevenLabs Conversational AI, featuring multiple c
 **Status**: ✅ Complete
 
 ### Overview
-Retrieval-Augmented Generation system for semantic search and context-aware AI responses using Supabase vector store.
+Retrieval-Augmented Generation system for semantic search and context-aware AI responses using Firebase vector store.
 
 ### Key Features
 
@@ -444,7 +444,7 @@ Retrieval-Augmented Generation system for semantic search and context-aware AI r
 - Batch operations
 
 #### Vector Store
-- Supabase pgvector integration
+- Firebase Cloud Vector integration
 - Efficient similarity search
 - Indexed vector columns
 - Scalable storage
@@ -464,16 +464,16 @@ Retrieval-Augmented Generation system for semantic search and context-aware AI r
 ### Technical Implementation
 
 **Stack**:
-- Supabase pgvector extension
+- Firebase vector search
 - Google Gemini for embeddings
 - NestJS service layer
-- PostgreSQL for storage
+- Firestore for storage
 
 **Database**:
-- Supabase table: `journal_embeddings`
-- Vector column with 768 dimensions
+- Firestore collection: `journal_embeddings`
+- Vector field with 768 dimensions
 - Indexes for performance
-- RLS policies for security
+- Security rules for data protection
 
 **Components**:
 - RAG service for embeddings
@@ -488,7 +488,7 @@ Retrieval-Augmented Generation system for semantic search and context-aware AI r
 
 ### Related Documentation
 - [RAG System Details](./features/rag-system.md)
-- [Supabase Integration](./integrations/supabase.md)
+- [Firebase Integration](./integrations/firebase.md)
 - [API Reference](./API_REFERENCE.md#rag)
 
 ---
@@ -692,7 +692,7 @@ User-defined goal categories with custom colors and icons, extending beyond defa
 
 #### Database
 - Firestore for primary data
-- Supabase for vector storage
+- Firebase for vector storage
 - Real-time subscriptions
 - Composite indexes
 - Row-level security
@@ -701,7 +701,7 @@ User-defined goal categories with custom colors and icons, extending beyond defa
 - Firebase Authentication
 - Google Gemini AI
 - ElevenLabs Voice AI
-- Supabase pgvector
+- Firebase vector search
 
 #### API Features
 - RESTful endpoints
@@ -814,14 +814,14 @@ User-defined goal categories with custom colors and icons, extending beyond defa
 ### Backend
 - **Framework**: NestJS
 - **Language**: TypeScript
-- **Database**: Firestore + Supabase
+- **Database**: Firestore + Firebase
 - **AI**: Google Gemini + LangChain
 - **Voice**: ElevenLabs Conversational AI
 
 ### Infrastructure
 - **Hosting**: Google Cloud Run
 - **Authentication**: Firebase Auth
-- **Database**: Firestore + Supabase
+- **Database**: Firestore + Firebase
 - **Storage**: Firebase Storage
 - **CDN**: Google Cloud CDN
 

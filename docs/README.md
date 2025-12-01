@@ -42,7 +42,7 @@ Focus on API and services:
 ### 🚀 DevOps / Platform Engineer
 Focus on deployment and infrastructure:
 - [Deployment Guide](setup/deployment.md) - Production deployment
-- [Database Setup](setup/database-setup.md) - Firestore and Supabase
+- [Database Setup](setup/database-setup.md) - Firestore and Firebase
 - [Environment Variables](setup/environment-variables.md) - Configuration
 - [Troubleshooting](guides/troubleshooting.md) - Common issues
 - [Security Architecture](architecture/security-architecture.md) - Security patterns
@@ -76,7 +76,7 @@ Get the app running:
 - [Prerequisites](setup/prerequisites.md) - Required tools and accounts
 - [Web Setup](setup/web-setup.md) - Frontend setup
 - [Backend Setup](setup/backend-setup.md) - API setup
-- [Database Setup](setup/database-setup.md) - Firestore and Supabase
+- [Database Setup](setup/database-setup.md) - Firestore and Firebase
 - [Environment Variables](setup/environment-variables.md) - Configuration
 - [Deployment](setup/deployment.md) - Production deployment
 
@@ -91,7 +91,6 @@ Work with APIs and external services:
 - [RAG API](api/rag-api.md) - RAG system
 - **Integrations:**
   - [Firebase](integrations/firebase.md) - Auth and database
-  - [Supabase](integrations/supabase.md) - Additional storage
   - [Google Gemini](integrations/gemini.md) - AI models
   - [ElevenLabs](integrations/elevenlabs.md) - Voice synthesis
 

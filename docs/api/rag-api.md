@@ -13,7 +13,7 @@ The RAG (Retrieval-Augmented Generation) API provides health monitoring and metr
 RAG (Retrieval-Augmented Generation) enhances AI responses by:
 
 1. **Embedding Generation**: Converting text to vector embeddings
-2. **Vector Storage**: Storing embeddings in Supabase with pgvector
+2. **Vector Storage**: Storing embeddings in Firebase with vector search
 3. **Semantic Search**: Finding relevant content by meaning, not just keywords
 4. **Context Retrieval**: Providing relevant context to AI for better responses
 
@@ -189,10 +189,10 @@ Converts text to vector embeddings using Google's Gemini API.
 
 ### 2. Vector Store
 
-Stores and searches embeddings using Supabase with pgvector extension.
+Stores and searches embeddings using Firebase with vector search capabilities.
 
-**Database**: PostgreSQL with pgvector
-**Index Type**: HNSW (Hierarchical Navigable Small World)
+**Database**: Firestore with vector search
+**Index Type**: Optimized vector indexing
 **Distance Metric**: Cosine similarity
 
 **Collections**:
@@ -333,7 +333,7 @@ RAG enables semantic search:
 **Checks**:
 1. Verify `RAG_ENABLED=true` in environment
 2. Check `GEMINI_API_KEY` is valid
-3. Verify Supabase connection
+3. Verify Firebase connection
 4. Check health endpoint status
 5. Review metrics for errors
 

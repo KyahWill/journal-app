@@ -295,19 +295,19 @@ Required only if you want to enable voice coaching features.
 - Free tier: 10,000 characters/month
 - Paid plans available for higher usage
 
-### Supabase (RAG Vector Storage)
+### Firebase Vector Search (RAG Storage)
 
-Optional alternative to Firestore for vector embeddings.
+Firebase Firestore with vector search capabilities for embeddings.
 
 **Setup Steps:**
 
-1. **Create Account**
-   - Go to [Supabase](https://supabase.com/)
-   - Sign up for an account
+1. **Enable Firestore**
+   - Already included in Firebase setup above
+   - No additional account needed
 
-2. **Create Project**
-   - Click "New project"
-   - Enter project details
+2. **Configure Vector Search**
+   - Create appropriate indexes
+   - Set up security rules
    - Wait for project to be provisioned
 
 3. **Get Credentials**

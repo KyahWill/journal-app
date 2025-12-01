@@ -248,7 +248,7 @@ async *sendMessageStream(
 **Process**:
 1. Clean and prepare text content
 2. Generate embedding using text-embedding-004
-3. Store 768-dimensional vector in Supabase
+3. Store 768-dimensional vector in Firebase
 4. Use for semantic search
 
 **Implementation**:

@@ -15,7 +15,7 @@ This document provides a comprehensive overview of all features available in the
 ### 1.2 User Login
 - **Email/password authentication**
 - Session persistence across app restarts
-- Secure token management via Supabase Auth
+- Secure token management via Firebase Auth
 - Remember user session
 - Login error handling (invalid credentials, network errors)
 
@@ -89,7 +89,7 @@ This document provides a comprehensive overview of all features available in the
 
 ### 2.6 Real-time Sync
 - **Live updates** when entries change
-- Supabase real-time subscriptions
+- Firebase real-time subscriptions
 - Auto-refresh entry list on:
   - New entry creation
   - Entry updates
@@ -266,7 +266,7 @@ CREATE INDEX idx_journal_entries_created_at ON journal_entries(created_at DESC);
 ## 7. Security Features
 
 ### 7.1 Authentication Security
-- Secure password hashing (Supabase Auth)
+- Secure password hashing (Firebase Auth)
 - JWT token-based authentication
 - Automatic token refresh
 - Secure session storage
@@ -330,7 +330,7 @@ web/
 │   ├── dashboard/    # Protected pages
 │   └── page.tsx      # Landing page
 ├── lib/
-│   ├── supabase/     # Supabase clients
+│   ├── firebase/     # Firebase clients
 │   ├── ai/           # AI coach logic
 │   └── types.ts      # TypeScript types
 ├── components/ui/    # Reusable UI components
@@ -348,8 +348,8 @@ web/
 ### 10.3 Dependencies
 ```json
 {
-  "@supabase/ssr": "^0.7.0",           // Supabase integration
-  "@supabase/supabase-js": "^2.83.0",  // Supabase client
+  "firebase": "^0.7.0",           // Firebase integration
+  "firebase-admin": "^2.83.0",  // Firebase client
   "langchain": "^1.0.6",                // LangChain framework
   "@langchain/google-genai": "^1.0.3",  // Gemini integration
   "date-fns": "^4.1.0",                 // Date formatting
@@ -416,10 +416,10 @@ web/
 
 ## 12. Configuration Details
 
-### 12.1 Supabase Configuration
-- **Project ID**: yxzrouafcalytlbzmzmg
+### 12.1 Firebase Configuration
+- **Project ID**: your-project-id
 - **Region**: US West (Oregon)
-- **API URL**: https://yxzrouafcalytlbzmzmg.supabase.co
+- **API URL**: https://your-project.firebaseapp.com
 - Real-time enabled
 - Email auth enabled
 
@@ -431,8 +431,9 @@ web/
 
 ### 12.3 Environment Variables
 ```
-SUPABASE_URL=https://yxzrouafcalytlbzmzmg.supabase.co
-SUPABASE_ANON_KEY=<anon_key>
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY=<private_key>
 GEMINI_API_KEY=<your_key>
 ```
 
@@ -505,7 +506,7 @@ This application is built with the following technologies:
 - **Framework**: Next.js 14+ with App Router
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS + shadcn/ui
-- **Backend**: Supabase (PostgreSQL, Auth, Real-time)
+- **Backend**: Firebase (Firestore, Auth, Real-time)
 - **AI**: Google Gemini via LangChain
 - **Deployment**: Google Cloud Run
 
@@ -519,8 +520,8 @@ This application is built with the following technologies:
 - Progressive Web App (PWA) ready
 
 ### 15.3 Database & Security
-- Supabase PostgreSQL database
-- Row Level Security (RLS) policies
+- Firebase Firestore database
+- Security Rules for data protection
 - Secure authentication with JWT tokens
 - Real-time subscriptions for live updates
 

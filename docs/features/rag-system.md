@@ -53,8 +53,8 @@ The RAG (Retrieval-Augmented Generation) system provides semantic search capabil
 
 ### Vector Store
 
-#### Supabase pgvector
-- PostgreSQL extension for vector storage
+#### Firebase Vector Search
+- Firestore with vector search capabilities
 - Efficient similarity search
 - Indexed vector columns
 - Scalable storage
@@ -140,7 +140,7 @@ CREATE INDEX idx_journal_embeddings_embedding
 - Batch processing
 
 #### Vector Store Service
-- Supabase integration
+- Firebase integration
 - Vector operations
 - Similarity search
 - Index management
@@ -245,7 +245,7 @@ Embeddings are generated using Google Gemini:
 1. Extract text from journal entry
 2. Send to Gemini embedding API
 3. Receive 768-dimensional vector
-4. Store in Supabase with metadata
+4. Store in Firebase with metadata
 5. Index for fast similarity search
 
 **Optimization**:
@@ -412,12 +412,12 @@ curl -X POST http://localhost:3001/api/v1/rag/migrate \
 
 **Possible Causes**:
 1. Embedding generation failed
-2. Supabase connection issue
+2. Firebase connection issue
 3. Gemini API error
 
 **Solutions**:
 1. Check backend logs
-2. Verify Supabase connection
+2. Verify Firebase connection
 3. Check Gemini API key
 4. Run migration script
 
@@ -459,9 +459,10 @@ curl -X POST http://localhost:3001/api/v1/rag/migrate \
 # Gemini API
 GEMINI_API_KEY=your-gemini-api-key
 
-# Supabase
-SUPABASE_URL=your-supabase-url
-SUPABASE_SERVICE_KEY=your-service-key
+# Firebase
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY=your-private-key
 
 # RAG Settings
 RAG_EMBEDDING_DIMENSIONS=768
@@ -474,13 +475,11 @@ RAG_RATE_LIMIT=10
 
 ### Deployment
 
-**Supabase Setup**:
+**Firebase Setup**:
 ```bash
-# Enable pgvector extension
-CREATE EXTENSION IF NOT EXISTS vector;
-
-# Create table and indexes
-psql -f backend/scripts/setup-rag.sql
+# Create Firestore indexes
+# Deploy security rules
+firebase deploy --only firestore:indexes,firestore:rules
 
 # Deploy indexes
 bash backend/scripts/deploy-rag-indexes.sh
@@ -522,7 +521,7 @@ bash backend/scripts/verify-rag-indexes.sh
 ## Related Documentation
 
 - [API Reference](../API_REFERENCE.md#rag)
-- [Supabase Integration](../integrations/supabase.md)
+- [Firebase Vector Search](../integrations/firebase-vector-search.md)
 - [Gemini Integration](../integrations/gemini.md)
 - [Chat Feature](./chat.md)
 - [Voice Coach Feature](./voice-coach.md)
