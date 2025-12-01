@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MigrationService } from './rag/migration.service';
+import { MilestoneMigrationService } from './goal/milestone-migration.service';
 import { Logger } from '@nestjs/common';
 
 const logger = new Logger('CLI');
@@ -12,6 +13,7 @@ const logger = new Logger('CLI');
  *   npm run cli migrate-embeddings --userId=<user-id>
  *   npm run cli migrate-embeddings --all-users
  *   npm run cli migrate-embeddings --userId=<user-id> --dry-run
+ *   npm run cli migrate-milestones [--userId=<user-id>] [--dry-run] [--cleanup]
  */
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule, {
@@ -19,6 +21,7 @@ async function bootstrap() {
   });
 
   const migrationService = app.get(MigrationService);
+  const milestoneMigrationService = app.get(MilestoneMigrationService);
 
   // Parse command line arguments
   const args = process.argv.slice(2);
@@ -34,6 +37,9 @@ async function bootstrap() {
     switch (command) {
       case 'migrate-embeddings':
         await handleMigrateEmbeddings(migrationService, args.slice(1));
+        break;
+      case 'migrate-milestones':
+        await handleMigrateMilestones(milestoneMigrationService, args.slice(1));
         break;
       default:
         logger.error(`Unknown command: ${command}`);
@@ -240,6 +246,12 @@ function parseOptions(args: string[]): any {
       options.allUsers = true;
     } else if (arg === '--dry-run') {
       options.dryRun = true;
+    } else if (arg === '--cleanup') {
+      options.cleanup = true;
+    } else if (arg === '--stats') {
+      options.stats = true;
+    } else if (arg === '--help') {
+      options.help = true;
     }
   }
 
@@ -280,12 +292,102 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Handle migrate-milestones command
+ */
+async function handleMigrateMilestones(
+  milestoneMigrationService: MilestoneMigrationService,
+  args: string[],
+): Promise<void> {
+  const options = parseOptions(args);
+
+  // Show help
+  if (options.help) {
+    printMilestonesUsage();
+    return;
+  }
+
+  // Show stats
+  if (options.stats) {
+    logger.log('Fetching migration statistics...');
+    const stats = await milestoneMigrationService.getMigrationStats();
+    logger.log('\n' + '='.repeat(60));
+    logger.log('MILESTONE MIGRATION STATISTICS');
+    logger.log('='.repeat(60));
+    logger.log(`Total goals: ${stats.totalGoals}`);
+    logger.log(`Already migrated: ${stats.alreadyMigrated}`);
+    logger.log(`Needs migration: ${stats.needsMigration}`);
+    logger.log(`Total milestones: ${stats.totalMilestones}`);
+    logger.log('='.repeat(60));
+    return;
+  }
+
+  // Dry run mode
+  if (options.dryRun) {
+    logger.log('DRY RUN MODE - No changes will be made');
+  }
+
+  // Cleanup mode warning
+  if (options.cleanup && !options.dryRun) {
+    logger.warn('⚠️  CLEANUP MODE - Old milestone subcollections will be DELETED');
+    logger.warn('⚠️  Make sure you have a backup before proceeding!');
+    logger.log('Waiting 5 seconds...');
+    await sleep(5000);
+  }
+
+  const startTime = Date.now();
+  let result;
+
+  if (options.userId) {
+    logger.log(`Migrating milestones for user: ${options.userId}`);
+    result = await milestoneMigrationService.migrateUserGoals(options.userId, {
+      dryRun: options.dryRun,
+      cleanup: options.cleanup,
+    });
+  } else {
+    logger.log('Migrating milestones for all goals...');
+    result = await milestoneMigrationService.migrateAllGoals({
+      dryRun: options.dryRun,
+      cleanup: options.cleanup,
+    });
+  }
+
+  // Print results
+  logger.log('\n' + '='.repeat(60));
+  logger.log('MILESTONE MIGRATION RESULT');
+  logger.log('='.repeat(60));
+  logger.log(`Total goals: ${result.totalGoals}`);
+  logger.log(`Migrated: ${result.migratedGoals}`);
+  logger.log(`Skipped (already migrated): ${result.skippedGoals}`);
+  logger.log(`Errors: ${result.errors.length}`);
+  logger.log(`Duration: ${formatDuration(result.duration)}`);
+  logger.log('='.repeat(60));
+
+  if (result.errors.length > 0) {
+    logger.log('\nErrors:');
+    result.errors.forEach((error) => {
+      logger.log(`  - Goal ${error.goalId}: ${error.error}`);
+    });
+  }
+
+  if (options.dryRun) {
+    logger.log('\n✓ Dry run complete. Run without --dry-run to perform actual migration.');
+  } else {
+    logger.log('\n✓ Migration completed successfully!');
+    if (!options.cleanup) {
+      logger.log('\nNote: Old milestone subcollections were preserved.');
+      logger.log('Run with --cleanup flag to delete them after verifying the migration.');
+    }
+  }
+}
+
+/**
  * Print general usage
  */
 function printUsage(): void {
   logger.log('\nUsage: npm run cli <command> [options]');
   logger.log('\nAvailable commands:');
   logger.log('  migrate-embeddings    Migrate existing content to generate embeddings');
+  logger.log('  migrate-milestones    Migrate milestones from subcollection to array');
   logger.log('\nFor command-specific help, run: npm run cli <command> --help');
 }
 
@@ -302,6 +404,26 @@ function printMigrateUsage(): void {
   logger.log('  npm run cli migrate-embeddings --userId=user123');
   logger.log('  npm run cli migrate-embeddings --all-users');
   logger.log('  npm run cli migrate-embeddings --userId=user123 --dry-run');
+}
+
+/**
+ * Print migrate-milestones usage
+ */
+function printMilestonesUsage(): void {
+  logger.log('\nUsage: npm run cli migrate-milestones [options]');
+  logger.log('\nOptions:');
+  logger.log('  --userId=<userId>     Migrate milestones for a specific user only');
+  logger.log('  --dry-run             Perform a dry run without making changes');
+  logger.log('  --cleanup             Delete old milestone subcollections after migration');
+  logger.log('  --stats               Show migration statistics without migrating');
+  logger.log('  --help                Show this help message');
+  logger.log('\nExamples:');
+  logger.log('  npm run cli migrate-milestones --stats');
+  logger.log('  npm run cli migrate-milestones --dry-run');
+  logger.log('  npm run cli migrate-milestones');
+  logger.log('  npm run cli migrate-milestones --userId=user123');
+  logger.log('  npm run cli migrate-milestones --cleanup');
+  logger.log('\nNote: Always run with --dry-run first to verify the migration!');
 }
 
 bootstrap();

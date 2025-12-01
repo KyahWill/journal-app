@@ -18,11 +18,11 @@ export interface Goal {
   status_changed_at: Date
   last_activity: Date
   progress_percentage: number
+  milestones: Milestone[]
 }
 
 export interface Milestone {
   id: string
-  goal_id: string
   title: string
   due_date: Date | null
   completed: boolean

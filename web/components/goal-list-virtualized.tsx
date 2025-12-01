@@ -13,9 +13,11 @@ interface VirtualizedGoalListProps {
 // Simple virtualization for goal lists
 // Only renders goals that are visible in the viewport
 function VirtualizedGoalListComponent({ goals, viewMode }: VirtualizedGoalListProps) {
+
   // Fetch milestone counts for all goals
-  const goalIds = useMemo(() => goals.map((g) => g.id), [goals])
-  const { counts: milestoneCounts } = useMilestoneCounts(goalIds)
+  const { counts: milestoneCounts } = useMilestoneCounts(goals)
+
+
   const containerRef = useRef<HTMLDivElement>(null)
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 20 })
   

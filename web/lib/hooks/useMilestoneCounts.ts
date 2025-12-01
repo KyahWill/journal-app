@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { apiClient } from '@/lib/api/client'
+import { apiClient, Goal } from '@/lib/api/client'
 
 interface MilestoneCount {
   total: number
@@ -14,12 +14,12 @@ interface MilestoneCounts {
  * Hook to fetch and cache milestone counts for multiple goals
  * Returns a map of goalId -> { total, completed }
  */
-export function useMilestoneCounts(goalIds: string[]) {
+export function useMilestoneCounts(goals: Goal[]) {
   const [counts, setCounts] = useState<MilestoneCounts>({})
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (goalIds.length === 0) {
+    if (goals.length === 0) {
       setCounts({})
       return
     }
@@ -29,19 +29,14 @@ export function useMilestoneCounts(goalIds: string[]) {
       setLoading(true)
       const newCounts: MilestoneCounts = {}
 
-      // Fetch milestones for each goal in parallel
-      const promises = goalIds.map(async (goalId) => {
-        try {
-          const milestones = await apiClient.getMilestones(goalId)
-          const completed = milestones.filter((m) => m.completed).length
-          return { goalId, total: milestones.length, completed }
-        } catch (error) {
-          console.error(`Failed to fetch milestones for goal ${goalId}:`, error)
-          return { goalId, total: 0, completed: 0 }
-        }
+
+      // Fetch Milestones
+      const results = goals.map((goal) => {
+        const milestones = goal.milestones || [] 
+        const completed = milestones.filter((m) => m.completed).length
+        return { goalId: goal.id, total: milestones.length, completed }
       })
 
-      const results = await Promise.all(promises)
       
       if (isMounted) {
         results.forEach(({ goalId, total, completed }) => {
@@ -57,7 +52,7 @@ export function useMilestoneCounts(goalIds: string[]) {
     return () => {
       isMounted = false
     }
-  }, [goalIds.join(',')])
+  }, [goals])
 
   return { counts, loading }
 }

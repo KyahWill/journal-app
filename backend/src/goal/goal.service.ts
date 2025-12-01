@@ -48,6 +48,7 @@ export class GoalService {
         status_changed_at: now,
         last_activity: now,
         progress_percentage: 0,
+        milestones: [],
       }
       if (await this.categoryService.isDefaultCategory(createGoalDto.category)) {
         data.category = createGoalDto.category
@@ -130,6 +131,7 @@ export class GoalService {
           status_changed_at: now,
           last_activity: now,
           progress_percentage: 0,
+          milestones: [],
           created_at: now,
           updated_at: now,
         }
@@ -291,6 +293,7 @@ export class GoalService {
             status_changed_at: goal.status_changed_at?.toDate() || new Date(),
             last_activity: goal.last_activity?.toDate() || new Date(),
             progress_percentage: goal.progress_percentage || 0,
+            milestones: this.mapMilestones(goal.milestones || []),
           }
         })
       )
@@ -339,6 +342,7 @@ export class GoalService {
         status_changed_at: goal.status_changed_at?.toDate() || new Date(),
         last_activity: goal.last_activity?.toDate() || new Date(),
         progress_percentage: goal.progress_percentage || 0,
+        milestones: this.mapMilestones(goal.milestones || []),
       }
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
@@ -422,14 +426,12 @@ export class GoalService {
   }> {
     try {
       // Verify ownership
-      await this.getGoalById(userId, goalId)
+      const goal = await this.getGoalById(userId, goalId)
 
       const firestore = this.firebaseService.getFirestore()
 
-      // Count milestones
-      const milestonesRef = firestore.collection(`${this.goalsCollection}/${goalId}/milestones`)
-      const milestonesSnapshot = await milestonesRef.get()
-      const milestonesCount = milestonesSnapshot.size
+      // Count milestones from goal document
+      const milestonesCount = (goal.milestones || []).length
 
       // Count progress updates
       const progressRef = firestore.collection(`${this.goalsCollection}/${goalId}/progress_updates`)
@@ -460,17 +462,10 @@ export class GoalService {
   async deleteGoal(userId: string, goalId: string): Promise<{ success: boolean; message: string }> {
     try {
       // Verify ownership
-      await this.getGoalById(userId, goalId)
+      const goal = await this.getGoalById(userId, goalId)
 
       const firestore = this.firebaseService.getFirestore()
       const batch = firestore.batch()
-
-      // Delete milestones subcollection
-      const milestonesRef = firestore.collection(`${this.goalsCollection}/${goalId}/milestones`)
-      const milestonesSnapshot = await milestonesRef.get()
-      milestonesSnapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref)
-      })
 
       // Delete progress_updates subcollection
       const progressRef = firestore.collection(`${this.goalsCollection}/${goalId}/progress_updates`)
@@ -508,12 +503,12 @@ export class GoalService {
         });
       });
 
-      // Delete milestone embeddings
-      milestonesSnapshot.docs.forEach((doc) => {
-        this.ragService.deleteEmbeddings(userId, doc.id).catch(err => {
+      // Delete milestone embeddings (milestones are now in the goal document)
+      (goal.milestones || []).forEach((milestone) => {
+        this.ragService.deleteEmbeddings(userId, milestone.id).catch(err => {
           this.logger.error('Failed to delete milestone embedding', {
             error: err.message,
-            milestoneId: doc.id,
+            milestoneId: milestone.id,
             goalId,
             userId,
           });
@@ -662,6 +657,19 @@ export class GoalService {
     this.goalCountsCache.delete(userId)
   }
 
+  // Helper method to map Firestore milestones to typed Milestone objects
+  private mapMilestones(milestones: any[]): Milestone[] {
+    return milestones.map((m: any) => ({
+      id: m.id,
+      title: m.title,
+      due_date: m.due_date?.toDate ? m.due_date.toDate() : m.due_date ? new Date(m.due_date) : null,
+      completed: m.completed || false,
+      completed_at: m.completed_at?.toDate ? m.completed_at.toDate() : m.completed_at ? new Date(m.completed_at) : null,
+      order: m.order || 0,
+      created_at: m.created_at?.toDate ? m.created_at.toDate() : m.created_at ? new Date(m.created_at) : new Date(),
+    }))
+  }
+
   // Milestone Management Methods
 
   async addMilestone(
@@ -671,20 +679,19 @@ export class GoalService {
   ): Promise<Milestone> {
     try {
       // Verify goal ownership
-      await this.getGoalById(userId, goalId)
-
-      // Get existing milestones to determine order
-      const existingMilestones = await this.getMilestones(userId, goalId)
-      const maxOrder = existingMilestones.length > 0 
-        ? Math.max(...existingMilestones.map(m => m.order))
-        : 0
+      const goal = await this.getGoalById(userId, goalId)
 
       const firestore = this.firebaseService.getFirestore()
-      const milestonesRef = firestore.collection(`${this.goalsCollection}/${goalId}/milestones`)
+      const goalRef = firestore.collection(this.goalsCollection).doc(goalId)
       
       const now = new Date()
-      const milestoneData: any = {
-        goal_id: goalId,
+      const milestones = goal.milestones || []
+      const maxOrder = milestones.length > 0 
+        ? Math.max(...milestones.map(m => m.order))
+        : 0
+
+      const newMilestone = {
+        id: firestore.collection('_').doc().id, // Generate unique ID
         title: createMilestoneDto.title,
         due_date: createMilestoneDto.due_date ? new Date(createMilestoneDto.due_date) : null,
         completed: false,
@@ -693,43 +700,40 @@ export class GoalService {
         created_at: now,
       }
 
-      const docRef = await milestonesRef.add(milestoneData)
-
-      // Update goal's last_activity
-      await this.firebaseService.updateDocument(this.goalsCollection, goalId, {
+      // Add milestone to array
+      await goalRef.update({
+        milestones: [...milestones, newMilestone],
         last_activity: now,
+        updated_at: now,
       })
 
       // Recalculate progress
       await this.calculateProgress(userId, goalId)
 
-      this.logger.log(`Milestone added: ${docRef.id} to goal: ${goalId}`)
+      this.logger.log(`Milestone added: ${newMilestone.id} to goal: ${goalId}`)
 
       // Generate embedding for the milestone (async, non-blocking)
       this.ragService.embedContent({
         userId,
         contentType: 'milestone',
-        documentId: docRef.id,
+        documentId: newMilestone.id,
         text: createMilestoneDto.title,
         metadata: {
           goal_id: goalId,
-          due_date: milestoneData.due_date ? milestoneData.due_date.toISOString() : null,
+          due_date: newMilestone.due_date ? newMilestone.due_date.toISOString() : null,
           completed: false,
-          order: milestoneData.order,
+          order: newMilestone.order,
         },
       }, true).catch(err => {
         this.logger.error('Failed to embed milestone', {
           error: err.message,
-          milestoneId: docRef.id,
+          milestoneId: newMilestone.id,
           goalId,
           userId,
         });
       });
 
-      return {
-        id: docRef.id,
-        ...milestoneData,
-      }
+      return newMilestone
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error
@@ -742,26 +746,10 @@ export class GoalService {
   async getMilestones(userId: string, goalId: string): Promise<Milestone[]> {
     try {
       // Verify goal ownership
-      await this.getGoalById(userId, goalId)
+      const goal = await this.getGoalById(userId, goalId)
 
-      const firestore = this.firebaseService.getFirestore()
-      const milestonesRef = firestore.collection(`${this.goalsCollection}/${goalId}/milestones`)
-      
-      const snapshot = await milestonesRef.orderBy('order', 'asc').get()
-
-      return snapshot.docs.map((doc) => {
-        const data = doc.data()
-        return {
-          id: doc.id,
-          goal_id: goalId,
-          title: data.title,
-          due_date: data.due_date?.toDate() || null,
-          completed: data.completed || false,
-          completed_at: data.completed_at?.toDate() || null,
-          order: data.order || 0,
-          created_at: data.created_at?.toDate() || new Date(),
-        }
-      })
+      // Return milestones sorted by order
+      return (goal.milestones || []).sort((a, b) => a.order - b.order)
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error
@@ -779,44 +767,37 @@ export class GoalService {
   ): Promise<Milestone> {
     try {
       // Verify goal ownership
-      await this.getGoalById(userId, goalId)
+      const goal = await this.getGoalById(userId, goalId)
 
-      const firestore = this.firebaseService.getFirestore()
-      const milestoneRef = firestore
-        .collection(`${this.goalsCollection}/${goalId}/milestones`)
-        .doc(milestoneId)
+      const milestones = goal.milestones || []
+      const milestoneIndex = milestones.findIndex(m => m.id === milestoneId)
 
-      const milestoneDoc = await milestoneRef.get()
-      if (!milestoneDoc.exists) {
+      if (milestoneIndex === -1) {
         throw new NotFoundException('Milestone not found')
       }
 
-      const updateData: any = {}
+      const milestone = milestones[milestoneIndex]
 
+      // Update milestone fields
       if (updateMilestoneDto.title !== undefined) {
-        updateData.title = updateMilestoneDto.title
+        milestone.title = updateMilestoneDto.title
       }
 
       if (updateMilestoneDto.due_date !== undefined) {
-        updateData.due_date = updateMilestoneDto.due_date ? new Date(updateMilestoneDto.due_date) : null
+        milestone.due_date = updateMilestoneDto.due_date ? new Date(updateMilestoneDto.due_date) : null
       }
 
-      await milestoneRef.update(updateData)
+      // Update the milestones array
+      milestones[milestoneIndex] = milestone
 
-      // Update goal's last_activity
+      const now = new Date()
       await this.firebaseService.updateDocument(this.goalsCollection, goalId, {
-        last_activity: new Date(),
+        milestones,
+        last_activity: now,
+        updated_at: now,
       })
 
       this.logger.log(`Milestone updated: ${milestoneId} in goal: ${goalId}`)
-
-      // Fetch and return updated milestone
-      const updatedDoc = await milestoneRef.get()
-      const data = updatedDoc.data()
-
-      if (!data) {
-        throw new NotFoundException('Milestone not found after update')
-      }
 
       // Update embedding if title changed
       if (updateMilestoneDto.title !== undefined) {
@@ -824,12 +805,12 @@ export class GoalService {
           userId,
           contentType: 'milestone',
           documentId: milestoneId,
-          text: data.title,
+          text: milestone.title,
           metadata: {
             goal_id: goalId,
-            due_date: data.due_date ? data.due_date.toDate().toISOString() : null,
-            completed: data.completed || false,
-            order: data.order || 0,
+            due_date: milestone.due_date ? milestone.due_date.toISOString() : null,
+            completed: milestone.completed || false,
+            order: milestone.order || 0,
           },
         }, true).catch(err => {
           this.logger.error('Failed to update milestone embedding', {
@@ -841,16 +822,7 @@ export class GoalService {
         });
       }
 
-      return {
-        id: updatedDoc.id,
-        goal_id: goalId,
-        title: data.title,
-        due_date: data.due_date?.toDate() || null,
-        completed: data.completed || false,
-        completed_at: data.completed_at?.toDate() || null,
-        order: data.order || 0,
-        created_at: data.created_at?.toDate() || new Date(),
-      }
+      return milestone
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error
@@ -867,34 +839,30 @@ export class GoalService {
   ): Promise<Milestone> {
     try {
       // Verify goal ownership
-      await this.getGoalById(userId, goalId)
+      const goal = await this.getGoalById(userId, goalId)
 
-      const firestore = this.firebaseService.getFirestore()
-      const milestoneRef = firestore
-        .collection(`${this.goalsCollection}/${goalId}/milestones`)
-        .doc(milestoneId)
+      const milestones = goal.milestones || []
+      const milestoneIndex = milestones.findIndex(m => m.id === milestoneId)
 
-      const milestoneDoc = await milestoneRef.get()
-      if (!milestoneDoc.exists) {
+      if (milestoneIndex === -1) {
         throw new NotFoundException('Milestone not found')
       }
 
-      const currentData = milestoneDoc.data()
-      if (!currentData) {
-        throw new NotFoundException('Milestone data not found')
-      }
-
-      const newCompletedStatus = !currentData.completed
+      const milestone = milestones[milestoneIndex]
+      const newCompletedStatus = !milestone.completed
       const now = new Date()
 
-      await milestoneRef.update({
-        completed: newCompletedStatus,
-        completed_at: newCompletedStatus ? now : null,
-      })
+      // Update milestone
+      milestone.completed = newCompletedStatus
+      milestone.completed_at = newCompletedStatus ? now : null
 
-      // Update goal's last_activity
+      // Update the milestones array
+      milestones[milestoneIndex] = milestone
+
       await this.firebaseService.updateDocument(this.goalsCollection, goalId, {
+        milestones,
         last_activity: now,
+        updated_at: now,
       })
 
       // Recalculate progress
@@ -902,24 +870,7 @@ export class GoalService {
 
       this.logger.log(`Milestone toggled: ${milestoneId} in goal: ${goalId} to ${newCompletedStatus}`)
 
-      // Fetch and return updated milestone
-      const updatedDoc = await milestoneRef.get()
-      const data = updatedDoc.data()
-
-      if (!data) {
-        throw new NotFoundException('Milestone not found after toggle')
-      }
-
-      return {
-        id: updatedDoc.id,
-        goal_id: goalId,
-        title: data.title,
-        due_date: data.due_date?.toDate() || null,
-        completed: data.completed || false,
-        completed_at: data.completed_at?.toDate() || null,
-        order: data.order || 0,
-        created_at: data.created_at?.toDate() || new Date(),
-      }
+      return milestone
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error
@@ -936,23 +887,23 @@ export class GoalService {
   ): Promise<{ success: boolean; message: string }> {
     try {
       // Verify goal ownership
-      await this.getGoalById(userId, goalId)
+      const goal = await this.getGoalById(userId, goalId)
 
-      const firestore = this.firebaseService.getFirestore()
-      const milestoneRef = firestore
-        .collection(`${this.goalsCollection}/${goalId}/milestones`)
-        .doc(milestoneId)
+      const milestones = goal.milestones || []
+      const milestoneIndex = milestones.findIndex(m => m.id === milestoneId)
 
-      const milestoneDoc = await milestoneRef.get()
-      if (!milestoneDoc.exists) {
+      if (milestoneIndex === -1) {
         throw new NotFoundException('Milestone not found')
       }
 
-      await milestoneRef.delete()
+      // Remove milestone from array
+      milestones.splice(milestoneIndex, 1)
 
-      // Update goal's last_activity
+      const now = new Date()
       await this.firebaseService.updateDocument(this.goalsCollection, goalId, {
-        last_activity: new Date(),
+        milestones,
+        last_activity: now,
+        updated_at: now,
       })
 
       // Recalculate progress
