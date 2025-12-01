@@ -66,7 +66,13 @@ export default function GoalsPage() {
 
     // Apply status filter
     if (selectedStatus !== 'all') {
-      filtered = filtered.filter((goal) => goal.status === selectedStatus)
+      if (selectedStatus === 'active') {
+        filtered = filtered.filter((goal) => 
+          goal.status === 'not_started' || goal.status === 'in_progress'
+        )
+      } else {
+        filtered = filtered.filter((goal) => goal.status === selectedStatus)
+      }
     }
 
     // Apply sorting
@@ -204,6 +210,7 @@ export default function GoalsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="not_started">Not Started</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>

@@ -345,7 +345,7 @@ export function GoalProvider({ children }: { children: ReactNode }) {
       switch (sortBy) {
         case 'target_date':
           return sorted.sort((a, b) => 
-            new Date(a.target_date).getTime() - new Date(b.target_date).getTime()
+            new Date(b.target_date).getTime() - new Date(a.target_date).getTime()
           )
         case 'created_at':
           return sorted.sort((a, b) => 
