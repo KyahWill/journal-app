@@ -21,7 +21,7 @@ The application uses the following top-level Firestore collections:
 
 ## 1. goals
 
-Stores user goals with embedded milestones and progress tracking.
+Stores user goals with embedded milestones, progress tracking, and optional habit functionality.
 
 ### Fields
 
@@ -33,7 +33,7 @@ Stores user goals with embedded milestones and progress tracking.
 | `description` | string | Goal description |
 | `category` | string | Category ID (default category name or custom category ID) |
 | `status` | string | Goal status: `not_started`, `in_progress`, `completed`, `abandoned` |
-| `target_date` | timestamp | Target completion date |
+| `target_date` | timestamp | Target completion date (far future for habits) |
 | `created_at` | timestamp | Creation timestamp |
 | `updated_at` | timestamp | Last update timestamp |
 | `completed_at` | timestamp \| null | Completion timestamp (null if not completed) |
@@ -41,6 +41,10 @@ Stores user goals with embedded milestones and progress tracking.
 | `last_activity` | timestamp | Last activity timestamp (updates, milestones, progress) |
 | `progress_percentage` | number | Calculated progress (0-100) based on milestone completion |
 | `milestones` | array | Array of milestone objects (embedded) |
+| `is_habit` | boolean | Whether this goal is a recurring habit |
+| `habit_frequency` | string \| null | Habit frequency: `daily`, `weekly`, `monthly` (null if not a habit) |
+| `habit_streak` | number | Current streak count for habits |
+| `habit_completed_dates` | array\<string\> | Array of ISO date strings (YYYY-MM-DD) when habit was completed |
 
 ### Milestone Object Structure (Embedded)
 
@@ -553,9 +557,8 @@ Batch operations are supported for:
 
 1. **Shared Goals**: Support for collaborative goals
 2. **Goal Templates**: Reusable goal templates
-3. **Habit Tracking**: Daily habit check-ins
-4. **Achievements**: Gamification and milestone badges
-5. **Export History**: Track data exports for compliance
+3. **Achievements**: Gamification and milestone badges
+4. **Export History**: Track data exports for compliance
 
 ### Scalability Considerations
 

@@ -90,7 +90,7 @@ match /journal_entries/{entryId} {
 
 ### goals
 
-User goals and objectives.
+User goals and objectives with optional habit tracking.
 
 ```typescript
 {
@@ -98,17 +98,39 @@ User goals and objectives.
   user_id: string               // User UID
   title: string                 // Goal title
   description: string           // Goal description
-  category: string              // Goal category
-  target_date?: Timestamp       // Optional target completion date
-  status: 'active' | 'completed' | 'archived'
+  category: string              // Goal category (default or custom category ID)
+  target_date: Timestamp        // Target completion date (far future for habits)
+  status: 'not_started' | 'in_progress' | 'completed' | 'abandoned'
   created_at: Timestamp         // Creation date
   updated_at: Timestamp         // Last update date
+  completed_at?: Timestamp      // Completion date (if completed)
+  status_changed_at: Timestamp  // Last status change date
+  last_activity: Timestamp      // Last activity date
+  progress_percentage: number   // Progress (0-100)
+  milestones: Milestone[]       // Embedded milestones array
+  
+  // Habit fields
+  is_habit: boolean             // Whether this is a recurring habit
+  habit_frequency?: 'daily' | 'weekly' | 'monthly'  // Habit frequency
+  habit_streak: number          // Current streak count
+  habit_completed_dates: string[] // ISO dates (YYYY-MM-DD) when completed
+}
+
+interface Milestone {
+  id: string
+  title: string
+  due_date?: Timestamp
+  completed: boolean
+  completed_at?: Timestamp
+  order: number
+  created_at: Timestamp
 }
 ```
 
 **Indexes**:
 - Composite: `user_id` (ASC) + `status` (ASC) + `created_at` (DESC)
 - Composite: `user_id` (ASC) + `category` (ASC)
+- Composite: `user_id` (ASC) + `is_habit` (ASC)
 
 **Security Rules**:
 ```javascript

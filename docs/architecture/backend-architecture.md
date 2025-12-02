@@ -49,7 +49,7 @@ backend/src/
 │
 ├── auth/                      # Authentication
 ├── journal/                   # Journal entries
-├── goal/                      # Goal tracking
+├── goal/                      # Goal and habit tracking
 ├── chat/                      # AI text coach
 ├── voice-coach/               # Voice AI coach
 ├── coach-personality/         # Coach personalities
@@ -439,12 +439,15 @@ AppModule (Root)
 │  └─ ThemeService
 │     └─ uses: FirebaseService
 │
-├─ GoalModule
+├─ GoalModule (includes Habits)
 │  ├─ GoalController
 │  │  └─ uses: AuthGuard
+│  │  └─ endpoints: CRUD, status, habit-toggle, milestones, progress
 │  └─ GoalService
 │     ├─ uses: FirebaseService
-│     └─ uses: CategoryService 
+│     ├─ uses: CategoryService
+│     ├─ uses: RagService
+│     └─ methods: calculateHabitStreak, toggleHabitCompletion 
 │
 └─ VoiceCoachModule
    ├─ VoiceCoachController

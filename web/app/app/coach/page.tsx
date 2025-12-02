@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, Brain, Volume2, VolumeX, Mic, Square, ChevronDown, ChevronUp, Target, TrendingUp } from 'lucide-react'
+import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, Brain, Volume2, VolumeX, Mic, Square, ChevronDown, ChevronUp, Target, TrendingUp, Menu } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { useState } from 'react'
 import { CoachSessionsSidebar } from '@/components/coach-sessions-sidebar'
@@ -78,6 +78,7 @@ export default function CoachChatPage() {
   const [showGoalInsights, setShowGoalInsights] = useState(false)
   const [goalInsights, setGoalInsights] = useState<string | null>(null)
   const [selectedGoalForInsights, setSelectedGoalForInsights] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
   // Goal chat hook
@@ -219,11 +220,11 @@ export default function CoachChatPage() {
     setPlayingMessageId(null)
   }
 
-  async function handleDeleteSession(sessionId: string) {
+  async function handleDeleteSession(sessionIdToDelete: string) {
     try {
-      await deleteSession(sessionId)
+      await deleteSession(sessionIdToDelete)
       // If we deleted the current session, clear the chat
-      if (sessionId === sessionId) {
+      if (sessionIdToDelete === sessionId) {
         clearChat()
       }
     } catch (err) {
@@ -301,17 +302,29 @@ export default function CoachChatPage() {
         onDeleteSession={handleDeleteSession}
         onRenameSession={handleRenameSession}
         loading={sessionsLoading}
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
       />
 
       {/* Main Content - Center */}
       <div className="flex-1 overflow-y-auto">
         <div className="container mx-auto px-4 py-6 sm:py-8 max-w-4xl">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-bold">AI Executive Coach</h2>
-              <p className="text-sm sm:text-base text-gray-600 mt-1">
-                Get personalized insights based on your journal entries
-              </p>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-bold">AI Executive Coach</h2>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">
+                  Get personalized insights based on your journal entries
+                </p>
+              </div>
             </div>
             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               <Button
