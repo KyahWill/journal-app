@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuthReady } from '@/lib/hooks/useAuthReady'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -10,9 +10,6 @@ import { VoiceInterface } from '@/components/voice-interface'
 import { ConversationTranscript } from '@/components/conversation-transcript'
 import { VoiceHistorySidebar } from '@/components/voice-history-sidebar'
 import { ErrorBoundary } from '@/components/error-boundary'
-import { VoiceCoachOnboarding } from '@/components/voice-coach-onboarding'
-import { useVoiceCoachOnboarding } from '@/lib/hooks/useVoiceCoachOnboarding'
-import { isFeatureEnabled } from '@/lib/config/features'
 
 export interface ConversationMessage {
   role: 'user' | 'agent'
@@ -38,13 +35,6 @@ export default function AIAgentPage() {
   const [error, setError] = useState<string | null>(null)
   const [useTextChat, setUseTextChat] = useState(false)
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
-  
-  const {
-    shouldShowOnboarding,
-    completeOnboarding,
-  } = useVoiceCoachOnboarding()
-
-  const onboardingEnabled = isFeatureEnabled('voiceCoachOnboarding')
 
   const handleConversationStart = () => {
     setTranscript([])
@@ -187,14 +177,6 @@ export default function AIAgentPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Voice Coach Onboarding Dialog */}
-      {onboardingEnabled && (
-        <VoiceCoachOnboarding
-          open={shouldShowOnboarding}
-          onComplete={completeOnboarding}
-        />
-      )}
     </ErrorBoundary>
   )
 }

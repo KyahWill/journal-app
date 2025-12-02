@@ -135,7 +135,6 @@ NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
 
 # Feature Flags (optional)
 NEXT_PUBLIC_FEATURE_VOICE_COACH=true
-NEXT_PUBLIC_FEATURE_VOICE_COACH_ONBOARDING=true
 ```
 
 ### Development
@@ -329,7 +328,6 @@ cd web
 | `GEMINI_API_KEY` | Google Gemini API key | Yes |
 | `NEXT_PUBLIC_API_URL` | Backend API URL | Yes |
 | `NEXT_PUBLIC_FEATURE_VOICE_COACH` | Enable voice coach feature | No |
-| `NEXT_PUBLIC_FEATURE_VOICE_COACH_ONBOARDING` | Enable voice coach onboarding | No |
 
 ### Backend API Variables
 

@@ -404,8 +404,6 @@ Real-time voice coaching with ElevenLabs Conversational AI, featuring multiple c
 - CoachSessionsSidebar for history
 - ConversationTranscript for playback
 - AudioControls for playback
-- VoiceCoachOnboarding for setup
-
 **API Endpoints**:
 - `/coach-personalities` - Personality CRUD
 - `/coach-personalities/:id/link-agent` - Link ElevenLabs agent

@@ -4,7 +4,6 @@
 
 export interface FeatureFlags {
   voiceCoach: boolean
-  voiceCoachOnboarding: boolean
 }
 
 /**
@@ -16,7 +15,6 @@ export function getFeatureFlags(): FeatureFlags {
   
   return {
     voiceCoach: process.env.NEXT_PUBLIC_FEATURE_VOICE_COACH === 'true' || isDevelopment,
-    voiceCoachOnboarding: process.env.NEXT_PUBLIC_FEATURE_VOICE_COACH_ONBOARDING === 'true' || isDevelopment,
   }
 }
 

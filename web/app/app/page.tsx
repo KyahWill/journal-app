@@ -6,21 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { BookOpen, MessageSquare, Target, Mic, Plus } from 'lucide-react'
 import Link from 'next/link'
-import { VoiceCoachOnboarding } from '@/components/voice-coach-onboarding'
-import { VoiceCoachBanner } from '@/components/voice-coach-banner'
-import { useVoiceCoachOnboarding } from '@/lib/hooks/useVoiceCoachOnboarding'
 import { isFeatureEnabled } from '@/lib/config/features'
 
 export default function AppPage() {
-  const {
-    shouldShowOnboarding,
-    shouldShowBanner,
-    completeOnboarding,
-    dismissBanner,
-  } = useVoiceCoachOnboarding()
-
   const voiceCoachEnabled = isFeatureEnabled('voiceCoach')
-  const onboardingEnabled = isFeatureEnabled('voiceCoachOnboarding')
 
   return (
     <div className="container mx-auto px-4 py-6 sm:py-8">
@@ -28,13 +17,6 @@ export default function AppPage() {
         <h2 className="text-2xl sm:text-3xl font-bold mb-2">Dashboard</h2>
         <p className="text-gray-600">Welcome back! Here's your overview.</p>
       </div>
-
-      {/* Voice Coach Promotional Banner */}
-      {voiceCoachEnabled && onboardingEnabled && shouldShowBanner && (
-        <div className="mb-6">
-          <VoiceCoachBanner onDismiss={dismissBanner} />
-        </div>
-      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Goal Dashboard Widget */}
@@ -87,14 +69,6 @@ export default function AppPage() {
           </Card>
         </div>
       </div>
-
-      {/* Voice Coach Onboarding Dialog */}
-      {voiceCoachEnabled && onboardingEnabled && (
-        <VoiceCoachOnboarding
-          open={shouldShowOnboarding}
-          onComplete={completeOnboarding}
-        />
-      )}
     </div>
   )
 }

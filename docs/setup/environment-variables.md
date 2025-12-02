@@ -64,7 +64,6 @@ Environment variables for the Next.js web application (`.env.local` file).
 | Variable | Description | Required | Default | Example |
 |----------|-------------|----------|---------|---------|
 | `NEXT_PUBLIC_FEATURE_VOICE_COACH` | Enable voice coach feature | No | `true` | `true` or `false` |
-| `NEXT_PUBLIC_FEATURE_VOICE_COACH_ONBOARDING` | Enable voice coach onboarding | No | `true` | `true` or `false` |
 
 ### Complete Web .env.local Example
 
@@ -88,7 +87,6 @@ NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
 
 # Feature Flags (optional)
 NEXT_PUBLIC_FEATURE_VOICE_COACH=true
-NEXT_PUBLIC_FEATURE_VOICE_COACH_ONBOARDING=true
 ```
 
 ---

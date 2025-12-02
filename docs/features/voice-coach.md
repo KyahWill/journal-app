@@ -198,12 +198,6 @@ interface VoiceSession {
 - Audio quality indicator
 - Connection status
 
-#### VoiceCoachOnboarding
-- First-time setup
-- Personality selection
-- Microphone permission
-- Quick tutorial
-
 ### API Endpoints
 
 #### Personality Management
