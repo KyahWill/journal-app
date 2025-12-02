@@ -27,7 +27,7 @@ export default function LoginPage() {
     try {
       await signIn(email, password)
       // On successful login, redirect to app
-      router.push('/app/journal')
+      router.push('/app')
     } catch (err: any) {
       setError(err.message || 'Failed to login')
       setLoading(false)

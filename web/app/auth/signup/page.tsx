@@ -28,7 +28,7 @@ export default function SignupPage() {
     try {
       await signUp(email, password, fullName)
       // On successful signup, redirect to app
-      router.push('/app/journal')
+      router.push('/app')
     } catch (err: any) {
       setError(err.message || 'Failed to create account')
       setLoading(false)
