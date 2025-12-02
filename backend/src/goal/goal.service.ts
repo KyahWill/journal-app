@@ -8,7 +8,8 @@ import {
   UpdateMilestoneDto,
   CreateProgressDto,
 } from '@/common/dto/goal.dto'
-import { Goal, Milestone, GoalStatus, ProgressUpdate } from '@/common/types/goal.types'
+import { Goal, Milestone, GoalStatus, ProgressUpdate, HabitFrequency } from '@/common/types/goal.types'
+import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, differenceInCalendarDays } from 'date-fns'
 import { RagService } from '@/rag/rag.service'
 import { CategoryService } from '@/category/category.service'
 
@@ -49,6 +50,11 @@ export class GoalService {
         last_activity: now,
         progress_percentage: 0,
         milestones: [],
+        // Habit fields
+        is_habit: createGoalDto.is_habit || false,
+        habit_frequency: createGoalDto.habit_frequency || null,
+        habit_streak: 0,
+        habit_completed_dates: [],
       }
       if (await this.categoryService.isDefaultCategory(createGoalDto.category)) {
         data.category = createGoalDto.category
@@ -134,6 +140,11 @@ export class GoalService {
           milestones: [],
           created_at: now,
           updated_at: now,
+          // Habit fields
+          is_habit: goalDto.is_habit || false,
+          habit_frequency: goalDto.habit_frequency || null,
+          habit_streak: 0,
+          habit_completed_dates: [],
         }
 
         batch.set(goalRef, data)
@@ -141,7 +152,7 @@ export class GoalService {
         createdGoals.push({
           id: goalRef.id,
           ...data,
-        })
+        } as Goal)
       }
 
       await batch.commit()
@@ -294,6 +305,10 @@ export class GoalService {
             last_activity: goal.last_activity?.toDate() || new Date(),
             progress_percentage: goal.progress_percentage || 0,
             milestones: this.mapMilestones(goal.milestones || []),
+            is_habit: goal.is_habit || false,
+            habit_frequency: goal.habit_frequency || null,
+            habit_streak: goal.habit_streak || 0,
+            habit_completed_dates: goal.habit_completed_dates || [],
           }
         })
       )
@@ -343,6 +358,10 @@ export class GoalService {
         last_activity: goal.last_activity?.toDate() || new Date(),
         progress_percentage: goal.progress_percentage || 0,
         milestones: this.mapMilestones(goal.milestones || []),
+        is_habit: goal.is_habit || false,
+        habit_frequency: goal.habit_frequency || null,
+        habit_streak: goal.habit_streak || 0,
+        habit_completed_dates: goal.habit_completed_dates || [],
       }
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
@@ -597,6 +616,97 @@ export class GoalService {
       this.logger.error('Error fetching overdue goals', error)
       throw error
     }
+  }
+
+  // Habit-related methods
+  async toggleHabitCompletion(userId: string, goalId: string): Promise<Goal> {
+    try {
+      const goal = await this.getGoalById(userId, goalId)
+      
+      if (!goal.is_habit) {
+        throw new BadRequestException('This goal is not a habit')
+      }
+
+      const today = format(new Date(), 'yyyy-MM-dd')
+      let completedDates: string[] = goal.habit_completed_dates || []
+      
+      if (completedDates.includes(today)) {
+        // Remove today if already completed (toggle off)
+        completedDates = completedDates.filter(d => d !== today)
+      } else {
+        // Add today (toggle on)
+        completedDates.push(today)
+        completedDates.sort()
+      }
+
+      // Recalculate streak
+      const streak = this.calculateHabitStreak(completedDates, goal.habit_frequency || 'daily')
+
+      const updateData = {
+        habit_completed_dates: completedDates,
+        habit_streak: streak,
+        last_activity: new Date(),
+        updated_at: new Date(),
+      }
+
+      await this.firebaseService.updateDocument(this.goalsCollection, goalId, updateData)
+      
+      this.logger.log(`Habit toggled for goal ${goalId}: streak=${streak}`)
+
+      return this.getGoalById(userId, goalId)
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof BadRequestException) {
+        throw error
+      }
+      this.logger.error('Error toggling habit completion', error)
+      throw error
+    }
+  }
+
+  private calculateHabitStreak(completedDates: string[], frequency: HabitFrequency = 'daily'): number {
+    if (completedDates.length === 0) return 0
+
+    const sortedDates = [...completedDates].sort().reverse()
+    const today = new Date()
+    
+    if (frequency === 'daily') {
+      const todayStr = format(today, 'yyyy-MM-dd')
+      const yesterdayStr = format(subDays(today, 1), 'yyyy-MM-dd')
+      
+      const lastCompleted = sortedDates[0]
+      if (lastCompleted !== todayStr && lastCompleted !== yesterdayStr) {
+        return 0
+      }
+
+      let streak = 0
+      let currentCheckDate = new Date(lastCompleted)
+
+      for (const dateStr of sortedDates) {
+        if (dateStr === format(currentCheckDate, 'yyyy-MM-dd')) {
+          streak++
+          currentCheckDate = subDays(currentCheckDate, 1)
+        } else {
+          break
+        }
+      }
+      return streak
+    }
+    
+    if (frequency === 'weekly') {
+      const lastCompleted = new Date(sortedDates[0])
+      const diff = differenceInCalendarDays(today, lastCompleted)
+      if (diff > 7) return 0
+      return sortedDates.length 
+    }
+
+    if (frequency === 'monthly') {
+      const lastCompleted = new Date(sortedDates[0])
+      const diff = differenceInCalendarDays(today, lastCompleted)
+      if (diff > 31) return 0
+      return sortedDates.length
+    }
+
+    return 0
   }
 
   async getGoalsByCategory(userId: string, category: string): Promise<Goal[]> {

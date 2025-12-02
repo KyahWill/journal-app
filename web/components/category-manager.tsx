@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Loader2, Plus, Edit, Trash2, AlertCircle, Tag } from 'lucide-react'
+import { IconPicker } from '@/components/ui/icon-picker'
 
 interface CategoryManagerProps {
   onCategoryChange?: () => void
@@ -213,7 +214,7 @@ export function CategoryManager({ onCategoryChange }: CategoryManagerProps) {
                   />
                   <span className="font-medium">{category.name}</span>
                   {category.icon && (
-                    <span className="text-sm text-gray-500">({category.icon})</span>
+                    <span className="text-lg">{category.icon}</span>
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -296,13 +297,10 @@ export function CategoryManager({ onCategoryChange }: CategoryManagerProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category-icon">Icon (optional)</Label>
-                <Input
-                  id="category-icon"
+                <Label>Icon (optional)</Label>
+                <IconPicker
                   value={categoryIcon}
-                  onChange={(e) => setCategoryIcon(e.target.value)}
-                  placeholder="e.g., 🎯, 🚀, 💼"
-                  maxLength={50}
+                  onChange={setCategoryIcon}
                   disabled={isSaving}
                 />
               </div>

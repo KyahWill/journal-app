@@ -163,6 +163,7 @@ export interface UpdateCategoryData {
 
 export type GoalCategory = 'career' | 'health' | 'personal' | 'financial' | 'relationships' | 'learning' | 'other'
 export type GoalStatus = 'not_started' | 'in_progress' | 'completed' | 'abandoned'
+export type HabitFrequency = 'daily' | 'weekly' | 'monthly'
 
 export interface Goal {
   id: string
@@ -179,6 +180,11 @@ export interface Goal {
   last_activity: string | Date
   progress_percentage: number
   milestones: Milestone[]
+  // Habit fields
+  is_habit: boolean
+  habit_frequency?: HabitFrequency
+  habit_streak: number
+  habit_completed_dates: string[]
 }
 
 export interface Milestone {
@@ -211,6 +217,8 @@ export interface CreateGoalData {
   description?: string
   category: string | CustomCategory 
   target_date: string
+  is_habit?: boolean
+  habit_frequency?: HabitFrequency
 }
 
 export interface UpdateGoalData {
@@ -218,6 +226,8 @@ export interface UpdateGoalData {
   description?: string
   category?: string | CustomCategory
   target_date?: string
+  is_habit?: boolean
+  habit_frequency?: HabitFrequency
 }
 
 export interface GoalFilters {
@@ -1113,6 +1123,12 @@ class ApiClient {
     return this.request<Goal>(`/goal/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
+    })
+  }
+
+  async toggleHabitCompletion(id: string): Promise<Goal> {
+    return this.request<Goal>(`/goal/${id}/habit-toggle`, {
+      method: 'PATCH',
     })
   }
 

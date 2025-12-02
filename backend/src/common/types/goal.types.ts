@@ -4,6 +4,8 @@ export type GoalCategory = 'career' | 'health' | 'personal' | 'financial' | 'rel
 
 export type GoalStatus = 'not_started' | 'in_progress' | 'completed' | 'abandoned'
 
+export type HabitFrequency = 'daily' | 'weekly' | 'monthly'
+
 export interface Goal {
   id: string
   user_id: string
@@ -19,6 +21,11 @@ export interface Goal {
   last_activity: Date
   progress_percentage: number
   milestones: Milestone[]
+  // Habit-related fields
+  is_habit: boolean
+  habit_frequency?: HabitFrequency
+  habit_streak: number
+  habit_completed_dates: string[] // ISO date strings (YYYY-MM-DD)
 }
 
 export interface Milestone {

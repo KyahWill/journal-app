@@ -99,6 +99,11 @@ export class GoalController {
     return this.goalService.updateGoalStatus(user.uid, id, updateStatusDto)
   }
 
+  @Patch(':id/habit-toggle')
+  async toggleHabitCompletion(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.goalService.toggleHabitCompletion(user.uid, id)
+  }
+
   @Get(':id/deletion-info')
   async getDeletionInfo(@CurrentUser() user: any, @Param('id') id: string) {
     return this.goalService.getGoalDeletionInfo(user.uid, id)

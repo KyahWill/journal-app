@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
 import { GoalDashboardWidget } from '@/components/goal-dashboard-widget'
+import { GoalCreationDialog } from '@/components/goal-creation-dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { BookOpen, MessageSquare, Target, Mic } from 'lucide-react'
+import { BookOpen, MessageSquare, Target, Mic, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { VoiceCoachOnboarding } from '@/components/voice-coach-onboarding'
 import { VoiceCoachBanner } from '@/components/voice-coach-banner'
@@ -38,43 +38,54 @@ export default function AppPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Goal Dashboard Widget */}
-        <GoalDashboardWidget />
+        <div className="space-y-6">
+          <GoalDashboardWidget />
+        </div>
 
         {/* Quick Actions Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Jump to your most used features</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Link href="/app/journal/new">
-              <Button variant="outline" className="w-full justify-start">
-                <BookOpen className="h-4 w-4 mr-2" />
-                New Journal Entry
-              </Button>
-            </Link>
-            <Link href="/app/goals">
-              <Button variant="outline" className="w-full justify-start">
-                <Target className="h-4 w-4 mr-2" />
-                View All Goals
-              </Button>
-            </Link>
-            <Link href="/app/coach">
-              <Button variant="outline" className="w-full justify-start">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Chat with Coach
-              </Button>
-            </Link>
-            {voiceCoachEnabled && (
-              <Link href="/app/ai-agent">
-                <Button variant="outline" className="w-full justify-start border-blue-200 hover:bg-blue-50">
-                  <Mic className="h-4 w-4 mr-2" />
-                  Voice Coach
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+              <CardDescription>Jump to your most used features</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <GoalCreationDialog>
+                <Button variant="default" className="w-full justify-start">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New Goal
+                </Button>
+              </GoalCreationDialog>
+              
+              <Link href="/app/journal/new">
+                <Button variant="outline" className="w-full justify-start">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  New Journal Entry
                 </Button>
               </Link>
-            )}
-          </CardContent>
-        </Card>
+              <Link href="/app/goals">
+                <Button variant="outline" className="w-full justify-start">
+                  <Target className="h-4 w-4 mr-2" />
+                  View All Goals
+                </Button>
+              </Link>
+              <Link href="/app/coach">
+                <Button variant="outline" className="w-full justify-start">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Chat with Coach
+                </Button>
+              </Link>
+              {voiceCoachEnabled && (
+                <Link href="/app/ai-agent">
+                  <Button variant="outline" className="w-full justify-start border-blue-200 hover:bg-blue-50">
+                    <Mic className="h-4 w-4 mr-2" />
+                    Voice Coach
+                  </Button>
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Voice Coach Onboarding Dialog */}

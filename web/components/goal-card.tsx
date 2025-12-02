@@ -34,6 +34,8 @@ function GoalCardComponent({ goal, viewMode = 'grid', milestonesCompleted = 0, m
   const daysRemaining = differenceInDays(targetDate, today)
   const isOverdue = daysRemaining < 0 && goal.status !== 'completed' && goal.status !== 'abandoned'
   const isUrgent = daysRemaining >= 0 && daysRemaining < 7 && goal.status !== 'completed' && goal.status !== 'abandoned'
+  
+  const nextMilestone = goal.milestones?.sort((a, b) => a.order - b.order).find(m => !m.completed)
 
   // Get urgency color
   const getUrgencyColor = () => {
@@ -176,6 +178,17 @@ function GoalCardComponent({ goal, viewMode = 'grid', milestonesCompleted = 0, m
           size="md"
         />
 
+        {/* Next Milestone */}
+        {nextMilestone && (
+          <div className="text-sm bg-secondary/50 p-2 rounded-md border border-border/50">
+            <span className="text-muted-foreground text-[10px] uppercase font-bold block mb-1 tracking-wider">Next Step</span>
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+              <span className="truncate font-medium text-foreground/90">{nextMilestone.title}</span>
+            </div>
+          </div>
+        )}
+
         {/* Target Date */}
         <div className={cn('flex items-center gap-2 text-sm p-2 rounded-md border', getUrgencyColor())}>
           <Calendar className="h-4 w-4 flex-shrink-0" />
@@ -241,7 +254,7 @@ function GoalCardComponent({ goal, viewMode = 'grid', milestonesCompleted = 0, m
     <>
       <Card
         className={cn(
-          'cursor-pointer transition-all hover:shadow-lg focus-within:ring-2 focus-within:ring-primary',
+          'cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 focus-within:ring-2 focus-within:ring-primary',
           viewMode === 'list' && 'flex flex-col sm:flex-row',
           isOverdue && 'border-red-300 bg-red-50/30'
         )}
@@ -283,6 +296,7 @@ export const GoalCard = memo(GoalCardComponent, (prevProps, nextProps) => {
     prevProps.goal.progress_percentage === nextProps.goal.progress_percentage &&
     prevProps.goal.target_date === nextProps.goal.target_date &&
     prevProps.goal.updated_at === nextProps.goal.updated_at &&
+    JSON.stringify(prevProps.goal.milestones) === JSON.stringify(nextProps.goal.milestones) &&
     prevProps.viewMode === nextProps.viewMode &&
     prevProps.milestonesCompleted === nextProps.milestonesCompleted &&
     prevProps.milestonesTotal === nextProps.milestonesTotal

@@ -51,7 +51,9 @@ export default function AppHeader() {
       <div className="container mx-auto px-4 py-3 sm:py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4 sm:space-x-8">
-            <h1 className="text-xl sm:text-2xl font-bold">Journal</h1>
+            <Link href="/app">
+              <h1 className="text-xl sm:text-2xl font-bold">Journal</h1>
+            </Link>
             {/* Desktop Navigation */}
             <nav className="hidden md:flex space-x-4">
               <Link

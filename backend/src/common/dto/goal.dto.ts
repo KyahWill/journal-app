@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsEnum, IsDateString, MinLength, MaxLength } from 'class-validator'
-import { GoalCategory, GoalStatus } from '@/common/types/goal.types'
+import { IsString, IsOptional, IsEnum, IsDateString, IsBoolean, MinLength, MaxLength } from 'class-validator'
+import { GoalCategory, GoalStatus, HabitFrequency } from '@/common/types/goal.types'
 
 export class CreateGoalDto {
   @IsString()
@@ -19,6 +19,14 @@ export class CreateGoalDto {
 
   @IsDateString()
   target_date: string
+
+  @IsOptional()
+  @IsBoolean()
+  is_habit?: boolean
+
+  @IsOptional()
+  @IsEnum(['daily', 'weekly', 'monthly'])
+  habit_frequency?: HabitFrequency
 }
 
 export class UpdateGoalDto {
@@ -42,6 +50,14 @@ export class UpdateGoalDto {
   @IsOptional()
   @IsDateString()
   target_date?: string
+
+  @IsOptional()
+  @IsBoolean()
+  is_habit?: boolean
+
+  @IsOptional()
+  @IsEnum(['daily', 'weekly', 'monthly'])
+  habit_frequency?: HabitFrequency
 }
 
 export class UpdateGoalStatusDto {
