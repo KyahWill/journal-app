@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules/
+
+# Development
+.env
+.env.*
+*.log
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+coverage/
+test/
+*.spec.ts
+jest.config.js
+
+# Documentation
+docs/
+
+# Source maps (not needed in production)
+*.map
+
+# Build artifacts (Docker builds fresh)
+dist/
+
+# Docker files (handled separately)
+docker-compose*.yml
+
+# Postman
+postman_collection.json
+
+# Local scripts not needed for build
+scripts/*.local.sh
+

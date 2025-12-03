@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+gcloud run deploy journal-backend --source=. \
+  --region=asia-southeast1 \
+  --memory=512Mi \
+  --cpu=1 \
+  --max-instances=1 \
+  --port=3001 \
+  --allow-unauthenticated \
+  --set-env-vars="NODE_ENV=production" \
+  --set-secrets="FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,ELEVEN_LABS_API_KEY=ELEVEN_LABS_API_KEY:latest,FIREBASE_PROJECT_ID=NEXT_PUBLIC_FIREBASE_PROJECT_ID:latest,FIREBASE_STORAGE_BUCKET=NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET:latest,FIREBASE_MESSAGING_SENDER_ID=NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID:latest,FIREBASE_APP_ID=NEXT_PUBLIC_FIREBASE_APP_ID:latest"
