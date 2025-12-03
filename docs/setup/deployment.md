@@ -1,17 +1,16 @@
 # Deployment Guide
 
-**Last Updated**: November 2025
+**Last Updated**: December 2025
 
-This guide covers deploying the Journal application to various platforms.
+This guide covers deploying the Journal application to production.
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Google Cloud Run (Recommended)](#google-cloud-run-recommended)
-- [Vercel](#vercel)
-- [Docker](#docker)
-- [Firebase Hosting](#firebase-hosting)
-- [Other Platforms](#other-platforms)
+- [Prerequisites](#prerequisites)
+- [Frontend Deployment (Firebase App Hosting)](#frontend-deployment-firebase-app-hosting)
+- [Backend Deployment (Google Cloud Run)](#backend-deployment-google-cloud-run)
+- [Secret Management](#secret-management)
 - [Post-Deployment](#post-deployment)
 - [Troubleshooting](#troubleshooting)
 
@@ -21,41 +20,49 @@ This guide covers deploying the Journal application to various platforms.
 
 The Journal application consists of two deployable components:
 
-1. **Web Application** (Next.js) - Frontend and API routes
-2. **Backend API** (NestJS) - RESTful API server
+| Component | Technology | Deployment Platform | Region |
+|-----------|------------|---------------------|--------|
+| **Web Frontend** | Next.js | Firebase App Hosting | Auto-managed |
+| **Backend API** | NestJS | Google Cloud Run | asia-southeast1 |
 
-Both can be deployed independently to different platforms.
+### Architecture
 
-### Deployment Options
-
-| Platform | Web | Backend | Difficulty | Cost |
-|----------|-----|---------|------------|------|
-| Google Cloud Run | ✅ | ✅ | Medium | Pay-per-use |
-| Vercel | ✅ | ❌ | Easy | Free tier available |
-| Docker | ✅ | ✅ | Medium | Infrastructure cost |
-| Firebase Hosting | ✅ | ❌ | Easy | Free tier available |
-| Heroku | ✅ | ✅ | Easy | Paid plans |
-
-**Recommended:** Google Cloud Run for both web and backend (best integration with Firebase).
+```
+┌─────────────────────┐     ┌─────────────────────┐
+│   Firebase App      │     │   Google Cloud      │
+│     Hosting         │────▶│      Run            │
+│   (Next.js Web)     │     │   (NestJS API)      │
+└─────────────────────┘     └─────────────────────┘
+         │                           │
+         │                           │
+         ▼                           ▼
+┌─────────────────────────────────────────────────┐
+│              Firebase / Firestore                │
+│           (Database & Authentication)            │
+└─────────────────────────────────────────────────┘
+```
 
 ---
 
-## Google Cloud Run (Recommended)
+## Prerequisites
 
-Google Cloud Run provides serverless container deployment with automatic scaling.
-
-### Prerequisites
+### Required Accounts & Tools
 
 1. **Google Cloud Account** with billing enabled
-2. **gcloud CLI** installed and configured
-3. **Docker** installed locally
-4. **Firebase project** (automatically creates GCP project)
+2. **Firebase Project** (creates associated GCP project)
+3. **Google Cloud SDK (gcloud CLI)** installed
 
-### Install gcloud CLI
+### Install Google Cloud SDK
 
-**macOS:**
+**macOS (Recommended - Official Installer):**
 ```bash
-brew install google-cloud-sdk
+curl -sSL https://sdk.cloud.google.com | bash -s -- --disable-prompts --install-dir=$HOME
+source $HOME/google-cloud-sdk/path.zsh.inc
+```
+
+**macOS (Homebrew - May have Python issues):**
+```bash
+brew install --cask google-cloud-sdk
 ```
 
 **Linux:**
@@ -70,623 +77,464 @@ Download from [Google Cloud SDK](https://cloud.google.com/sdk/docs/install)
 ### Configure gcloud
 
 ```bash
-# Login
+# Login to Google Cloud
 gcloud auth login
 
-# Set project
+# Set your project
 gcloud config set project YOUR_PROJECT_ID
 
-# Enable required APIs
-gcloud services enable run.googleapis.com
-gcloud services enable cloudbuild.googleapis.com
-gcloud services enable containerregistry.googleapis.com
-```
-
-### Deploy Web Application
-
-#### 1. Build Docker Image
-
-The web directory includes a `cloudbuild.yaml` for automated builds:
-
-```bash
-cd web
-gcloud builds submit --config cloudbuild.yaml
-```
-
-Or build manually:
-
-```bash
-cd web
-docker build -t gcr.io/YOUR_PROJECT_ID/journal-web .
-docker push gcr.io/YOUR_PROJECT_ID/journal-web
-```
-
-#### 2. Deploy to Cloud Run
-
-```bash
-gcloud run deploy journal-web \
-  --image gcr.io/YOUR_PROJECT_ID/journal-web \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --memory 512Mi \
-  --cpu 1 \
-  --max-instances 10
-```
-
-#### 3. Set Environment Variables
-
-**Option 1 - Command Line:**
-```bash
-gcloud run services update journal-web \
-  --set-env-vars="NEXT_PUBLIC_FIREBASE_API_KEY=your_key,NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project"
-```
-
-**Option 2 - Secret Manager (Recommended):**
-```bash
-# Create secrets
-echo -n "your_gemini_api_key" | gcloud secrets create gemini-api-key --data-file=-
-echo -n "your_service_account_json" | gcloud secrets create firebase-service-account --data-file=-
-
-# Grant access to Cloud Run service account
-gcloud secrets add-iam-policy-binding gemini-api-key \
-  --member="serviceAccount:YOUR_PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-# Update service to use secrets
-gcloud run services update journal-web \
-  --set-secrets="GEMINI_API_KEY=gemini-api-key:latest,FIREBASE_SERVICE_ACCOUNT_KEY=firebase-service-account:latest"
-```
-
-#### 4. Get Deployment URL
-
-```bash
-gcloud run services describe journal-web --format='value(status.url)'
-```
-
-### Deploy Backend API
-
-#### 1. Create Dockerfile
-
-The backend includes a `Dockerfile`:
-
-```dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-COPY pnpm-lock.yaml ./
-
-RUN npm install -g pnpm
-RUN pnpm install
-
-COPY . .
-
-RUN pnpm build
-
-EXPOSE 8080
-
-CMD ["node", "dist/main"]
-```
-
-#### 2. Build and Push Image
-
-```bash
-cd backend
-docker build -t gcr.io/YOUR_PROJECT_ID/journal-backend .
-gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/journal-backend
-```
-
-#### 3. Deploy to Cloud Run
-
-```bash
-gcloud run deploy journal-backend \
-  --image gcr.io/YOUR_PROJECT_ID/journal-backend \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --memory 1Gi \
-  --cpu 1 \
-  --max-instances 10 \
-  --port 8080
-```
-
-#### 4. Set Environment Variables
-
-```bash
-# Create secrets
-echo -n "your_gemini_api_key" | gcloud secrets create backend-gemini-api-key --data-file=-
-echo -n "your_service_account_json" | gcloud secrets create backend-firebase-service-account --data-file=-
-
-# Update service
-gcloud run services update journal-backend \
-  --set-env-vars="PORT=8080,NODE_ENV=production,FIREBASE_PROJECT_ID=your_project" \
-  --set-secrets="GEMINI_API_KEY=backend-gemini-api-key:latest,FIREBASE_SERVICE_ACCOUNT_KEY=backend-firebase-service-account:latest"
-```
-
-#### 5. Update Web to Use Backend URL
-
-Get backend URL:
-```bash
-BACKEND_URL=$(gcloud run services describe journal-backend --format='value(status.url)')
-```
-
-Update web environment:
-```bash
-gcloud run services update journal-web \
-  --set-env-vars="NEXT_PUBLIC_API_URL=${BACKEND_URL}/api/v1"
-```
-
-### Configure Custom Domain (Optional)
-
-```bash
-# Map domain to web service
-gcloud run domain-mappings create \
-  --service journal-web \
-  --domain your-domain.com \
-  --region us-central1
-
-# Map subdomain to backend
-gcloud run domain-mappings create \
-  --service journal-backend \
-  --domain api.your-domain.com \
-  --region us-central1
-```
-
-### Set Up CI/CD (Optional)
-
-Create `.github/workflows/deploy.yml`:
-
-```yaml
-name: Deploy to Cloud Run
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy-web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: google-github-actions/setup-gcloud@v1
-        with:
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-      - run: |
-          cd web
-          gcloud builds submit --config cloudbuild.yaml
-
-  deploy-backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: google-github-actions/setup-gcloud@v1
-        with:
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-      - run: |
-          cd backend
-          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/journal-backend
-          gcloud run deploy journal-backend --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/journal-backend
+# Verify configuration
+gcloud config list
 ```
 
 ---
 
-## Vercel
+## Frontend Deployment (Firebase App Hosting)
 
-Vercel is ideal for the web application (frontend only).
+The web frontend is deployed using **Firebase App Hosting**, which provides automatic builds, CDN distribution, and seamless Firebase integration.
 
-### Prerequisites
+### Configuration File
 
-1. **Vercel Account** - Sign up at [vercel.com](https://vercel.com)
-2. **Vercel CLI** (optional) - `npm install -g vercel`
+The deployment is configured via `web/apphosting.yaml`:
 
-### Deploy Web Application
+```yaml
+# Settings for Cloud Run backend
+runConfig:
+  minInstances: 0
+  maxInstances: 1
 
-#### Option 1 - Vercel Dashboard
-
-1. Go to [vercel.com/new](https://vercel.com/new)
-2. Import your Git repository
-3. Select `web` as root directory
-4. Configure environment variables
-5. Click "Deploy"
-
-#### Option 2 - Vercel CLI
-
-```bash
-cd web
-
-# Login
-vercel login
-
-# Deploy
-vercel
-
-# Deploy to production
-vercel --prod
+# Environment variables and secrets
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    secret: NEXT_PUBLIC_FIREBASE_APP_ID 
+  - variable: FIREBASE_SERVICE_ACCOUNT_KEY
+    secret: FIREBASE_SERVICE_ACCOUNT_KEY
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    secret: NEXT_PUBLIC_FIREBASE_API_KEY 
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    secret: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN 
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID 
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    secret: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET 
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    secret: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID 
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+  - variable: NEXT_PUBLIC_API_URL
+    secret: NEXT_PUBLIC_API_URL
+  - variable: NEXT_PUBLIC_FEATURE_VOICE_COACH
+    value: false
 ```
 
-### Configure Environment Variables
+### Initial Setup
 
-In Vercel Dashboard:
+1. **Enable Firebase App Hosting** in Firebase Console:
+   - Go to Firebase Console → Hosting → App Hosting
+   - Click "Get Started" and follow the setup wizard
+   - Connect your GitHub repository
 
-1. Go to Project Settings → Environment Variables
-2. Add all required variables:
+2. **Create Secrets in Google Cloud Secret Manager:**
+   ```bash
+   # Set your project
+   gcloud config set project YOUR_PROJECT_ID
+   
+   # Create each secret (repeat for all required secrets)
+   echo -n "your_value" | gcloud secrets create SECRET_NAME --data-file=-
+   ```
+
+   Required secrets:
+   - `NEXT_PUBLIC_FIREBASE_APP_ID`
    - `NEXT_PUBLIC_FIREBASE_API_KEY`
    - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
    - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
    - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
    - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-   - `NEXT_PUBLIC_FIREBASE_APP_ID`
    - `FIREBASE_SERVICE_ACCOUNT_KEY`
    - `GEMINI_API_KEY`
-   - `NEXT_PUBLIC_API_URL` (your backend URL)
+   - `NEXT_PUBLIC_API_URL` (your Cloud Run backend URL)
 
-### Configure Custom Domain
+3. **Grant Secret Access:**
+   Firebase App Hosting automatically grants access to secrets referenced in `apphosting.yaml`.
 
-1. Go to Project Settings → Domains
-2. Add your domain
-3. Configure DNS records as instructed
+### Deployment
 
-### Automatic Deployments
+Firebase App Hosting deploys **automatically** when you push to your connected Git branch.
 
-Vercel automatically deploys:
-- **Production:** Pushes to `main` branch
-- **Preview:** Pull requests and other branches
+**Manual Rollback:**
+```bash
+cd web
+firebase apphosting:rollouts:list
+firebase apphosting:rollouts:rollback ROLLOUT_ID
+```
+
+### View Deployment Status
+
+- **Firebase Console:** Hosting → App Hosting → View builds
+- **CLI:** `firebase apphosting:rollouts:list`
 
 ---
 
-## Docker
+## Backend Deployment (Google Cloud Run)
 
-Deploy using Docker and Docker Compose for self-hosting.
+The backend API is deployed to **Google Cloud Run** in the `asia-southeast1` region.
 
-### Prerequisites
+### Configuration
 
-1. **Docker** and **Docker Compose** installed
-2. **Server** with Docker support (VPS, dedicated server, etc.)
+| Setting | Value |
+|---------|-------|
+| Service Name | `journal-backend` |
+| Region | `asia-southeast1` |
+| Memory | 512Mi |
+| CPU | 1 |
+| Max Instances | 1 |
+| Port | 3001 |
 
-### Create docker-compose.yml
+### Initial Setup
 
-```yaml
-version: '3.8'
+#### 1. Enable Required APIs
 
-services:
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://backend:3001/api/v1
-    env_file:
-      - ./web/.env.local
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "3001:3001"
-    environment:
-      - PORT=3001
-      - NODE_ENV=production
-    env_file:
-      - ./backend/.env
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/nginx/ssl
-    depends_on:
-      - web
-      - backend
-    restart: unless-stopped
+```bash
+gcloud services enable \
+  run.googleapis.com \
+  cloudbuild.googleapis.com \
+  secretmanager.googleapis.com \
+  artifactregistry.googleapis.com
 ```
 
-### Create nginx.conf
+#### 2. Create Secrets in Secret Manager
 
-```nginx
-events {
-    worker_connections 1024;
-}
+```bash
+# Firebase Service Account (paste JSON, then Ctrl+D)
+gcloud secrets create FIREBASE_SERVICE_ACCOUNT_KEY --data-file=-
 
-http {
-    upstream web {
-        server web:3000;
-    }
+# Gemini API Key
+echo -n "YOUR_GEMINI_API_KEY" | gcloud secrets create GEMINI_API_KEY --data-file=-
 
-    upstream backend {
-        server backend:3001;
-    }
+# ElevenLabs API Key
+echo -n "YOUR_ELEVENLABS_API_KEY" | gcloud secrets create ELEVEN_LABS_API_KEY --data-file=-
 
-    server {
-        listen 80;
-        server_name your-domain.com;
+# Firebase Project ID (reuse from frontend)
+echo -n "your-project-id" | gcloud secrets create NEXT_PUBLIC_FIREBASE_PROJECT_ID --data-file=-
 
-        location / {
-            proxy_pass http://web;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-        }
+# Firebase Storage Bucket
+echo -n "your-project.appspot.com" | gcloud secrets create NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET --data-file=-
 
-        location /api/ {
-            proxy_pass http://backend;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-        }
-    }
-}
+# Firebase Messaging Sender ID
+echo -n "123456789012" | gcloud secrets create NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID --data-file=-
+
+# Firebase App ID
+echo -n "1:123456789:web:abc123" | gcloud secrets create NEXT_PUBLIC_FIREBASE_APP_ID --data-file=-
+```
+
+#### 3. Grant Cloud Run Access to Secrets
+
+```bash
+PROJECT_NUMBER=$(gcloud projects describe $(gcloud config get-value project) --format='value(projectNumber)')
+
+# Grant access to the compute service account
+gcloud projects add-iam-policy-binding $(gcloud config get-value project) \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+### Deploy Script
+
+The backend includes a deployment script at `backend/scripts/deploy-app.sh`:
+
+```bash
+#!/bin/bash
+set -e
+
+gcloud run deploy journal-backend --source=. \
+  --region=asia-southeast1 \
+  --memory=512Mi \
+  --cpu=1 \
+  --max-instances=1 \
+  --port=3001 \
+  --allow-unauthenticated \
+  --set-env-vars="NODE_ENV=production" \
+  --set-secrets="FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,ELEVEN_LABS_API_KEY=ELEVEN_LABS_API_KEY:latest,FIREBASE_PROJECT_ID=NEXT_PUBLIC_FIREBASE_PROJECT_ID:latest,FIREBASE_STORAGE_BUCKET=NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET:latest,FIREBASE_MESSAGING_SENDER_ID=NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID:latest,FIREBASE_APP_ID=NEXT_PUBLIC_FIREBASE_APP_ID:latest"
 ```
 
 ### Deploy
 
 ```bash
-# Build and start services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-
-# Rebuild after changes
-docker-compose up -d --build
+cd backend
+./scripts/deploy-app.sh
 ```
 
-### Update Deployment
+Or run the command directly:
 
-```bash
-# Pull latest code
-git pull
-
-# Rebuild and restart
-docker-compose up -d --build
-
-# Clean up old images
-docker system prune -a
-```
-
----
-
-## Firebase Hosting
-
-Firebase Hosting is suitable for the web application (static export).
-
-### Prerequisites
-
-1. **Firebase CLI** installed: `npm install -g firebase-tools`
-2. **Firebase project** created
-
-### Configure Next.js for Static Export
-
-Update `next.config.ts`:
-
-```typescript
-const nextConfig = {
-  output: 'export',
-  images: {
-    unoptimized: true,
-  },
-};
-
-export default nextConfig;
-```
-
-**Note:** Static export has limitations (no API routes, no server-side rendering).
-
-### Initialize Firebase Hosting
-
-```bash
-cd web
-firebase init hosting
-
-# Select:
-# - Use existing project
-# - Public directory: out
-# - Single-page app: Yes
-# - GitHub Actions: Optional
-```
-
-### Build and Deploy
-
-```bash
-# Build static export
-pnpm build
-
-# Deploy to Firebase Hosting
-firebase deploy --only hosting
-```
-
-### Configure Custom Domain
-
-1. Go to Firebase Console → Hosting
-2. Click "Add custom domain"
-3. Follow DNS configuration instructions
-
----
-
-## Other Platforms
-
-### Heroku
-
-**Web Application:**
-```bash
-cd web
-heroku create journal-web
-git push heroku main
-heroku config:set NEXT_PUBLIC_FIREBASE_API_KEY=your_key
-```
-
-**Backend API:**
 ```bash
 cd backend
-heroku create journal-backend
-git push heroku main
-heroku config:set FIREBASE_SERVICE_ACCOUNT_KEY='...'
+gcloud run deploy journal-backend --source=. \
+  --region=asia-southeast1 \
+  --memory=512Mi \
+  --cpu=1 \
+  --max-instances=1 \
+  --port=3001 \
+  --allow-unauthenticated \
+  --set-env-vars="NODE_ENV=production" \
+  --set-secrets="FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,ELEVEN_LABS_API_KEY=ELEVEN_LABS_API_KEY:latest,FIREBASE_PROJECT_ID=NEXT_PUBLIC_FIREBASE_PROJECT_ID:latest"
 ```
 
-### AWS (Elastic Beanstalk)
+### Get Service URL
 
-1. Install AWS CLI and EB CLI
-2. Initialize Elastic Beanstalk
-3. Deploy using `eb deploy`
+```bash
+gcloud run services describe journal-backend \
+  --region=asia-southeast1 \
+  --format='value(status.url)'
+```
 
-### DigitalOcean App Platform
+### View Logs
 
-1. Connect GitHub repository
-2. Configure build settings
-3. Set environment variables
-4. Deploy
+```bash
+# Stream logs
+gcloud run services logs read journal-backend --region=asia-southeast1
+
+# Tail logs
+gcloud run services logs tail journal-backend --region=asia-southeast1
+```
+
+### Update Backend URL in Frontend
+
+After deploying the backend, update the `NEXT_PUBLIC_API_URL` secret with the Cloud Run URL:
+
+```bash
+BACKEND_URL=$(gcloud run services describe journal-backend --region=asia-southeast1 --format='value(status.url)')
+
+echo -n "${BACKEND_URL}/api/v1" | gcloud secrets versions add NEXT_PUBLIC_API_URL --data-file=-
+```
+
+Then redeploy the frontend (push to trigger Firebase App Hosting, or manually roll out).
+
+---
+
+## Secret Management
+
+### List All Secrets
+
+```bash
+gcloud secrets list --filter="labels.app=journal" 
+# or
+gcloud secrets list
+```
+
+### Update a Secret
+
+```bash
+# Add new version
+echo -n "new_value" | gcloud secrets versions add SECRET_NAME --data-file=-
+
+# Verify
+gcloud secrets versions list SECRET_NAME
+```
+
+### View Secret Value (for debugging)
+
+```bash
+gcloud secrets versions access latest --secret=SECRET_NAME
+```
+
+### Delete Old Secret Versions
+
+```bash
+# List versions
+gcloud secrets versions list SECRET_NAME
+
+# Disable old version
+gcloud secrets versions disable VERSION_ID --secret=SECRET_NAME
+
+# Destroy old version (irreversible)
+gcloud secrets versions destroy VERSION_ID --secret=SECRET_NAME
+```
 
 ---
 
 ## Post-Deployment
 
-### Verify Deployment
+### Verify Deployments
 
-**Web Application:**
+**Frontend:**
 ```bash
-curl https://your-web-url.com
+curl https://your-firebase-app-url.web.app
 ```
 
-**Backend API:**
+**Backend:**
 ```bash
-curl https://your-backend-url.com/health
+# Health check
+curl https://journal-backend-xxxxx-as.a.run.app/api/v1/health
+
+# Root endpoint
+curl https://journal-backend-xxxxx-as.a.run.app/api/v1
 ```
 
-### Update CORS Settings
+### Update CORS (if needed)
 
-Update backend `.env` with production URLs:
-```env
-CORS_ORIGINS=https://your-web-url.com
+If you encounter CORS errors, update the backend's `CORS_ORIGINS`:
+
+```bash
+gcloud run services update journal-backend \
+  --region=asia-southeast1 \
+  --set-env-vars="CORS_ORIGINS=https://your-frontend-url.web.app"
 ```
 
-### Configure Monitoring
+### Configure Custom Domain
 
-**Google Cloud Monitoring:**
+**Backend (Cloud Run):**
 ```bash
-# Enable monitoring
+gcloud run domain-mappings create \
+  --service=journal-backend \
+  --domain=api.your-domain.com \
+  --region=asia-southeast1
+```
+
+**Frontend (Firebase):**
+1. Go to Firebase Console → Hosting
+2. Click "Add custom domain"
+3. Follow DNS configuration instructions
+
+### Set Up Monitoring
+
+```bash
+# Enable Cloud Monitoring
 gcloud services enable monitoring.googleapis.com
 
-# Create uptime check
-gcloud monitoring uptime-checks create https://your-web-url.com
+# View metrics in console
+# https://console.cloud.google.com/run/detail/asia-southeast1/journal-backend/metrics
 ```
-
-**Vercel Analytics:**
-- Enable in Vercel Dashboard → Analytics
-
-### Set Up Alerts
-
-**Google Cloud:**
-```bash
-# Create alert policy
-gcloud alpha monitoring policies create \
-  --notification-channels=CHANNEL_ID \
-  --display-name="High Error Rate" \
-  --condition-display-name="Error rate > 5%" \
-  --condition-threshold-value=0.05
-```
-
-### Configure Backups
-
-**Firestore Backups:**
-```bash
-# Schedule daily backups
-gcloud firestore backups schedules create \
-  --database='(default)' \
-  --recurrence=daily \
-  --retention=7d
-```
-
-### Performance Optimization
-
-1. **Enable CDN** for static assets
-2. **Configure caching** headers
-3. **Optimize images** (use Next.js Image component)
-4. **Enable compression** (gzip/brotli)
-5. **Monitor performance** (Lighthouse, Web Vitals)
 
 ---
 
 ## Troubleshooting
 
-### Deployment Fails
+### Container Failed to Start
 
-**Issue:** Build or deployment errors
+**Error:** `The user-provided container failed to start and listen on the port`
 
-**Solutions:**
-1. Check build logs for specific errors
-2. Verify all environment variables are set
-3. Test build locally: `pnpm build`
-4. Check Docker image builds: `docker build .`
-5. Verify dependencies are installed
+**Causes & Solutions:**
 
-### Application Not Starting
+1. **Missing source files in build context**
+   - Check `.gcloudignore` isn't excluding `src/` directory
+   - The `src/` folder is needed for building the TypeScript application
 
-**Issue:** Service starts but doesn't respond
+2. **Missing dependencies**
+   - Ensure `pnpm-lock.yaml` is committed
+   - Check Dockerfile installs dependencies correctly
 
-**Solutions:**
-1. Check application logs
-2. Verify port configuration (Cloud Run uses PORT env var)
-3. Check health endpoint: `/health`
-4. Verify environment variables are loaded
-5. Check Firebase connection
+3. **Port mismatch**
+   - Ensure `--port=3001` matches the port in `main.ts`
+   - Cloud Run sets `PORT` env var automatically
 
-### CORS Errors in Production
+**Debug Steps:**
+```bash
+# View deployment logs
+gcloud run services logs read journal-backend --region=asia-southeast1 --limit=50
 
-**Issue:** Frontend can't connect to backend
+# Check recent revisions
+gcloud run revisions list --service=journal-backend --region=asia-southeast1
+```
 
-**Solutions:**
-1. Add production URL to `CORS_ORIGINS`
-2. Verify backend URL in `NEXT_PUBLIC_API_URL`
-3. Check for trailing slashes in URLs
-4. Ensure HTTPS is used (not HTTP)
+### Secrets Not Loading
 
-### High Costs
-
-**Issue:** Unexpected cloud costs
+**Error:** Environment variables are undefined
 
 **Solutions:**
-1. Set up billing alerts
-2. Configure auto-scaling limits
-3. Optimize cold start times
-4. Use caching to reduce requests
-5. Monitor usage in Cloud Console
+1. Verify secret exists: `gcloud secrets list`
+2. Check secret has a version: `gcloud secrets versions list SECRET_NAME`
+3. Verify service account has access to secrets
+4. Redeploy after creating/updating secrets
 
-### Slow Performance
+### Build Failures
 
-**Issue:** Application is slow
+**Error:** Cloud Build fails
 
 **Solutions:**
-1. Enable CDN for static assets
-2. Optimize database queries
-3. Add caching layer (Redis)
-4. Increase instance resources
-5. Use connection pooling
+```bash
+# View build logs
+gcloud builds list --limit=5
+gcloud builds log BUILD_ID
+
+# Test Docker build locally
+cd backend
+docker build -t test-backend .
+docker run -p 3001:3001 test-backend
+```
+
+### Firebase App Hosting Build Fails
+
+**Solutions:**
+1. Check build logs in Firebase Console → App Hosting
+2. Verify `apphosting.yaml` syntax
+3. Ensure all referenced secrets exist
+4. Check Node.js version compatibility
+
+### High Latency / Cold Starts
+
+**Solutions:**
+1. Increase `minInstances` to 1 (increases cost)
+2. Optimize application startup time
+3. Use Cloud Run's CPU boost feature
+
+```bash
+gcloud run services update journal-backend \
+  --region=asia-southeast1 \
+  --min-instances=1 \
+  --cpu-boost
+```
+
+---
+
+## Quick Reference
+
+### Deploy Commands
+
+```bash
+# Backend deployment
+cd backend && ./scripts/deploy-app.sh
+
+# Frontend deployment
+# Automatic on git push, or manually:
+cd web && firebase apphosting:rollouts:create
+```
+
+### Useful Commands
+
+```bash
+# List Cloud Run services
+gcloud run services list
+
+# Describe service
+gcloud run services describe journal-backend --region=asia-southeast1
+
+# View logs
+gcloud run services logs read journal-backend --region=asia-southeast1
+
+# List secrets
+gcloud secrets list
+
+# Update secret
+echo -n "value" | gcloud secrets versions add SECRET_NAME --data-file=-
+```
+
+### URLs
+
+| Service | URL Pattern |
+|---------|-------------|
+| Backend API | `https://journal-backend-HASH-as.a.run.app/api/v1` |
+| Backend Health | `https://journal-backend-HASH-as.a.run.app/api/v1/health` |
+| Frontend | `https://your-project.web.app` |
 
 ---
 
 ## Additional Resources
 
+- [Firebase App Hosting Documentation](https://firebase.google.com/docs/app-hosting)
 - [Google Cloud Run Documentation](https://cloud.google.com/run/docs)
-- [Vercel Documentation](https://vercel.com/docs)
-- [Docker Documentation](https://docs.docker.com/)
-- [Firebase Hosting Documentation](https://firebase.google.com/docs/hosting)
-- [Next.js Deployment](https://nextjs.org/docs/deployment)
-- [NestJS Deployment](https://docs.nestjs.com/faq/serverless)
+- [Secret Manager Documentation](https://cloud.google.com/secret-manager/docs)
+- [Cloud Build Documentation](https://cloud.google.com/build/docs)
 
 ---
 
-**Need help?** Check the [Troubleshooting Guide](../guides/troubleshooting.md) or return to [Setup Guide](../SETUP.md).
+**Need help?** Check the [Environment Variables](./environment-variables.md) guide or return to [Setup Guide](../SETUP.md).
