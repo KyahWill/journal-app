@@ -25,17 +25,7 @@ export interface ChatSession {
   user_id: string
   title?: string
   messages: ChatMessage[]
-  prompt_id?: string
-  created_at: Date
-  updated_at: Date
-}
-
-export interface UserPrompt {
-  id: string
-  user_id: string
-  name: string
-  prompt_text: string
-  is_default: boolean
+  personality_id?: string
   created_at: Date
   updated_at: Date
 }

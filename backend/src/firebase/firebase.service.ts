@@ -18,7 +18,7 @@ export class FirebaseService implements OnModuleInit {
     try {
       const serviceAccountKey = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT_KEY')
       const projectId = this.configService.get<string>('FIREBASE_PROJECT_ID')
-      const databaseId = this.configService.get<string>('FIREBASE_DATABASE_ID') || '(default)'
+      const databaseId = this.configService.get<string>('FIREBASE_DATABASE_ID')
 
       if (!serviceAccountKey) {
         throw new Error(

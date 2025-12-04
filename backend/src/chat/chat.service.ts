@@ -5,7 +5,7 @@ import { JournalService } from '@/journal/journal.service'
 import { SendMessageDto } from '@/common/dto/chat.dto'
 import { ChatSession, ChatMessage } from '@/common/types/journal.types'
 import { v4 as uuidv4 } from 'uuid'
-import { PromptService } from '@/prompt/prompt.service'
+import { CoachPersonalityService } from '@/coach-personality/coach-personality.service'
 import { RateLimitService } from '@/common/services/rate-limit.service'
 import { GoalService } from '@/goal/goal.service'
 import { RagService } from '@/rag/rag.service'
@@ -20,7 +20,7 @@ export class ChatService {
     private readonly firebaseService: FirebaseService,
     private readonly geminiService: GeminiService,
     private readonly journalService: JournalService,
-    private readonly promptService: PromptService,
+    private readonly coachPersonalityService: CoachPersonalityService,
     private readonly rateLimitService: RateLimitService,
     @Inject(forwardRef(() => GoalService))
     private readonly goalService: GoalService,
@@ -43,14 +43,14 @@ export class ChatService {
         )
       }
 
-      const { message, sessionId, promptId } = sendMessageDto
+      const { message, sessionId, personalityId } = sendMessageDto
 
       // Get or create session
       let session: ChatSession
       if (sessionId) {
         session = await this.getSession(sessionId, userId)
       } else {
-        session = await this.createSession(userId, promptId)
+        session = await this.createSession(userId, personalityId)
       }
 
       // Get user's journal entries for context
@@ -62,16 +62,35 @@ export class ChatService {
       // Retrieve RAG context using semantic search
       const { ragContext, warning: ragWarning } = await this.retrieveRagContext(userId, message)
 
-      // Get custom prompt if specified
+      // Get custom prompt from coach personality if specified
       let customPromptText: string | undefined
-      const effectivePromptId = promptId || session.prompt_id
+      const sessionPersonalityId = personalityId || session.personality_id
       
-      if (effectivePromptId) {
+      if (sessionPersonalityId) {
         try {
-          const prompt = await this.promptService.getPrompt(effectivePromptId, userId)
-          customPromptText = prompt.prompt_text
+          const personality = await this.coachPersonalityService.findOne(userId, sessionPersonalityId)
+          customPromptText = personality.systemPrompt
         } catch (error) {
-          this.logger.warn(`Could not load prompt ${effectivePromptId}, using default`)
+          this.logger.warn(`Could not load personality ${sessionPersonalityId}, using default`)
+          // Try to get default personality
+          try {
+            const defaultPersonality = await this.coachPersonalityService.findDefault(userId)
+            if (defaultPersonality) {
+              customPromptText = defaultPersonality.systemPrompt
+            }
+          } catch (defaultError) {
+            this.logger.warn('Could not load default personality, using built-in default')
+          }
+        }
+      } else {
+        // No personality specified, try to use the user's default
+        try {
+          const defaultPersonality = await this.coachPersonalityService.findDefault(userId)
+          if (defaultPersonality) {
+            customPromptText = defaultPersonality.systemPrompt
+          }
+        } catch (error) {
+          this.logger.debug('No default personality found, using built-in default')
         }
       }
 
@@ -116,12 +135,12 @@ export class ChatService {
           messages: session.messages,
           title: session.title,
         }
-        if (effectivePromptId) {
-          updateData.prompt_id = effectivePromptId
+        if (sessionPersonalityId) {
+          updateData.personality_id = sessionPersonalityId
         }
         await this.firebaseService.updateDocument(this.collectionName, session.id, updateData)
       } else {
-        await this.updateSession(session.id, userId, session.messages, effectivePromptId)
+        await this.updateSession(session.id, userId, session.messages, sessionPersonalityId)
       }
 
       this.logger.log(`Message sent in session: ${session.id} for user: ${userId}`)
@@ -154,14 +173,14 @@ export class ChatService {
         )
       }
 
-      const { message, sessionId, promptId } = sendMessageDto
+      const { message, sessionId, personalityId } = sendMessageDto
 
       // Get or create session
       let session: ChatSession
       if (sessionId) {
         session = await this.getSession(sessionId, userId)
       } else {
-        session = await this.createSession(userId, promptId)
+        session = await this.createSession(userId, personalityId)
       }
 
       // Get user's journal entries for context
@@ -173,16 +192,35 @@ export class ChatService {
       // Retrieve RAG context using semantic search
       const { ragContext, warning: ragWarning } = await this.retrieveRagContext(userId, message)
 
-      // Get custom prompt if specified
+      // Get custom prompt from coach personality if specified
       let customPromptText: string | undefined
-      const effectivePromptId = promptId || session.prompt_id
+      const sessionPersonalityId = personalityId || session.personality_id
       
-      if (effectivePromptId) {
+      if (sessionPersonalityId) {
         try {
-          const prompt = await this.promptService.getPrompt(effectivePromptId, userId)
-          customPromptText = prompt.prompt_text
+          const personality = await this.coachPersonalityService.findOne(userId, sessionPersonalityId)
+          customPromptText = personality.systemPrompt
         } catch (error) {
-          this.logger.warn(`Could not load prompt ${effectivePromptId}, using default`)
+          this.logger.warn(`Could not load personality ${sessionPersonalityId}, using default`)
+          // Try to get default personality
+          try {
+            const defaultPersonality = await this.coachPersonalityService.findDefault(userId)
+            if (defaultPersonality) {
+              customPromptText = defaultPersonality.systemPrompt
+            }
+          } catch (defaultError) {
+            this.logger.warn('Could not load default personality, using built-in default')
+          }
+        }
+      } else {
+        // No personality specified, try to use the user's default
+        try {
+          const defaultPersonality = await this.coachPersonalityService.findDefault(userId)
+          if (defaultPersonality) {
+            customPromptText = defaultPersonality.systemPrompt
+          }
+        } catch (error) {
+          this.logger.debug('No default personality found, using built-in default')
         }
       }
 
@@ -247,12 +285,12 @@ export class ChatService {
           messages: session.messages,
           title: session.title,
         }
-        if (effectivePromptId) {
-          updateData.prompt_id = effectivePromptId
+        if (sessionPersonalityId) {
+          updateData.personality_id = sessionPersonalityId
         }
         await this.firebaseService.updateDocument(this.collectionName, session.id, updateData)
       } else {
-        await this.updateSession(session.id, userId, session.messages, effectivePromptId)
+        await this.updateSession(session.id, userId, session.messages, sessionPersonalityId)
       }
 
       // Send completion
@@ -268,7 +306,7 @@ export class ChatService {
     }
   }
 
-  async createSession(userId: string, promptId?: string): Promise<ChatSession> {
+  async createSession(userId: string, personalityId?: string): Promise<ChatSession> {
     try {
       const session: any = {
         user_id: userId,
@@ -276,8 +314,8 @@ export class ChatService {
       }
       
       // Only add optional fields if they have values
-      if (promptId) {
-        session.prompt_id = promptId
+      if (personalityId) {
+        session.personality_id = personalityId
       }
 
       const result = await this.firebaseService.addDocument(this.collectionName, session)
@@ -288,7 +326,7 @@ export class ChatService {
         id: result.id,
         user_id: userId,
         messages: [],
-        prompt_id: promptId,
+        personality_id: personalityId,
         created_at: result.created_at.toDate(),
         updated_at: result.updated_at.toDate(),
       }
@@ -315,7 +353,8 @@ export class ChatService {
         user_id: session.user_id,
         title: session.title,
         messages: session.messages || [],
-        prompt_id: session.prompt_id,
+        // Support legacy data that may have prompt_id instead of personality_id
+        personality_id: session.personality_id || session.prompt_id,
         created_at: session.created_at?.toDate() || new Date(),
         updated_at: session.updated_at?.toDate() || new Date(),
       }
@@ -342,7 +381,8 @@ export class ChatService {
         user_id: session.user_id,
         title: session.title,
         messages: session.messages || [],
-        prompt_id: session.prompt_id,
+        // Support legacy data that may have prompt_id instead of personality_id
+        personality_id: session.personality_id || session.prompt_id,
         created_at: session.created_at?.toDate() || new Date(),
         updated_at: session.updated_at?.toDate() || new Date(),
       }))
@@ -356,15 +396,15 @@ export class ChatService {
     sessionId: string,
     userId: string,
     messages: ChatMessage[],
-    promptId?: string,
+    personalityId?: string,
   ): Promise<ChatSession> {
     try {
       // Verify session belongs to user
       await this.getSession(sessionId, userId)
 
       const updateData: any = { messages }
-      if (promptId !== undefined) {
-        updateData.prompt_id = promptId
+      if (personalityId !== undefined) {
+        updateData.personality_id = personalityId
       }
 
       await this.firebaseService.updateDocument(this.collectionName, sessionId, updateData)

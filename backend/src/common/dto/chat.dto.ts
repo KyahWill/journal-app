@@ -11,7 +11,7 @@ export class SendMessageDto {
 
   @IsOptional()
   @IsString()
-  promptId?: string
+  personalityId?: string
 }
 
 export class ChatHistoryDto {

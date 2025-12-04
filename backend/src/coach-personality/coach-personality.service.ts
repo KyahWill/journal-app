@@ -14,7 +14,7 @@ export class CoachPersonalityService {
   ) {}
 
   /**
-   * Create a new coach personality and optionally generate an ElevenLabs agent
+   * Create a new coach personality and automatically generate an ElevenLabs agent
    */
   async create(userId: string, dto: CreateCoachPersonalityDto): Promise<CoachPersonality> {
     try {
@@ -46,6 +46,34 @@ export class CoachPersonalityService {
 
       this.logger.log(`Created coach personality: ${docRef.id} for user: ${userId}`);
 
+      // Automatically create ElevenLabs agent for this personality
+      let elevenLabsAgentId: string | undefined;
+      try {
+        this.logger.log(`Creating ElevenLabs agent for personality: ${docRef.id}`);
+        
+        elevenLabsAgentId = await this.elevenLabsService.createAgent({
+          name: dto.name,
+          prompt: dto.systemPrompt,
+          firstMessage: dto.firstMessage,
+          language: dto.language ?? 'en',
+          voiceId: dto.voiceId,
+          voiceStability: dto.voiceStability ?? 0.5,
+          voiceSimilarityBoost: dto.voiceSimilarityBoost ?? 0.75,
+        });
+
+        // Update personality with agent ID
+        await docRef.update({
+          elevenlabs_agent_id: elevenLabsAgentId,
+          updated_at: new Date(),
+        });
+
+        this.logger.log(`ElevenLabs agent ${elevenLabsAgentId} created and linked to personality: ${docRef.id}`);
+      } catch (agentError) {
+        // Log error but don't fail the personality creation
+        // Agent can be generated later via generateAgent endpoint
+        this.logger.warn(`Failed to auto-create ElevenLabs agent for personality ${docRef.id}: ${agentError.message}`);
+      }
+
       return {
         id: docRef.id,
         userId,
@@ -54,6 +82,7 @@ export class CoachPersonalityService {
         voiceSimilarityBoost: personalityData.voice_similarity_boost,
         language: personalityData.language,
         isDefault: personalityData.is_default,
+        elevenLabsAgentId,
         createdAt: personalityData.created_at,
         updatedAt: personalityData.updated_at,
       };
