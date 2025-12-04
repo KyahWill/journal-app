@@ -26,6 +26,8 @@ export interface Goal {
   habit_frequency?: HabitFrequency
   habit_streak: number
   habit_completed_dates: string[] // ISO date strings (YYYY-MM-DD)
+  // Google Calendar integration
+  calendar_event_id?: string // Google Calendar event ID for syncing
 }
 
 export interface Milestone {

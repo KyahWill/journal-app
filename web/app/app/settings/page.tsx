@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { useCoachPersonalities } from '@/lib/hooks/useCoachPersonalities'
+import { useGoogleCalendar } from '@/lib/hooks/useGoogleCalendar'
 import { CoachPersonality, CoachingStyle } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Edit, Trash2, Star, Loader2, Palette, Mic, Bot, Volume2 } from 'lucide-react'
+import { Plus, Edit, Trash2, Star, Loader2, Palette, Mic, Bot, Volume2, Calendar, CheckCircle2, XCircle, Link2 } from 'lucide-react'
 import Link from 'next/link'
 
 const COACHING_STYLES: { value: CoachingStyle; label: string; description: string }[] = [
@@ -60,8 +62,9 @@ const ELEVENLABS_VOICES: { id: string; name: string; description: string; gender
   { id: 'EkK5I93ZUQCD4DQCPO0C', name: 'Sarah', description: 'Soft, gentle', gender: 'Female' },
 ]
 
-export default function SettingsPage() {
+function SettingsContent() {
   const { user, ready: authReady } = useAuth()
+  const searchParams = useSearchParams()
   const {
     personalities,
     loading,
@@ -72,9 +75,19 @@ export default function SettingsPage() {
     deletePersonality,
     setAsDefault,
   } = useCoachPersonalities()
+  
+  const {
+    isConnected: calendarConnected,
+    loading: calendarLoading,
+    error: calendarError,
+    connect: connectCalendar,
+    disconnect: disconnectCalendar,
+    checkStatus: checkCalendarStatus,
+  } = useGoogleCalendar()
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingPersonality, setEditingPersonality] = useState<CoachPersonality | null>(null)
+  const [calendarMessage, setCalendarMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   
   // Form state
   const [name, setName] = useState('')
@@ -90,6 +103,30 @@ export default function SettingsPage() {
   
   const [isSaving, setIsSaving] = useState(false)
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null)
+
+  // Handle calendar OAuth callback messages
+  useEffect(() => {
+    const calendarConnectedParam = searchParams.get('calendar_connected')
+    const calendarErrorParam = searchParams.get('calendar_error')
+    
+    if (calendarConnectedParam === 'true') {
+      setCalendarMessage({ type: 'success', text: 'Google Calendar connected successfully!' })
+      checkCalendarStatus()
+      // Clear the URL params
+      window.history.replaceState({}, '', '/app/settings')
+    } else if (calendarErrorParam) {
+      const errorMessages: Record<string, string> = {
+        'missing_params': 'Missing parameters in OAuth callback',
+        'connection_failed': 'Failed to connect to Google Calendar',
+      }
+      setCalendarMessage({ 
+        type: 'error', 
+        text: errorMessages[calendarErrorParam] || `Error: ${calendarErrorParam}` 
+      })
+      // Clear the URL params
+      window.history.replaceState({}, '', '/app/settings')
+    }
+  }, [searchParams, checkCalendarStatus])
 
   // Wait for auth to be ready before fetching personalities
   useEffect(() => {
@@ -207,6 +244,111 @@ export default function SettingsPage() {
             </Button>
           </Link>
         </div>
+      </div>
+
+      {/* Google Calendar Integration Section */}
+      <div className="mb-8">
+        <div className="mb-4">
+          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Link2 className="h-6 w-6" />
+            Integrations
+          </h2>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
+            Connect external services to enhance your journal experience
+          </p>
+        </div>
+
+        {calendarMessage && (
+          <Alert 
+            variant={calendarMessage.type === 'error' ? 'destructive' : 'default'} 
+            className={`mb-4 ${calendarMessage.type === 'success' ? 'border-green-500 bg-green-50 text-green-700' : ''}`}
+          >
+            <AlertDescription className="flex items-center gap-2">
+              {calendarMessage.type === 'success' ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
+              {calendarMessage.text}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Calendar className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Google Calendar</CardTitle>
+                  <CardDescription>
+                    Sync your goals and habits with Google Calendar
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {calendarLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                ) : calendarConnected ? (
+                  <span className="flex items-center gap-1 text-sm text-green-600">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Connected
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-sm text-gray-500">
+                    <XCircle className="h-4 w-4" />
+                    Not connected
+                  </span>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                {calendarConnected 
+                  ? 'Your goals and habits are automatically synced to Google Calendar. New goals create events on their target date, and habits create recurring reminders.'
+                  : 'Connect Google Calendar to automatically create events for your goals and recurring reminders for habits.'
+                }
+              </p>
+              
+              {calendarError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{calendarError}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex gap-2">
+                {calendarConnected ? (
+                  <Button 
+                    variant="outline" 
+                    onClick={disconnectCalendar}
+                    disabled={calendarLoading}
+                  >
+                    {calendarLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
+                    Disconnect
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={connectCalendar}
+                    disabled={calendarLoading}
+                  >
+                    {calendarLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Calendar className="h-4 w-4 mr-2" />
+                    )}
+                    Connect Google Calendar
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -549,5 +691,19 @@ export default function SettingsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl">
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
   )
 }

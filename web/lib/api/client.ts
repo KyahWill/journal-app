@@ -223,6 +223,8 @@ export interface Goal {
   habit_frequency?: HabitFrequency
   habit_streak: number
   habit_completed_dates: string[]
+  // Google Calendar integration
+  calendar_event_id?: string
 }
 
 export interface Milestone {
@@ -1319,6 +1321,24 @@ class ApiClient {
 
   async deleteVoiceConversation(conversationId: string): Promise<{ success: boolean; message: string }> {
     return this.request(`/voice-coach/conversation/${conversationId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // ============================================================================
+  // Google Calendar APIs
+  // ============================================================================
+
+  async getCalendarStatus(): Promise<{ connected: boolean }> {
+    return this.request<{ connected: boolean }>('/calendar/status')
+  }
+
+  async getCalendarConnectUrl(): Promise<{ url: string }> {
+    return this.request<{ url: string }>('/calendar/connect')
+  }
+
+  async disconnectCalendar(): Promise<{ success: boolean; message: string }> {
+    return this.request('/calendar/disconnect', {
       method: 'DELETE',
     })
   }

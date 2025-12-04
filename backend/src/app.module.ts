@@ -13,6 +13,7 @@ import { CommonModule } from './common/common.module'
 import { RagModule } from './rag/rag.module'
 import { VoiceCoachModule } from './voice-coach/voice-coach.module'
 import { CoachPersonalityModule } from './coach-personality/coach-personality.module'
+import { GoogleCalendarModule } from './google-calendar/google-calendar.module'
 import { AppController } from './app.controller'
 
 @Module({
@@ -34,6 +35,7 @@ import { AppController } from './app.controller'
     RagModule,
     VoiceCoachModule,
     CoachPersonalityModule,
+    GoogleCalendarModule,
   ],
   controllers: [AppController],
 })

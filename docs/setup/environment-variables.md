@@ -132,6 +132,24 @@ Environment variables for the NestJS backend API (`.env` file).
 | `VOICE_COACH_RATE_LIMIT_PER_HOUR` | Max sessions per hour per user | No | `10` | `10` |
 | `VOICE_COACH_SESSION_MAX_DURATION` | Max session duration (seconds) | No | `1800` | `1800` (30 minutes) |
 
+### Google Calendar Integration (Optional)
+
+| Variable | Description | Required | Default | Example |
+|----------|-------------|----------|---------|---------|
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID | No | - | `123456789.apps.googleusercontent.com` |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret | No | - | `GOCSPX-xxxxxxxxxxxx` |
+| `GOOGLE_REDIRECT_URI` | OAuth callback URL | No | - | `http://localhost:3001/api/v1/calendar/callback` |
+| `FRONTEND_URL` | Frontend URL for OAuth redirect | No | `http://localhost:3000` | `https://your-app.com` |
+
+**Where to find:** [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → Create OAuth 2.0 Client ID
+
+**Setup Steps:**
+1. Go to Google Cloud Console
+2. Enable Google Calendar API
+3. Create OAuth 2.0 Client ID (Web application)
+4. Add authorized redirect URI: `{BACKEND_URL}/api/v1/calendar/callback`
+5. Copy Client ID and Client Secret to your `.env` file
+
 ### RAG Configuration
 
 | Variable | Description | Required | Default | Example |
@@ -197,6 +215,12 @@ RAG_SIMILARITY_THRESHOLD=0.7
 RAG_MAX_RETRIEVED_DOCS=5
 RAG_CACHE_TTL_SECONDS=3600
 RAG_BATCH_SIZE=50
+
+# Google Calendar Integration (Optional)
+GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxx
+GOOGLE_REDIRECT_URI=http://localhost:3001/api/v1/calendar/callback
+FRONTEND_URL=http://localhost:3000
 
 # CORS Origins
 CORS_ORIGINS=http://localhost:3000,http://localhost:3001

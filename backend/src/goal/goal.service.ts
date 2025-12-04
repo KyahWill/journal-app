@@ -12,6 +12,7 @@ import { Goal, Milestone, GoalStatus, ProgressUpdate, HabitFrequency } from '@/c
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, differenceInCalendarDays } from 'date-fns'
 import { RagService } from '@/rag/rag.service'
 import { CategoryService } from '@/category/category.service'
+import { GoogleCalendarService } from '@/google-calendar/google-calendar.service'
 
 @Injectable()
 export class GoalService {
@@ -27,6 +28,7 @@ export class GoalService {
     private readonly firebaseService: FirebaseService,
     private readonly ragService: RagService,
     private readonly categoryService: CategoryService,
+    private readonly googleCalendarService: GoogleCalendarService,
   ) {}
 
 
@@ -89,6 +91,20 @@ export class GoalService {
         },
       }, true).catch(err => {
         this.logger.error('Failed to embed goal', {
+          error: err.message,
+          goalId: result.id,
+          userId,
+        });
+      });
+
+      // Create Google Calendar event (async, non-blocking)
+      this.createCalendarEventForGoal(userId, result.id, {
+        id: result.id,
+        ...data,
+        created_at: result.created_at.toDate(),
+        updated_at: result.updated_at.toDate(),
+      } as Goal).catch(err => {
+        this.logger.error('Failed to create calendar event', {
           error: err.message,
           goalId: result.id,
           userId,
@@ -309,6 +325,7 @@ export class GoalService {
             habit_frequency: goal.habit_frequency || null,
             habit_streak: goal.habit_streak || 0,
             habit_completed_dates: goal.habit_completed_dates || [],
+            calendar_event_id: goal.calendar_event_id || undefined,
           }
         })
       )
@@ -362,6 +379,7 @@ export class GoalService {
         habit_frequency: goal.habit_frequency || null,
         habit_streak: goal.habit_streak || 0,
         habit_completed_dates: goal.habit_completed_dates || [],
+        calendar_event_id: goal.calendar_event_id || undefined,
       }
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
@@ -428,7 +446,18 @@ export class GoalService {
         });
       }
 
-      return this.getGoalById(userId, goalId)
+      const updatedGoal = await this.getGoalById(userId, goalId)
+
+      // Update Google Calendar event (async, non-blocking)
+      this.updateCalendarEventForGoal(userId, updatedGoal).catch(err => {
+        this.logger.error('Failed to update calendar event', {
+          error: err.message,
+          goalId,
+          userId,
+        });
+      });
+
+      return updatedGoal
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof BadRequestException) {
         throw error
@@ -511,6 +540,18 @@ export class GoalService {
       this.clearUserCache(userId)
 
       this.logger.log(`Goal deleted with cascade: ${goalId} for user: ${userId}`)
+
+      // Delete Google Calendar event (async, non-blocking)
+      if (goal.calendar_event_id) {
+        this.deleteCalendarEventForGoal(userId, goal.calendar_event_id).catch(err => {
+          this.logger.error('Failed to delete calendar event', {
+            error: err.message,
+            goalId,
+            calendarEventId: goal.calendar_event_id,
+            userId,
+          });
+        });
+      }
 
       // Delete embeddings for goal and all related content (async, non-blocking)
       // Delete goal embedding
@@ -765,6 +806,66 @@ export class GoalService {
   // Clear cache for a user (call after goal updates)
   private clearUserCache(userId: string): void {
     this.goalCountsCache.delete(userId)
+  }
+
+  // Helper method to create Google Calendar event for a goal
+  private async createCalendarEventForGoal(userId: string, goalId: string, goal: Goal): Promise<void> {
+    try {
+      const isConnected = await this.googleCalendarService.isConnected(userId)
+      if (!isConnected) {
+        this.logger.log(`Google Calendar not connected for user ${userId}, skipping event creation`)
+        return
+      }
+
+      const eventId = await this.googleCalendarService.createGoalEvent(userId, goal)
+      
+      if (eventId) {
+        // Store the calendar event ID in the goal document
+        await this.firebaseService.updateDocument(this.goalsCollection, goalId, {
+          calendar_event_id: eventId,
+        })
+        this.logger.log(`Calendar event ${eventId} created and linked to goal ${goalId}`)
+      }
+    } catch (error) {
+      this.logger.error(`Failed to create calendar event for goal ${goalId}`, error)
+      // Don't throw - calendar event creation is non-critical
+    }
+  }
+
+  // Helper method to update Google Calendar event for a goal
+  private async updateCalendarEventForGoal(userId: string, goal: Goal): Promise<void> {
+    try {
+      if (!goal.calendar_event_id) {
+        // No existing event - try to create one
+        await this.createCalendarEventForGoal(userId, goal.id, goal)
+        return
+      }
+
+      const isConnected = await this.googleCalendarService.isConnected(userId)
+      if (!isConnected) {
+        return
+      }
+
+      await this.googleCalendarService.updateGoalEvent(userId, goal.calendar_event_id, goal)
+      this.logger.log(`Calendar event ${goal.calendar_event_id} updated for goal ${goal.id}`)
+    } catch (error) {
+      this.logger.error(`Failed to update calendar event for goal ${goal.id}`, error)
+    }
+  }
+
+  // Helper method to delete Google Calendar event for a goal
+  private async deleteCalendarEventForGoal(userId: string, eventId: string): Promise<void> {
+    try {
+      const isConnected = await this.googleCalendarService.isConnected(userId)
+      if (!isConnected) {
+        return
+      }
+
+      await this.googleCalendarService.deleteGoalEvent(userId, eventId)
+      this.logger.log(`Calendar event ${eventId} deleted`)
+    } catch (error) {
+      this.logger.error(`Failed to delete calendar event ${eventId}`, error)
+    }
   }
 
   // Helper method to map Firestore milestones to typed Milestone objects
