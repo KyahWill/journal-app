@@ -1,6 +1,6 @@
 # Web Application Setup
 
-**Last Updated**: November 2025
+**Last Updated**: December 2025
 
 This guide provides detailed instructions for setting up the Journal web application built with Next.js 14.
 
@@ -19,7 +19,7 @@ This guide provides detailed instructions for setting up the Journal web applica
 ## Overview
 
 The web application provides the user interface for:
-- User authentication (signup/login)
+- User authentication (signup/login with email or Google)
 - Journal entry management
 - AI chat coaching
 - Voice AI coaching
@@ -133,7 +133,24 @@ cat serviceAccount.json | jq -c . | pbcopy
 
 **Manual:** Copy the entire JSON content and remove all newlines.
 
-### 4. Configure Gemini API
+### 4. Enable Google Sign-in (Optional)
+
+To enable Google Sign-in authentication:
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your project
+3. Navigate to **Authentication** → **Sign-in method**
+4. Click on **Google** provider
+5. Click **Enable**
+6. Set your **Project support email**
+7. Click **Save**
+
+**Authorize your domains:**
+1. Still in Authentication → **Settings** → **Authorized domains**
+2. Verify `localhost` is listed (for development)
+3. Add your production domain if deploying
+
+### 5. Configure Gemini API
 
 Add your Gemini API key:
 
@@ -147,7 +164,7 @@ GEMINI_API_KEY=your_gemini_api_key
 2. Click "Create API key"
 3. Copy the key
 
-### 5. Configure Backend API URL
+### 6. Configure Backend API URL
 
 ```env
 # Backend API URL
@@ -156,7 +173,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
 
 **For production:** Update this to your deployed backend URL.
 
-### 6. Configure Feature Flags (Optional)
+### 7. Configure Feature Flags (Optional)
 
 ```env
 # Feature Flags

@@ -4,7 +4,7 @@
 
 ---
 
-**Last Updated**: November 2025  
+**Last Updated**: December 2025  
 **Status**: ✅ Complete
 
 ---
@@ -25,6 +25,7 @@ The Journal application uses a server-side authentication system built on Fireba
 
 ### User Login
 - Email/password authentication
+- **Google Sign-in** with OAuth 2.0 popup flow
 - Session persistence across browser restarts
 - Secure token management via Firebase Admin SDK
 - Remember user session (5-day duration)
@@ -80,6 +81,7 @@ The Journal application uses a server-side authentication system built on Fireba
 │  │              API Routes (/app/api/auth/)                   |  │
 │  │                                                            │  │
 │  │  POST /api/auth/login     - Authenticate user              │  │
+│  │  POST /api/auth/google    - Authenticate via Google        │  │
 │  │  POST /api/auth/signup    - Create new user                │  │
 │  │  POST /api/auth/logout    - Revoke session                 │  │
 │  │  GET  /api/auth/user      - Get current user               │  │
@@ -109,7 +111,8 @@ The Journal application uses a server-side authentication system built on Fireba
 - **App Header** (`web/app/app/app-header.tsx`): Display user info and logout functionality
 
 #### Server Layer - Next.js API Routes
-- **POST /api/auth/login**: Authenticate existing users
+- **POST /api/auth/login**: Authenticate existing users with email/password
+- **POST /api/auth/google**: Authenticate users via Google OAuth
 - **POST /api/auth/signup**: Create new user accounts
 - **GET /api/auth/user**: Get current authenticated user
 - **POST /api/auth/logout**: End user session
@@ -212,7 +215,7 @@ The Journal application uses a server-side authentication system built on Fireba
 }
 ```
 
-### Sign In
+### Sign In (Email/Password)
 
 **Endpoint**: `POST /api/auth/login`
 
@@ -236,6 +239,39 @@ The Journal application uses a server-side authentication system built on Fireba
   }
 }
 ```
+
+### Sign In (Google)
+
+**Endpoint**: `POST /api/auth/google`
+
+**Flow**:
+1. Client initiates Google Sign-in popup via Firebase Client SDK
+2. User authenticates with Google and grants permissions
+3. Client receives ID token from Firebase
+4. Client sends ID token to this endpoint
+5. Server verifies token and creates session cookie
+
+**Request**:
+```json
+{
+  "idToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "user": {
+    "uid": "abc123...",
+    "email": "user@gmail.com",
+    "displayName": "John Doe",
+    "emailVerified": true
+  }
+}
+```
+
+**Note**: Google Sign-in automatically creates a new user if one doesn't exist with that email.
 
 ### Get Current User
 
@@ -287,18 +323,28 @@ Or if not authenticated:
 ### Using the useAuth Hook
 
 ```typescript
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useAuth } from '@/lib/contexts/auth-context'
 
 function MyComponent() {
-  const { user, loading, isAuthenticated, signIn, signOut } = useAuth()
+  const { user, loading, isAuthenticated, signIn, signInWithGoogle, signOut } = useAuth()
 
-  // Login
+  // Login with email/password
   const handleLogin = async () => {
     try {
       await signIn('user@example.com', 'password123')
       // User is now logged in
     } catch (error) {
       console.error('Login failed:', error)
+    }
+  }
+
+  // Login with Google
+  const handleGoogleLogin = async () => {
+    try {
+      await signInWithGoogle()
+      // User is now logged in with Google account
+    } catch (error) {
+      console.error('Google login failed:', error)
     }
   }
 
@@ -403,10 +449,19 @@ export class JournalController {
 
 ### Manual Testing Checklist
 
+#### Email/Password Authentication
 - [ ] Sign up with new email
 - [ ] Sign up with existing email (should fail)
 - [ ] Sign in with correct credentials
 - [ ] Sign in with wrong password (should fail)
+
+#### Google Authentication
+- [ ] Sign in with Google account
+- [ ] Sign up with Google (new user - should auto-create account)
+- [ ] Sign in with Google (existing user)
+- [ ] Cancel Google popup (should handle gracefully)
+
+#### Session & Protected Routes
 - [ ] Access protected route while logged in
 - [ ] Access protected route while logged out (should redirect)
 - [ ] Access auth page while logged in (should redirect to app)
@@ -424,10 +479,16 @@ curl -X POST http://localhost:3000/api/auth/signup \
   -d '{"email":"test@example.com","password":"password123","displayName":"Test User"}' \
   -c cookies.txt
 
-# Sign In
+# Sign In (Email/Password)
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password123"}' \
+  -c cookies.txt
+
+# Sign In (Google) - Note: Requires ID token from client-side Google auth
+curl -X POST http://localhost:3000/api/auth/google \
+  -H "Content-Type: application/json" \
+  -d '{"idToken":"<firebase-id-token-from-google-popup>"}' \
   -c cookies.txt
 
 # Get User
@@ -504,6 +565,55 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
 # Server-side (private)
 FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
 ```
+
+## Google Sign-in Setup
+
+### Firebase Console Configuration
+
+To enable Google Sign-in, you must configure it in Firebase Console:
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your project
+3. Navigate to **Authentication** → **Sign-in method**
+4. Click on **Google** provider
+5. Click **Enable**
+6. Configure the following:
+   - **Project support email**: Select your email
+   - **Web SDK configuration**: Your OAuth client ID will be auto-configured
+7. Click **Save**
+
+### Authorized Domains
+
+Make sure your domains are authorized:
+
+1. In Firebase Console → **Authentication** → **Settings**
+2. Go to **Authorized domains**
+3. Verify these domains are listed:
+   - `localhost` (for development)
+   - Your production domain (e.g., `your-app.com`)
+
+### OAuth Consent Screen (if needed)
+
+If users see an "unverified app" warning:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Select your project
+3. Navigate to **APIs & Services** → **OAuth consent screen**
+4. Configure your app information:
+   - App name
+   - User support email
+   - Developer contact information
+5. Add authorized domains
+6. Submit for verification (for production apps)
+
+### Troubleshooting Google Sign-in
+
+| Issue | Solution |
+|-------|----------|
+| Popup blocked | Ensure browser allows popups for your domain |
+| "Popup closed by user" error | User closed popup - handle gracefully |
+| "auth/unauthorized-domain" | Add domain to Firebase authorized domains |
+| "auth/operation-not-allowed" | Enable Google provider in Firebase Console |
 
 ## Related Documentation
 

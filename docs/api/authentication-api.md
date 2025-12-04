@@ -1,6 +1,6 @@
 # Authentication API
 
-**Last Updated**: November 2025
+**Last Updated**: December 2025
 
 ## Overview
 
@@ -57,6 +57,69 @@ curl -X POST https://api.example.com/api/v1/auth/signup \
     "password": "securePassword123",
     "displayName": "John Doe"
   }'
+```
+
+---
+
+### Sign In with Google (Web)
+
+Authenticate a user with Google OAuth. This endpoint is used by the web application after the client-side Google Sign-in popup.
+
+**Endpoint**: `POST /api/auth/google`
+
+**Authentication**: Not required
+
+**Request Body**:
+```json
+{
+  "idToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Request Parameters**:
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| idToken | string | Yes | Firebase ID token from Google Sign-in popup |
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "user": {
+    "uid": "user_abc123",
+    "email": "user@gmail.com",
+    "displayName": "John Doe",
+    "emailVerified": true
+  }
+}
+```
+
+**Error Responses**:
+- `400 Bad Request` - ID token is missing
+- `500 Internal Server Error` - Token verification failed
+
+**Notes**:
+- If the user doesn't exist, a new account is automatically created
+- Creates a session cookie (5-day duration) upon successful authentication
+- The client must first complete Google Sign-in popup flow using Firebase Client SDK
+
+**Example Flow**:
+```typescript
+// Client-side: Initiate Google Sign-in
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+
+const auth = getAuth()
+const provider = new GoogleAuthProvider()
+const result = await signInWithPopup(auth, provider)
+const idToken = await result.user.getIdToken()
+
+// Send to server
+const response = await fetch('/api/auth/google', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({ idToken })
+})
 ```
 
 ---
@@ -314,13 +377,22 @@ curl -X POST https://api.example.com/api/v1/auth/token/user_abc123 \
 
 ## Authentication Flow
 
-### Standard Authentication Flow
+### Email/Password Authentication Flow
 
 1. **Sign Up**: User creates account via `POST /auth/signup`
 2. **Client-Side Login**: User logs in via Firebase SDK on client
 3. **Get Token**: Client obtains Firebase ID token
 4. **API Requests**: Include token in Authorization header for all requests
 5. **Token Refresh**: Client refreshes token before expiration (1 hour)
+
+### Google Authentication Flow (Web)
+
+1. **Initiate Popup**: Client triggers Google Sign-in popup via Firebase Client SDK
+2. **User Consent**: User selects Google account and grants permissions
+3. **Get ID Token**: Firebase returns ID token after successful authentication
+4. **Server Verification**: Client sends ID token to `POST /api/auth/google`
+5. **Session Creation**: Server verifies token and creates session cookie
+6. **Redirect**: User is redirected to the application
 
 ### Token Verification Flow
 
