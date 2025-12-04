@@ -10,8 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Mic, Users } from 'lucide-react'
 import { VoiceInterface } from '@/components/voice-interface'
-import { ConversationTranscript } from '@/components/conversation-transcript'
-import { VoiceHistorySidebar } from '@/components/voice-history-sidebar'
 import { ErrorBoundary } from '@/components/error-boundary'
 
 export interface ConversationMessage {
@@ -21,23 +19,10 @@ export interface ConversationMessage {
   audioUrl?: string
 }
 
-interface StoredConversation {
-  id: string
-  userId: string
-  conversationId: string
-  transcript: ConversationMessage[]
-  duration: number
-  startedAt: Date
-  endedAt: Date
-  summary?: string
-}
-
 export default function AIAgentPage() {
   const isAuthReady = useAuthReady()
-  const [transcript, setTranscript] = useState<ConversationMessage[]>([])
   const [error, setError] = useState<string | null>(null)
   const [useTextChat, setUseTextChat] = useState(false)
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null)
   
   const { 
@@ -66,13 +51,11 @@ export default function AIAgentPage() {
   }, [voiceEnabledCoaches, selectedCoachId])
 
   const handleConversationStart = () => {
-    setTranscript([])
     setError(null)
-    setCurrentConversationId(null)
   }
 
-  const handleConversationEnd = (messages: ConversationMessage[]) => {
-    setTranscript(messages)
+  const handleConversationEnd = () => {
+    // Conversation ended
   }
 
   const handleError = (err: Error) => {
@@ -81,12 +64,6 @@ export default function AIAgentPage() {
 
   const handleFallbackToTextChat = () => {
     setUseTextChat(true)
-    setError(null)
-  }
-
-  const handleLoadConversation = (conversation: StoredConversation) => {
-    setTranscript(conversation.transcript)
-    setCurrentConversationId(conversation.conversationId)
     setError(null)
   }
 
@@ -103,7 +80,7 @@ export default function AIAgentPage() {
 
   return (
     <ErrorBoundary>
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 md:py-8 max-w-7xl">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 md:py-8 max-w-3xl">
         {/* Header */}
         <div className="mb-4 sm:mb-6">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">AI Voice Coach</h1>
@@ -171,68 +148,38 @@ export default function AIAgentPage() {
           </Alert>
         )}
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Voice Interface */}
-          <div className="lg:col-span-2">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              {/* Voice Controls */}
-              <div className="lg:col-span-1">
-                <Card className="h-full">
-                  <CardContent className="p-4 sm:p-6">
-                    {useTextChat ? (
-                      <div className="space-y-4">
-                        <Alert>
-                          <AlertDescription>
-                            Text chat mode is active. Voice features are unavailable.
-                          </AlertDescription>
-                        </Alert>
-                        <p className="text-sm text-gray-600">
-                          Text-based chat with your AI coach will be available in a future update.
-                          For now, you can use the regular coach chat feature.
-                        </p>
-                        <Button
-                          variant="outline"
-                          onClick={() => setUseTextChat(false)}
-                        >
-                          Try Voice Again
-                        </Button>
-                      </div>
-                    ) : (
-                      <VoiceInterface
-                        onConversationStart={handleConversationStart}
-                        onConversationEnd={handleConversationEnd}
-                        onError={handleError}
-                        onFallbackToTextChat={handleFallbackToTextChat}
-                        selectedPersonalityId={selectedCoachId || undefined}
-                      />
-                    )}
-                  </CardContent>
-                </Card>
+        {/* Voice Interface */}
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            {useTextChat ? (
+              <div className="space-y-4">
+                <Alert>
+                  <AlertDescription>
+                    Text chat mode is active. Voice features are unavailable.
+                  </AlertDescription>
+                </Alert>
+                <p className="text-sm text-gray-600">
+                  Text-based chat with your AI coach will be available in a future update.
+                  For now, you can use the regular coach chat feature.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setUseTextChat(false)}
+                >
+                  Try Voice Again
+                </Button>
               </div>
-
-              {/* Conversation Transcript */}
-              <div className="lg:col-span-1">
-                <Card className="h-full">
-                  <CardContent className="p-4 sm:p-6">
-                    <ConversationTranscript
-                      messages={transcript}
-                      isAgentSpeaking={false}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-
-          {/* Conversation History Sidebar */}
-          <div className="lg:col-span-1">
-            <VoiceHistorySidebar
-              onLoadConversation={handleLoadConversation}
-              currentConversationId={currentConversationId}
-            />
-          </div>
-        </div>
+            ) : (
+              <VoiceInterface
+                onConversationStart={handleConversationStart}
+                onConversationEnd={handleConversationEnd}
+                onError={handleError}
+                onFallbackToTextChat={handleFallbackToTextChat}
+                selectedPersonalityId={selectedCoachId || undefined}
+              />
+            )}
+          </CardContent>
+        </Card>
 
         {/* Info Section */}
         <Card className="mt-4 sm:mt-6 bg-blue-50 border-blue-200">
@@ -250,10 +197,6 @@ export default function AIAgentPage() {
               <li className="flex items-start gap-2">
                 <span className="text-blue-600 font-bold">3.</span>
                 <span>Listen to personalized coaching advice and insights</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600 font-bold">4.</span>
-                <span>View the conversation transcript in real-time</span>
               </li>
             </ul>
           </CardContent>
