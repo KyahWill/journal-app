@@ -375,6 +375,11 @@ class ApiClient {
         throw error
       }
 
+      // Handle 204 No Content responses (e.g., DELETE operations)
+      if (response.status === 204) {
+        return undefined as T
+      }
+
       return response.json()
     } catch (error: any) {
       // Add context to error message
