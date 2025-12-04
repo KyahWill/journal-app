@@ -615,6 +615,35 @@ If users see an "unverified app" warning:
 | "auth/unauthorized-domain" | Add domain to Firebase authorized domains |
 | "auth/operation-not-allowed" | Enable Google provider in Firebase Console |
 
+### User ID Changed After Google Sign-in
+
+**Symptoms**: After signing in with Google, user has a different UID and lost access to their data.
+
+**Cause**: Firebase creates a new user when signing in with Google if that Google account wasn't previously linked to the existing email/password account.
+
+**Prevention**: The application now automatically detects and links accounts with the same email during Google sign-in. See [`web/app/api/auth/google/route.ts`](../../web/app/api/auth/google/route.ts).
+
+**Recovery Options**:
+
+1. **Via Firebase Console** (if you know both UIDs):
+   - Delete the new Google-created account in Firebase Console
+   - Link Google provider to the original account
+   
+2. **Via Migration Script** (to transfer data):
+   ```bash
+   cd backend
+   
+   # Preview migration first
+   npx ts-node src/firebase/migrations/migrate-user-id.ts <OLD_UID> <NEW_UID> --dry-run
+   
+   # Run actual migration
+   npx ts-node src/firebase/migrations/migrate-user-id.ts <OLD_UID> <NEW_UID>
+   ```
+   
+   See [`backend/src/firebase/migrations/README.md`](../../backend/src/firebase/migrations/README.md) for full documentation.
+
+**Recommended Firebase Setting**: Enable "One account per email" in Firebase Console → Authentication → Settings → User account linking to prevent duplicate accounts at the Firebase level.
+
 ## Related Documentation
 
 - [Security Architecture](../architecture/security-architecture.md)
