@@ -5,8 +5,6 @@
  * Authentication uses Firebase ID tokens sent in Authorization header.
  */
 
-import { IdCardLanyard } from "lucide-react"
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
 export interface UsageInfo {
@@ -180,7 +178,7 @@ export interface Goal {
   last_activity: string | Date
   progress_percentage: number
   milestones: Milestone[]
-  // Habit fields
+  // Habit-related fields
   is_habit: boolean
   habit_frequency?: HabitFrequency
   habit_streak: number
@@ -1126,14 +1124,14 @@ class ApiClient {
     })
   }
 
-  async toggleHabitCompletion(id: string): Promise<Goal> {
-    return this.request<Goal>(`/goal/${id}/habit-toggle`, {
-      method: 'PATCH',
-    })
-  }
-
   async getOverdueGoals(): Promise<Goal[]> {
     return this.request<Goal[]>('/goal/overdue')
+  }
+
+  async toggleHabitCompletion(id: string): Promise<Goal> {
+    return this.request<Goal>(`/goal/${id}/habit/toggle`, {
+      method: 'PATCH',
+    })
   }
 
   async getGoalsByCategory(category: string): Promise<Goal[]> {
