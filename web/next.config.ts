@@ -88,16 +88,9 @@ const withPWA = withPWAInit({
         },
       },
       {
+        // API calls - never cache, always fetch from network
         urlPattern: /\/api\/.*$/i,
-        handler: "NetworkFirst",
-        options: {
-          cacheName: "apis",
-          expiration: {
-            maxEntries: 16,
-            maxAgeSeconds: 24 * 60 * 60, // 24 hours
-          },
-          networkTimeoutSeconds: 10,
-        },
+        handler: "NetworkOnly",
       },
       {
         urlPattern: /.*/i,
