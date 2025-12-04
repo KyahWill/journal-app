@@ -25,6 +25,9 @@ export class CoachPersonalityService {
         await this.unsetAllDefaults(userId);
       }
 
+      // Default ElevenLabs voice IDs
+      const DEFAULT_VOICE_ID = 'pNInz6obpgDQGcFmaJgB'; // Adam - clear, professional male voice
+
       // Create the personality document
       const personalityData = {
         user_id: userId,
@@ -32,10 +35,10 @@ export class CoachPersonalityService {
         description: dto.description,
         style: dto.style,
         system_prompt: dto.systemPrompt,
-        voice_id: dto.voiceId,
+        voice_id: dto.voiceId || DEFAULT_VOICE_ID,
         voice_stability: dto.voiceStability ?? 0.5,
         voice_similarity_boost: dto.voiceSimilarityBoost ?? 0.75,
-        first_message: dto.firstMessage,
+        first_message: dto.firstMessage || 'Hello! How can I help you today?',
         language: dto.language ?? 'en',
         is_default: dto.isDefault ?? false,
         created_at: new Date(),
@@ -54,9 +57,9 @@ export class CoachPersonalityService {
         elevenLabsAgentId = await this.elevenLabsService.createAgent({
           name: dto.name,
           prompt: dto.systemPrompt,
-          firstMessage: dto.firstMessage,
+          firstMessage: dto.firstMessage || 'Hello! How can I help you today?',
           language: dto.language ?? 'en',
-          voiceId: dto.voiceId,
+          voiceId: dto.voiceId || DEFAULT_VOICE_ID,
           voiceStability: dto.voiceStability ?? 0.5,
           voiceSimilarityBoost: dto.voiceSimilarityBoost ?? 0.75,
         });

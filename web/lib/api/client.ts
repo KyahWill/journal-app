@@ -1269,8 +1269,9 @@ class ApiClient {
   // Voice Conversation APIs
   // ============================================================================
 
-  async getVoiceCoachSignedUrl(): Promise<{ signedUrl: string }> {
-    return this.request<{ signedUrl: string }>('/voice-coach/signed-url')
+  async getVoiceCoachSignedUrl(personalityId?: string): Promise<{ signedUrl: string }> {
+    const params = personalityId ? `?personalityId=${encodeURIComponent(personalityId)}` : ''
+    return this.request<{ signedUrl: string }>(`/voice-coach/signed-url${params}`)
   }
 
   async saveVoiceCoachConversation(data: {
@@ -1307,7 +1308,7 @@ class ApiClient {
     
     const queryString = queryParams.toString()
     return this.request<{ conversations: any[] }>(
-      `/voice-coach/conversations${queryString ? `?${queryString}` : ''}`
+      `/voice-coach/history${queryString ? `?${queryString}` : ''}`
     )
   }
 

@@ -17,6 +17,7 @@ interface VoiceInterfaceProps {
   onConversationEnd?: (transcript: ConversationMessage[]) => void
   onError?: (error: Error) => void
   onFallbackToTextChat?: () => void
+  selectedPersonalityId?: string
 }
 
 type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'speaking' | 'listening' | 'error' | 'reconnecting'
@@ -43,6 +44,7 @@ export function VoiceInterface({
   onConversationEnd,
   onError,
   onFallbackToTextChat,
+  selectedPersonalityId,
 }: VoiceInterfaceProps) {
   const [status, setStatus] = useState<ConnectionStatus>('idle')
   const [transcript, setTranscript] = useState<ConversationMessage[]>([])
@@ -231,7 +233,7 @@ export function VoiceInterface({
     try {
       setIsLoadingUrl(true)
       setApiError(null)
-      const response = await apiClient.getVoiceCoachSignedUrl()
+      const response = await apiClient.getVoiceCoachSignedUrl(selectedPersonalityId)
       return response.signedUrl
     } catch (error: any) {
       console.error('[VoiceInterface] Failed to get signed URL:', error)
@@ -292,7 +294,7 @@ export function VoiceInterface({
     } finally {
       setIsLoadingUrl(false)
     }
-  }, [onError])
+  }, [onError, selectedPersonalityId])
 
   // Reconnect to conversation
   const reconnectConversation = useCallback(async () => {

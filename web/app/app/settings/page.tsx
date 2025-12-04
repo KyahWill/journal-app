@@ -36,6 +36,30 @@ const COACHING_STYLES: { value: CoachingStyle; label: string; description: strin
   { value: 'empathetic', label: 'Empathetic', description: 'Understanding, compassionate, and validating' },
 ]
 
+// Popular ElevenLabs voices - these are pre-made voices available to all users
+const ELEVENLABS_VOICES: { id: string; name: string; description: string; gender: string }[] = [
+  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', description: 'Deep, clear, professional', gender: 'Male' },
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella', description: 'Warm, friendly, conversational', gender: 'Female' },
+  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', description: 'Calm, soothing, empathetic', gender: 'Female' },
+  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi', description: 'Energetic, enthusiastic', gender: 'Female' },
+  { id: 'MF3mGyEYCl7XYWbV9V6O', name: 'Elli', description: 'Young, bright, cheerful', gender: 'Female' },
+  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh', description: 'Casual, friendly, approachable', gender: 'Male' },
+  { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold', description: 'Deep, authoritative, confident', gender: 'Male' },
+  { id: 'pqHfZKP75CvOlQylNhV4', name: 'Bill', description: 'Trustworthy, wise, mature', gender: 'Male' },
+  { id: 'nPczCjzI2devNBz1zQrb', name: 'Brian', description: 'Articulate, professional', gender: 'Male' },
+  { id: 'N2lVS1w4EtoT3dr4eOWO', name: 'Callum', description: 'Intense, dramatic', gender: 'Male' },
+  { id: 'IKne3meq5aSn9XLyUdCD', name: 'Charlie', description: 'Natural, conversational', gender: 'Male' },
+  { id: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte', description: 'Warm, nurturing', gender: 'Female' },
+  { id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel', description: 'Authoritative, British', gender: 'Male' },
+  { id: 'cjVigY5qzO86Huf0OWal', name: 'Eric', description: 'Friendly, American', gender: 'Male' },
+  { id: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica', description: 'Expressive, American', gender: 'Female' },
+  { id: 'FGY2WhTYpPnrIDTdsKH5', name: 'Laura', description: 'Upbeat, American', gender: 'Female' },
+  { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', description: 'Articulate, American', gender: 'Male' },
+  { id: 'XrExE9yKIg1WjnnlVkGX', name: 'Lily', description: 'Warm, British', gender: 'Female' },
+  { id: 'bIHbv24MWmeRgasZH58o', name: 'Will', description: 'Friendly, American', gender: 'Male' },
+  { id: 'EkK5I93ZUQCD4DQCPO0C', name: 'Sarah', description: 'Soft, gentle', gender: 'Female' },
+]
+
 export default function SettingsPage() {
   const { user, ready: authReady } = useAuth()
   const {
@@ -58,7 +82,7 @@ export default function SettingsPage() {
   const [style, setStyle] = useState<CoachingStyle>('supportive')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [firstMessage, setFirstMessage] = useState('')
-  const [voiceId, setVoiceId] = useState('')
+  const [voiceId, setVoiceId] = useState('pNInz6obpgDQGcFmaJgB') // Default to Adam voice
   const [voiceStability, setVoiceStability] = useState(0.5)
   const [voiceSimilarityBoost, setVoiceSimilarityBoost] = useState(0.75)
   const [language, setLanguage] = useState('en')
@@ -82,7 +106,7 @@ export default function SettingsPage() {
       setStyle(personality.style)
       setSystemPrompt(personality.systemPrompt)
       setFirstMessage(personality.firstMessage || '')
-      setVoiceId(personality.voiceId || '')
+      setVoiceId(personality.voiceId || 'pNInz6obpgDQGcFmaJgB')
       setVoiceStability(personality.voiceStability ?? 0.5)
       setVoiceSimilarityBoost(personality.voiceSimilarityBoost ?? 0.75)
       setLanguage(personality.language || 'en')
@@ -94,7 +118,7 @@ export default function SettingsPage() {
       setStyle('supportive')
       setSystemPrompt('')
       setFirstMessage('')
-      setVoiceId('')
+      setVoiceId('pNInz6obpgDQGcFmaJgB') // Default to Adam voice
       setVoiceStability(0.5)
       setVoiceSimilarityBoost(0.75)
       setLanguage('en')
@@ -404,39 +428,48 @@ export default function SettingsPage() {
                 Voice Settings (ElevenLabs)
               </h3>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="voiceId">Voice ID</Label>
-                  <Input
-                    id="voiceId"
-                    placeholder="ElevenLabs voice ID (optional)"
-                    value={voiceId}
-                    onChange={(e) => setVoiceId(e.target.value)}
-                  />
-                  <p className="text-xs text-gray-500">
-                    Leave empty for default voice
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="voiceId">Voice</Label>
+                <Select value={voiceId || 'pNInz6obpgDQGcFmaJgB'} onValueChange={setVoiceId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a voice..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ELEVENLABS_VOICES.map((voice) => (
+                      <SelectItem key={voice.id} value={voice.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{voice.name}</span>
+                          <span className="text-xs text-gray-500">
+                            ({voice.gender}) - {voice.description}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Choose a voice for your AI coach
+                </p>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="language">Language</Label>
-                  <Select value={language} onValueChange={setLanguage}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="es">Spanish</SelectItem>
-                      <SelectItem value="fr">French</SelectItem>
-                      <SelectItem value="de">German</SelectItem>
-                      <SelectItem value="it">Italian</SelectItem>
-                      <SelectItem value="pt">Portuguese</SelectItem>
-                      <SelectItem value="ja">Japanese</SelectItem>
-                      <SelectItem value="ko">Korean</SelectItem>
-                      <SelectItem value="zh">Chinese</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="language">Language</Label>
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="es">Spanish</SelectItem>
+                    <SelectItem value="fr">French</SelectItem>
+                    <SelectItem value="de">German</SelectItem>
+                    <SelectItem value="it">Italian</SelectItem>
+                    <SelectItem value="pt">Portuguese</SelectItem>
+                    <SelectItem value="ja">Japanese</SelectItem>
+                    <SelectItem value="ko">Korean</SelectItem>
+                    <SelectItem value="zh">Chinese</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

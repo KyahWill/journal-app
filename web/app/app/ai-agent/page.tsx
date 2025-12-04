@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuthReady } from '@/lib/hooks/useAuthReady'
+import { useCoachPersonalities } from '@/lib/hooks/useCoachPersonalities'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { Loader2, Mic, Users } from 'lucide-react'
 import { VoiceInterface } from '@/components/voice-interface'
 import { ConversationTranscript } from '@/components/conversation-transcript'
 import { VoiceHistorySidebar } from '@/components/voice-history-sidebar'
@@ -35,6 +38,32 @@ export default function AIAgentPage() {
   const [error, setError] = useState<string | null>(null)
   const [useTextChat, setUseTextChat] = useState(false)
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
+  const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null)
+  
+  const { 
+    personalities, 
+    loading: loadingCoaches, 
+    fetchPersonalities 
+  } = useCoachPersonalities()
+  
+  // Filter coaches that have an ElevenLabs agent ID
+  const voiceEnabledCoaches = personalities.filter(p => p.elevenLabsAgentId)
+  
+  // Fetch coach personalities on mount
+  useEffect(() => {
+    if (isAuthReady) {
+      fetchPersonalities().catch(console.error)
+    }
+  }, [isAuthReady, fetchPersonalities])
+  
+  // Set default selected coach when coaches are loaded
+  useEffect(() => {
+    if (voiceEnabledCoaches.length > 0 && !selectedCoachId) {
+      // Prefer the default coach, otherwise pick the first voice-enabled one
+      const defaultCoach = voiceEnabledCoaches.find(c => c.isDefault) || voiceEnabledCoaches[0]
+      setSelectedCoachId(defaultCoach.id)
+    }
+  }, [voiceEnabledCoaches, selectedCoachId])
 
   const handleConversationStart = () => {
     setTranscript([])
@@ -83,6 +112,58 @@ export default function AIAgentPage() {
           </p>
         </div>
 
+        {/* Coach Selector */}
+        {voiceEnabledCoaches.length > 0 && (
+          <Card className="mb-4 sm:mb-6">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                  <span className="font-medium text-sm">Select Coach:</span>
+                </div>
+                <div className="flex-1 max-w-xs">
+                  <Select
+                    value={selectedCoachId || ''}
+                    onValueChange={(value) => setSelectedCoachId(value)}
+                    disabled={loadingCoaches}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a coach..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {voiceEnabledCoaches.map((coach) => (
+                        <SelectItem key={coach.id} value={coach.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{coach.name}</span>
+                            {coach.isDefault && (
+                              <Badge variant="secondary" className="text-xs">Default</Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedCoachId && (
+                  <div className="text-xs text-muted-foreground">
+                    {voiceEnabledCoaches.find(c => c.id === selectedCoachId)?.description}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* No voice coaches message */}
+        {!loadingCoaches && voiceEnabledCoaches.length === 0 && personalities.length > 0 && (
+          <Alert className="mb-4 sm:mb-6">
+            <Mic className="h-4 w-4" />
+            <AlertDescription>
+              None of your coaches have voice enabled. Go to Settings to create or configure a coach with voice capabilities.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Error Alert */}
         {error && (
           <Alert variant="destructive" className="mb-4 sm:mb-6">
@@ -123,6 +204,7 @@ export default function AIAgentPage() {
                         onConversationEnd={handleConversationEnd}
                         onError={handleError}
                         onFallbackToTextChat={handleFallbackToTextChat}
+                        selectedPersonalityId={selectedCoachId || undefined}
                       />
                     )}
                   </CardContent>
