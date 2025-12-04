@@ -236,6 +236,12 @@ web/
 │   ├── hooks/               # Custom hooks
 │   └── utils.ts             # Utility functions
 ├── public/                  # Static assets
+│   ├── icons/              # PWA icons (generated)
+│   ├── screenshots/        # PWA screenshots
+│   ├── manifest.json       # PWA manifest
+│   └── sw.js               # Service worker (generated)
+├── scripts/                 # Build scripts
+│   └── generate-pwa-icons.js   # PWA icon generator
 ├── .env.local              # Environment variables
 ├── next.config.ts          # Next.js configuration
 ├── tailwind.config.ts      # Tailwind configuration
@@ -283,7 +289,10 @@ This will:
 - Bundle JavaScript
 - Optimize images
 - Generate static pages
+- Generate PWA service worker
 - Create production build in `.next` directory
+
+**Note**: The build uses the `--webpack` flag for PWA compatibility with Next.js 16.
 
 ### 2. Test Production Build Locally
 
@@ -323,6 +332,85 @@ Route (app)                              Size     First Load JS
 - **ƒ Dynamic:** Rendered on each request
 - **Size:** Page-specific JavaScript
 - **First Load JS:** Total JavaScript loaded on first visit
+
+---
+
+## Progressive Web App (PWA)
+
+The application is configured as a PWA, enabling installation on mobile and desktop devices.
+
+### PWA Build Output
+
+During build, you'll see PWA-specific output:
+
+```
+✓ (pwa) Compiling for server...
+✓ (pwa) Compiling for client (static)...
+○ (pwa) Service worker: /path/to/web/public/sw.js
+○ (pwa)   URL: /sw.js
+○ (pwa)   Scope: /
+```
+
+### Generating PWA Icons
+
+Generate or regenerate PWA icons from the source SVG:
+
+```bash
+pnpm run generate-pwa-icons
+```
+
+This script:
+- Reads `app/icon.svg` as the source
+- Generates icons in sizes: 72, 96, 128, 144, 152, 192, 384, 512
+- Creates a maskable icon for Android
+- Generates placeholder screenshots
+
+**Generated files:**
+- `public/icons/icon-{size}x{size}.png` - Standard icons
+- `public/icons/maskable-icon-512x512.png` - Adaptive icon
+- `public/screenshots/desktop.png` - Desktop screenshot
+- `public/screenshots/mobile.png` - Mobile screenshot
+
+### Testing PWA Installation
+
+1. Build and start the production server:
+   ```bash
+   pnpm build
+   pnpm start
+   ```
+
+2. Open [http://localhost:3000](http://localhost:3000) in Chrome
+
+3. Check PWA status:
+   - Open DevTools → Application → Manifest
+   - Verify manifest loads correctly
+   - Check all icons are accessible
+
+4. Install the app:
+   - Look for install icon in the address bar
+   - Or use Chrome menu → "Install Journal App"
+
+5. Test service worker:
+   - DevTools → Application → Service Workers
+   - Verify `sw.js` is registered and active
+
+### PWA Configuration Files
+
+- **`next.config.ts`** - PWA plugin configuration with caching strategies
+- **`app/layout.tsx`** - PWA meta tags (theme-color, apple-web-app-capable)
+- **`public/manifest.json`** - Web app manifest with icons, shortcuts, theme
+- **`scripts/generate-pwa-icons.js`** - Icon generation script
+
+### Updating PWA Assets
+
+To update the app icon:
+1. Replace `app/icon.svg` with your new SVG
+2. Run `pnpm run generate-pwa-icons`
+3. Rebuild the app
+
+To update screenshots:
+1. Replace files in `public/screenshots/`
+2. Update dimensions in `public/manifest.json` if changed
 
 ---
 

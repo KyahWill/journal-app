@@ -10,6 +10,7 @@ A modern web application for journaling with AI-powered executive coaching, buil
 - 🔄 **Real-time Sync**: Live updates across all your devices
 - 🔒 **Secure**: Firebase security rules
 - 🎨 **Modern UI**: Built with Tailwind CSS and shadcn/ui
+- 📱 **PWA Support**: Install as native app on mobile and desktop
 
 ## Tech Stack
 
@@ -18,6 +19,7 @@ A modern web application for journaling with AI-powered executive coaching, buil
 - **Styling**: Tailwind CSS + shadcn/ui
 - **Backend**: Firebase (Firestore, Auth, Real-time)
 - **AI**: Google Gemini via LangChain
+- **PWA**: @ducanh2912/next-pwa with Workbox
 - **Deployment**: Google Cloud Run
 
 ## Getting Started
@@ -210,6 +212,35 @@ See [Server-Side Auth Documentation](./docs/SERVER_SIDE_AUTH.md) and [Migration 
 - Optimized images and assets
 - Real-time subscriptions for live updates
 - Standalone output for minimal Docker image size
+
+## Progressive Web App (PWA)
+
+The application is a fully-featured PWA, allowing users to install it as a native app on mobile and desktop devices.
+
+### PWA Features
+
+- **Installable**: Add to home screen on iOS, Android, and desktop browsers
+- **Offline Support**: Service worker caches assets for offline access
+- **App Shortcuts**: Quick actions to "New Entry" and "Chat with Coach"
+- **Native Feel**: Runs in standalone mode without browser chrome
+- **Auto Updates**: Service worker automatically updates when new versions are deployed
+
+### PWA Assets
+
+- **Icons**: Generated from SVG source in multiple sizes (72x72 to 512x512)
+- **Maskable Icon**: Adaptive icon for Android devices
+- **Screenshots**: App store-ready screenshots for install prompts
+- **Manifest**: Complete web app manifest with theme colors and shortcuts
+
+### Generating PWA Icons
+
+If you need to regenerate the PWA icons:
+
+```bash
+pnpm run generate-pwa-icons
+```
+
+This script uses the `app/icon.svg` as the source and generates all required icon sizes in `public/icons/`.
 
 ## Security
 

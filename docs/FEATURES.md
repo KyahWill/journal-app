@@ -33,6 +33,7 @@ This document provides a comprehensive catalog of all features available in the 
 7. [Theming System](#theming-system)
 8. [Custom Categories](#custom-categories)
 9. [Platform Features](#platform-features)
+10. [Progressive Web App (PWA)](#progressive-web-app-pwa)
 
 ---
 
@@ -676,7 +677,70 @@ User-defined goal categories with custom colors and icons, extending beyond defa
 - Firefox (latest)
 - Safari (latest)
 - Mobile browsers (iOS Safari, Chrome Mobile)
-- Progressive Web App (PWA) ready
+
+### Progressive Web App (PWA)
+
+**Status**: ✅ Complete
+
+#### Overview
+Full Progressive Web App implementation enabling installation as a native app on mobile and desktop devices with offline support and caching.
+
+#### Key Features
+
+##### Installability
+- Add to home screen on iOS, Android, and desktop
+- Native app-like experience without browser chrome
+- Custom app icon and splash screen
+- Standalone display mode
+
+##### Service Worker & Caching
+- Automatic service worker generation with Workbox
+- Intelligent caching strategies:
+  - Google Fonts: Cache First (1 year)
+  - Static fonts: Stale While Revalidate (1 week)
+  - Images: Stale While Revalidate (30 days)
+  - Next.js static JS: Cache First (24 hours)
+  - API calls: Network First with timeout (24 hours)
+- Offline fallback support
+- Automatic cache updates on deployment
+
+##### App Shortcuts
+- "New Entry" - Quick access to create journal entry
+- "Chat with Coach" - Direct link to AI coaching chat
+
+##### PWA Manifest
+- Full web app manifest configuration
+- Theme color integration (#f97316)
+- App categories: productivity, lifestyle, health
+- Screenshots for app store experience
+
+#### Technical Implementation
+
+**Stack**:
+- @ducanh2912/next-pwa plugin
+- Workbox for service worker management
+- Sharp for icon generation
+
+**Generated Assets**:
+- `public/manifest.json` - Web app manifest
+- `public/icons/` - App icons (72x72 to 512x512)
+- `public/icons/maskable-icon-512x512.png` - Adaptive icon
+- `public/screenshots/` - Install prompt screenshots
+- `public/sw.js` - Service worker (generated at build)
+
+**Configuration**:
+- `next.config.ts` - PWA plugin configuration
+- `app/layout.tsx` - PWA meta tags and manifest link
+
+**Scripts**:
+- `pnpm run generate-pwa-icons` - Regenerate icons from SVG source
+
+#### Testing PWA
+
+1. Build production: `pnpm build`
+2. Start server: `pnpm start`
+3. Open Chrome DevTools → Application → Manifest
+4. Look for install prompt in browser address bar
 
 ### Backend API
 
