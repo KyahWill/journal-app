@@ -1,17 +1,17 @@
-# Goals Feature
+# Goals & Habits Feature
 
-**Comprehensive goal management with milestones and progress tracking**
+**Comprehensive goal management with milestones, progress tracking, and habit streaks**
 
 ---
 
-**Last Updated**: November 2025  
+**Last Updated**: December 2025  
 **Status**: ✅ Complete
 
 ---
 
 ## Overview
 
-The Goals feature provides a complete system for setting, tracking, and achieving personal and professional goals. It includes milestone tracking, progress updates, category organization, and detailed analytics.
+The Goals & Habits feature provides a complete system for setting, tracking, and achieving personal and professional goals, as well as building recurring habits with streak tracking. Goals and habits are unified under a single system, with habits being a special type of goal that tracks daily/weekly/monthly completions.
 
 ## Key Features
 
@@ -22,8 +22,14 @@ The Goals feature provides a complete system for setting, tracking, and achievin
 - Target date selection
 - Category assignment (default or custom)
 - Status selection (not started, in progress, completed)
-- Priority levels
 - Automatic timestamp tracking
+
+#### Create Habits
+- Title and description
+- Frequency selection (daily, weekly, monthly)
+- Category assignment
+- Automatic streak tracking
+- No target date required (habits are ongoing)
 
 #### Update Goals
 - Edit all goal properties
@@ -71,6 +77,26 @@ The Goals feature provides a complete system for setting, tracking, and achievin
 - Percentage completion
 - Time remaining calculations
 - Visual progress bars
+
+### Habit Tracking
+
+#### Daily/Weekly/Monthly Habits
+- Toggle completion for current period
+- Automatic streak calculation
+- Visual streak indicators (🔥)
+- Frequency badges (D/W/M)
+
+#### Streak Calculation
+- **Daily habits**: Consecutive days completed
+- **Weekly habits**: Weeks with at least one completion
+- **Monthly habits**: Months with at least one completion
+- Streak resets if period is missed
+
+#### Habit UI
+- Separate "Habits" section on goals page
+- Quick toggle checkboxes
+- Streak count display
+- Total streak summary
 
 ### Goal Organization
 
@@ -128,12 +154,24 @@ interface Goal {
   title: string
   description: string
   category: string  // Default category name or custom category ID
-  status: 'not_started' | 'in_progress' | 'completed'
-  priority: 'low' | 'medium' | 'high'
-  target_date: string  // ISO date
+  status: 'not_started' | 'in_progress' | 'completed' | 'abandoned'
+  target_date: Timestamp  // Far future for habits
   created_at: Timestamp
   updated_at: Timestamp
+  completed_at?: Timestamp
+  status_changed_at: Timestamp
+  last_activity: Timestamp
+  progress_percentage: number
+  milestones: Milestone[]
+  
+  // Habit fields
+  is_habit: boolean
+  habit_frequency?: 'daily' | 'weekly' | 'monthly'
+  habit_streak: number
+  habit_completed_dates: string[]  // ISO dates (YYYY-MM-DD)
 }
+
+type HabitFrequency = 'daily' | 'weekly' | 'monthly'
 ```
 
 **Indexes**:
@@ -141,6 +179,7 @@ interface Goal {
 - `user_id + status`
 - `user_id + category`
 - `user_id + target_date`
+- `user_id + is_habit`
 
 #### Milestones Collection
 
@@ -184,21 +223,33 @@ interface ProgressUpdate {
 
 ### Components
 
-#### GoalCard
-- Displays goal summary
-- Shows milestone counts
-- Progress bar with percentage
-- Status and category indicators
-- Action buttons (complete, delete)
+#### GoalTodoItem
+- Displays goal in to-do list format
+- Checkbox for completion toggle
+- Due date badge with overdue indicator
+- Category badge
+- Hover actions (delete, view details)
 - Responsive design
 
-#### GoalForm
-- Create/edit goal form
-- Field validation
-- Category selection
-- Date picker
-- Status selection
-- Error handling
+#### HabitItem
+- Displays habit with completion checkbox
+- Frequency badge (D/W/M)
+- Streak counter with flame icon (🔥)
+- Toggle completion for today
+- Hover actions (delete, view details)
+
+#### GoalCreationWizard
+- Multi-step goal/habit creation
+- Step 1: Title, description, habit toggle
+- Step 2: Category selection
+- Step 3: Timeline (goals only, skipped for habits)
+- Step 4: Milestones (goals only, skipped for habits)
+- Step 5: Review and create
+
+#### GoalQuickAdd
+- Simple input for quick goal creation
+- Default category and 30-day target date
+- Instant creation without wizard
 
 #### MilestoneList
 - List of milestones for a goal
@@ -236,24 +287,28 @@ interface ProgressUpdate {
 **GET /goal**
 - Get all goals for user
 - Query parameters: status, category, sort
-- Returns: Array of goals
+- Returns: Array of goals (includes habits)
 
 **GET /goal/:id**
-- Get specific goal
-- Returns: Goal object
+- Get specific goal or habit
+- Returns: Goal object with habit fields
 
 **POST /goal**
-- Create new goal
-- Body: Goal data
-- Returns: Created goal
+- Create new goal or habit
+- Body: Goal data with optional `is_habit` and `habit_frequency`
+- Returns: Created goal/habit
 
 **PUT /goal/:id**
-- Update goal
+- Update goal or habit
 - Body: Partial goal data
-- Returns: Updated goal
+- Returns: Updated goal/habit
+
+**PATCH /goal/:id/habit-toggle**
+- Toggle habit completion for today
+- Returns: Updated habit with new streak
 
 **DELETE /goal/:id**
-- Delete goal
+- Delete goal or habit
 - Cascade deletes milestones and progress
 - Returns: Success message
 
@@ -303,35 +358,51 @@ const goal = await apiClient.createGoal({
   title: 'Complete React Course',
   description: 'Finish the advanced React course on Udemy',
   category: 'learning',
-  status: 'not_started',
-  priority: 'high',
   target_date: '2024-12-31'
 })
 ```
 
-### Adding Milestones
+### Creating a Habit
 
 ```typescript
-const milestone = await apiClient.createMilestone(goalId, {
+const habit = await apiClient.createGoal({
+  title: 'Exercise daily',
+  description: '30 minutes of exercise every day',
+  category: 'health',
+  target_date: '2034-12-31',  // Far future for habits
+  is_habit: true,
+  habit_frequency: 'daily'
+})
+```
+
+### Toggling Habit Completion
+
+```typescript
+// Toggle today's completion status
+const updatedHabit = await apiClient.toggleHabitCompletion(habitId)
+console.log(`New streak: ${updatedHabit.habit_streak}`)
+```
+
+### Adding Milestones (Goals only)
+
+```typescript
+const milestone = await apiClient.addMilestone(goalId, {
   title: 'Complete Module 1',
-  description: 'Finish all lessons in Module 1',
-  target_date: '2024-11-30',
-  order: 1
+  due_date: '2024-11-30'
 })
 ```
 
 ### Marking Milestone Complete
 
 ```typescript
-await apiClient.completeMilestone(goalId, milestoneId)
+await apiClient.toggleMilestone(goalId, milestoneId)
 ```
 
 ### Adding Progress Update
 
 ```typescript
 await apiClient.addProgressUpdate(goalId, {
-  note: 'Completed 3 lessons today',
-  progress_percentage: 60
+  content: 'Completed 3 lessons today'
 })
 ```
 
@@ -553,7 +624,6 @@ curl -X PATCH http://localhost:3001/api/v1/goal/$GOAL_ID/milestones/$MILESTONE_I
 ### Planned Features
 
 - [ ] Goal templates
-- [ ] Recurring goals
 - [ ] Goal dependencies
 - [ ] Goal sharing and collaboration
 - [ ] Goal reminders and notifications
@@ -565,19 +635,22 @@ curl -X PATCH http://localhost:3001/api/v1/goal/$GOAL_ID/milestones/$MILESTONE_I
 - [ ] Goal attachments
 - [ ] Goal comments
 - [ ] Goal activity feed
+- [ ] Habit reminders/notifications
+- [ ] Habit analytics and charts
+- [ ] Habit streaks leaderboard
 
 ### Potential Improvements
 
 - [ ] Drag-and-drop goal reordering
 - [ ] Bulk goal operations
 - [ ] Goal duplication
-- [ ] Goal versioning
-- [ ] Goal rollback
 - [ ] Advanced filtering
 - [ ] Saved filter presets
 - [ ] Goal calendar view
 - [ ] Goal kanban board
 - [ ] Goal timeline view
+- [ ] Habit calendar heatmap
+- [ ] Habit completion history view
 
 ## Related Documentation
 

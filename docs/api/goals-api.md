@@ -12,13 +12,13 @@ The Goals API provides comprehensive endpoints for goal management, including cr
 
 ### Create Goal
 
-Create a new goal for the authenticated user.
+Create a new goal or habit for the authenticated user.
 
 **Endpoint**: `POST /goal`
 
 **Authentication**: Required
 
-**Request Body**:
+**Request Body** (Regular Goal):
 ```json
 {
   "title": "Run a 5K",
@@ -28,13 +28,27 @@ Create a new goal for the authenticated user.
 }
 ```
 
+**Request Body** (Habit):
+```json
+{
+  "title": "Exercise daily",
+  "description": "30 minutes of exercise every day",
+  "category": "health",
+  "target_date": "2035-12-31",
+  "is_habit": true,
+  "habit_frequency": "daily"
+}
+```
+
 **Request Parameters**:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | title | string | Yes | Goal title (3-200 characters) |
 | description | string | No | Goal description (max 2000 characters) |
 | category | string | Yes | Category name or custom category ID |
-| target_date | string | Yes | Target completion date (ISO 8601) |
+| target_date | string | Yes | Target completion date (ISO 8601). For habits, use a far-future date. |
+| is_habit | boolean | No | Whether this is a recurring habit (default: false) |
+| habit_frequency | string | No | Frequency for habits: `daily`, `weekly`, or `monthly` |
 
 **Response** (201 Created):
 ```json
@@ -49,7 +63,10 @@ Create a new goal for the authenticated user.
   "created_at": "2025-11-24T10:00:00Z",
   "updated_at": "2025-11-24T10:00:00Z",
   "milestones": [],
-  "progress_updates": []
+  "is_habit": false,
+  "habit_frequency": null,
+  "habit_streak": 0,
+  "habit_completed_dates": []
 }
 ```
 
@@ -477,6 +494,51 @@ curl -X PATCH https://api.example.com/api/v1/goal/goal_abc123/status \
     "status": "completed"
   }'
 ```
+
+---
+
+### Toggle Habit Completion
+
+Toggle the completion status of a habit for today.
+
+**Endpoint**: `PATCH /goal/:id/habit-toggle`
+
+**Authentication**: Required
+
+**Path Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | string | Goal ID (must be a habit) |
+
+**Response** (200 OK):
+```json
+{
+  "id": "goal_abc123",
+  "title": "Exercise daily",
+  "is_habit": true,
+  "habit_frequency": "daily",
+  "habit_streak": 5,
+  "habit_completed_dates": ["2025-12-01", "2025-12-02"],
+  "updated_at": "2025-12-02T10:00:00Z"
+}
+```
+
+**Error Responses**:
+- `400 Bad Request` - Goal is not a habit
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Goal not found
+
+**Example**:
+```bash
+curl -X PATCH https://api.example.com/api/v1/goal/goal_abc123/habit-toggle \
+  -H "Authorization: Bearer <token>"
+```
+
+**Notes**:
+- Calling this endpoint toggles today's completion status
+- If today is already marked as completed, it will be unmarked
+- If today is not completed, it will be marked as completed
+- The streak is automatically recalculated based on consecutive completions
 
 ---
 
