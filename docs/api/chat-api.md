@@ -1,6 +1,6 @@
 # Chat API
 
-**Last Updated**: November 2025
+**Last Updated**: December 2025
 
 ## Overview
 
@@ -564,6 +564,315 @@ curl -X GET https://api.example.com/api/v1/chat/goal-insights/goal_abc123/stream
 
 ---
 
+## Weekly Insights
+
+The Weekly Insights endpoints provide AI-powered analysis of journal entries on a Saturday-to-Friday cadence, with support for history, streaming, and persistence.
+
+### Get Current Week Insight
+
+Check if an insight exists for the current week (Saturday to Friday).
+
+**Endpoint**: `GET /chat/weekly-insights/current`
+
+**Authentication**: Required
+
+**Response** (200 OK):
+```json
+{
+  "insight": {
+    "id": "insight_abc123",
+    "user_id": "user_xyz789",
+    "week_start": "2025-11-30T00:00:00Z",
+    "week_end": "2025-12-06T23:59:59Z",
+    "content": "## Your Week in Review\n\nThis week showed...",
+    "entry_count": 5,
+    "created_at": "2025-12-04T10:00:00Z",
+    "updated_at": "2025-12-04T10:00:00Z"
+  },
+  "weekStart": "2025-11-30T00:00:00Z",
+  "weekEnd": "2025-12-06T23:59:59Z"
+}
+```
+
+**Response (No insight exists)**:
+```json
+{
+  "insight": null,
+  "weekStart": "2025-11-30T00:00:00Z",
+  "weekEnd": "2025-12-06T23:59:59Z"
+}
+```
+
+**Example**:
+```bash
+curl -X GET https://api.example.com/api/v1/chat/weekly-insights/current \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+### Get Weekly Insights History
+
+Get all past weekly insights for the authenticated user.
+
+**Endpoint**: `GET /chat/weekly-insights/history`
+
+**Authentication**: Required
+
+**Response** (200 OK):
+```json
+[
+  {
+    "id": "insight_abc123",
+    "user_id": "user_xyz789",
+    "week_start": "2025-11-30T00:00:00Z",
+    "week_end": "2025-12-06T23:59:59Z",
+    "content": "## Your Week in Review\n\n...",
+    "entry_count": 5,
+    "created_at": "2025-12-04T10:00:00Z",
+    "updated_at": "2025-12-04T10:00:00Z"
+  },
+  {
+    "id": "insight_def456",
+    "user_id": "user_xyz789",
+    "week_start": "2025-11-23T00:00:00Z",
+    "week_end": "2025-11-29T23:59:59Z",
+    "content": "## Your Week in Review\n\n...",
+    "entry_count": 3,
+    "created_at": "2025-11-27T10:00:00Z",
+    "updated_at": "2025-11-27T10:00:00Z"
+  }
+]
+```
+
+**Example**:
+```bash
+curl -X GET https://api.example.com/api/v1/chat/weekly-insights/history \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+### Get Weekly Insight by ID
+
+Get a specific weekly insight by its ID.
+
+**Endpoint**: `GET /chat/weekly-insights/:id`
+
+**Authentication**: Required
+
+**Path Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | string | Weekly insight ID |
+
+**Response** (200 OK):
+```json
+{
+  "id": "insight_abc123",
+  "user_id": "user_xyz789",
+  "week_start": "2025-11-30T00:00:00Z",
+  "week_end": "2025-12-06T23:59:59Z",
+  "content": "## Your Week in Review\n\nThis week showed consistent journaling with 5 entries...",
+  "entry_count": 5,
+  "created_at": "2025-12-04T10:00:00Z",
+  "updated_at": "2025-12-04T10:00:00Z"
+}
+```
+
+**Error Responses**:
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Insight not found
+
+**Example**:
+```bash
+curl -X GET https://api.example.com/api/v1/chat/weekly-insights/insight_abc123 \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+### Generate Weekly Insights (Non-Streaming)
+
+Generate weekly insights for the current week. Returns existing insight if already generated.
+
+**Endpoint**: `POST /chat/weekly-insights/generate`
+
+**Authentication**: Required
+
+**Request Body**:
+```json
+{
+  "forceRegenerate": false
+}
+```
+
+**Request Parameters**:
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| forceRegenerate | boolean | No | Force regeneration even if insight exists (default: false) |
+
+**Response** (200 OK):
+```json
+{
+  "insight": {
+    "id": "insight_abc123",
+    "user_id": "user_xyz789",
+    "week_start": "2025-11-30T00:00:00Z",
+    "week_end": "2025-12-06T23:59:59Z",
+    "content": "## Your Week in Review\n\n...",
+    "entry_count": 5,
+    "created_at": "2025-12-04T10:00:00Z",
+    "updated_at": "2025-12-04T10:00:00Z"
+  },
+  "isExisting": true,
+  "entryCount": 5,
+  "weekStart": "2025-11-30T00:00:00Z",
+  "weekEnd": "2025-12-06T23:59:59Z"
+}
+```
+
+**Response (No entries)**:
+```json
+{
+  "insight": null,
+  "message": "No journal entries found for the current week",
+  "entryCount": 0,
+  "weekStart": "2025-11-30T00:00:00Z",
+  "weekEnd": "2025-12-06T23:59:59Z"
+}
+```
+
+**Example**:
+```bash
+curl -X POST https://api.example.com/api/v1/chat/weekly-insights/generate \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"forceRegenerate": false}'
+```
+
+---
+
+### Generate Weekly Insights (Streaming)
+
+Stream the generation of weekly insights using Server-Sent Events.
+
+**Endpoint**: `GET /chat/weekly-insights/stream`
+
+**Authentication**: Required
+
+**Response** (200 OK - Server-Sent Events):
+```
+Content-Type: text/event-stream
+
+data: {"type":"start","weekStart":"2025-11-30T00:00:00Z","weekEnd":"2025-12-06T23:59:59Z","entryCount":5,"usageInfo":{"allowed":true,"remaining":9,"limit":10}}
+
+data: {"type":"chunk","content":"## Your Week"}
+
+data: {"type":"chunk","content":" in Review\n\n"}
+
+data: {"type":"chunk","content":"This week showed..."}
+
+data: {"type":"done","insight":{"id":"insight_abc123","week_start":"2025-11-30T00:00:00Z","week_end":"2025-12-06T23:59:59Z","content":"...","entry_count":5}}
+```
+
+**Event Types**:
+| Type | Description | Data Fields |
+|------|-------------|-------------|
+| start | Stream started | weekStart, weekEnd, entryCount, usageInfo, isExisting |
+| chunk | Content chunk | content |
+| done | Stream completed | insight |
+| error | Error occurred | message |
+
+**JavaScript Example**:
+```javascript
+const response = await fetch('https://api.example.com/api/v1/chat/weekly-insights/stream', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+let fullContent = '';
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  
+  const chunk = decoder.decode(value);
+  const lines = chunk.split('\n');
+  
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      const data = JSON.parse(line.slice(6));
+      
+      if (data.type === 'chunk') {
+        fullContent += data.content;
+        console.log(data.content);
+      } else if (data.type === 'done') {
+        console.log('Insight saved:', data.insight.id);
+      }
+    }
+  }
+}
+```
+
+---
+
+### Regenerate Weekly Insights (Streaming)
+
+Force regeneration of weekly insights even if one already exists.
+
+**Endpoint**: `POST /chat/weekly-insights/regenerate`
+
+**Authentication**: Required
+
+**Response** (200 OK - Server-Sent Events):
+Same format as `GET /chat/weekly-insights/stream`
+
+**Example**:
+```bash
+curl -X POST https://api.example.com/api/v1/chat/weekly-insights/regenerate \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+### Delete Weekly Insight
+
+Delete a specific weekly insight.
+
+**Endpoint**: `DELETE /chat/weekly-insights/:id`
+
+**Authentication**: Required
+
+**Path Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | string | Weekly insight ID |
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "message": "Weekly insight deleted successfully"
+}
+```
+
+**Error Responses**:
+- `401 Unauthorized` - Missing or invalid token
+- `404 Not Found` - Insight not found
+
+**Example**:
+```bash
+curl -X DELETE https://api.example.com/api/v1/chat/weekly-insights/insight_abc123 \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
 ## Context and RAG Integration
 
 The Chat API uses the RAG (Retrieval-Augmented Generation) system to provide context-aware responses:
@@ -666,6 +975,7 @@ Handle these by:
 ## Related Documentation
 
 - [Chat Feature](../features/chat.md)
+- [Weekly Insights Feature](../features/weekly-insights.md)
 - [RAG System](../features/rag-system.md)
 - [Web Architecture - Streaming](../architecture/web-architecture.md)
 - [Goals API](./goals-api.md)

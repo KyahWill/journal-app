@@ -1,6 +1,6 @@
 # Setup and Configuration Guide
 
-**Last Updated**: November 2025
+**Last Updated**: December 2025
 
 This guide provides comprehensive instructions for setting up and configuring the Journal application, including both the web frontend and backend API.
 
@@ -258,6 +258,24 @@ pnpm cli migrate:rag --userId=user123
 pnpm cli migrate:rag --dryRun
 ```
 
+### Weekly Insights Migration (Optional)
+
+Generate weekly insights for past weeks based on existing journal entries:
+
+```bash
+# View statistics for a user
+pnpm cli migrate-weekly-insights --userId=user123 --stats
+
+# Dry run (preview without generating)
+pnpm cli migrate-weekly-insights --userId=user123 --dry-run
+
+# Generate insights for all past weeks
+pnpm cli migrate-weekly-insights --userId=user123
+
+# Generate for all users
+pnpm cli migrate-weekly-insights
+```
+
 **→ [Detailed Backend Setup Guide](setup/backend-setup.md)**
 
 ---
@@ -275,6 +293,7 @@ The application uses Firebase Firestore for data storage with the following coll
   - **progress_updates** - Progress tracking
 - **goal_journal_links** - Links between goals and journal entries
 - **chat_sessions** - AI coach chat sessions
+- **weekly_insights** - AI-generated weekly journal analysis
 - **voice_sessions** - Voice coach sessions
 - **coach_personalities** - Coach personality configurations
 - **custom_categories** - User-defined categories

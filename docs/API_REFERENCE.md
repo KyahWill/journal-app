@@ -1,6 +1,6 @@
 # API Reference
 
-**Last Updated**: November 2025
+**Last Updated**: December 2025
 
 ## Overview
 
@@ -254,6 +254,13 @@ AI-powered chat coaching with streaming support.
 - `POST /chat/suggest-goals` - Get AI goal suggestions
 - `GET /chat/goal-insights/:goalId` - Get goal-specific insights
 - `GET /chat/goal-insights/:goalId/stream` - Get goal insights (streaming)
+- `GET /chat/weekly-insights/current` - Get current week insight
+- `GET /chat/weekly-insights/history` - Get all past weekly insights
+- `GET /chat/weekly-insights/:id` - Get weekly insight by ID
+- `POST /chat/weekly-insights/generate` - Generate weekly insights
+- `GET /chat/weekly-insights/stream` - Stream weekly insights generation
+- `POST /chat/weekly-insights/regenerate` - Force regenerate weekly insights
+- `DELETE /chat/weekly-insights/:id` - Delete weekly insight
 
 [View detailed documentation →](./api/chat-api.md)
 
@@ -320,6 +327,20 @@ Manage AI coach personality configurations.
 - `POST /coach-personalities/initialize` - Initialize default personalities
 
 [View detailed documentation →](./api/coach-personalities-api.md)
+
+### Google Calendar API
+
+Sync goals and habits with Google Calendar.
+
+**Base Path**: `/calendar`
+
+**Endpoints**:
+- `GET /calendar/status` - Check if Google Calendar is connected
+- `GET /calendar/connect` - Get OAuth authorization URL
+- `GET /calendar/callback` - OAuth callback handler (redirects to frontend)
+- `DELETE /calendar/disconnect` - Disconnect Google Calendar
+
+[View detailed documentation →](./integrations/google-calendar.md)
 
 ## Request/Response Examples
 

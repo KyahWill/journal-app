@@ -4,7 +4,7 @@
 
 ---
 
-**Last Updated**: November 2025  
+**Last Updated**: December 2025  
 **Status**: Current
 
 ---
@@ -30,10 +30,12 @@ This document provides a comprehensive catalog of all features available in the 
 4. [AI Chat Coach](#ai-chat-coach)
 5. [Voice AI Coach](#voice-ai-coach)
 6. [RAG System](#rag-system)
-7. [Theming System](#theming-system)
-8. [Custom Categories](#custom-categories)
-9. [Platform Features](#platform-features)
-10. [Progressive Web App (PWA)](#progressive-web-app-pwa)
+7. [Weekly Insights](#weekly-insights)
+8. [Google Calendar Integration](#google-calendar-integration)
+9. [Theming System](#theming-system)
+10. [Custom Categories](#custom-categories)
+11. [Platform Features](#platform-features)
+12. [Progressive Web App (PWA)](#progressive-web-app-pwa)
 
 ---
 
@@ -492,6 +494,155 @@ Retrieval-Augmented Generation system for semantic search and context-aware AI r
 
 ---
 
+## Weekly Insights
+
+**Status**: ✅ Complete
+
+### Overview
+AI-powered weekly analysis of journal entries that provides personalized reflections, emotional patterns, progress summaries, and actionable recommendations. Insights are generated on a Saturday-to-Friday cadence and saved to the database for historical reference.
+
+### Key Features
+
+#### Automatic Insight Generation
+- AI analyzes all journal entries from the current week (Saturday to Friday)
+- Identifies emotional patterns and themes
+- Highlights wins, progress, and accomplishments
+- Provides personalized coaching recommendations
+- Streams insights in real-time with markdown formatting
+
+#### Weekly Cadence
+- Consistent Saturday to Friday review periods
+- Auto-generates insights when visiting the insights page
+- Option to regenerate with fresh analysis
+- Respects weekly boundaries for consistent tracking
+
+#### History & Archive
+- Browse all past weekly insights
+- View historical reflections by date range
+- Entry counts tracked per week
+- Persistent storage in Firestore database
+
+#### Usage Controls
+- Rate limiting to prevent excessive generation
+- Usage warnings displayed when approaching limits
+- Delete insights to free up storage
+- Regenerate option for updated analysis
+
+### Technical Implementation
+
+**AI Stack**:
+- Google Gemini 2.5 Pro for insight generation
+- Streaming via Server-Sent Events (SSE)
+- Context-aware prompts based on entry content
+- Markdown output with structured sections
+
+**Database**:
+- Firestore collection: `weekly_insights`
+- Indexed fields: `user_id`, `week_start`, `week_end`
+- Security rules for user isolation
+
+**Components**:
+- InsightsPage with streaming display
+- History panel for past insights
+- ReactMarkdown for formatted rendering
+- Real-time loading indicators
+
+**API Endpoints**:
+- `GET /chat/weekly-insights/current` - Check current week
+- `GET /chat/weekly-insights/history` - Get all past insights
+- `GET /chat/weekly-insights/:id` - Get specific insight
+- `POST /chat/weekly-insights/generate` - Generate insights
+- `GET /chat/weekly-insights/stream` - Stream generation
+- `POST /chat/weekly-insights/regenerate` - Force regeneration
+- `DELETE /chat/weekly-insights/:id` - Delete insight
+
+### Related Documentation
+- [Weekly Insights Feature Details](./features/weekly-insights.md)
+- [Chat API Reference](./api/chat-api.md#weekly-insights)
+- [API Reference](./API_REFERENCE.md#chat)
+
+---
+
+## Google Calendar Integration
+
+**Status**: ✅ Complete
+
+### Overview
+Sync your goals and habits with Google Calendar to get reminders and see your targets alongside your other appointments. Goals create one-time events on their target date, while habits create recurring events based on their frequency.
+
+### Key Features
+
+#### OAuth2 Connection
+- Secure Google OAuth2 authentication
+- Connect/disconnect from Settings page
+- Token management with auto-refresh
+- Revocation on disconnect
+
+#### Goal Calendar Sync
+- Goals sync to Google Calendar as all-day events
+- Event title prefixed with 🎯 emoji
+- Description pulled from goal description
+- Smart reminders:
+  - 3 days before target date
+  - 1 day before target date
+
+#### Habit Calendar Sync
+- Habits create recurring calendar events
+- Event title prefixed with 🔥 emoji
+- Recurrence rules based on frequency:
+  - Daily habits → Daily recurring events
+  - Weekly habits → Weekly recurring events
+  - Monthly habits → Monthly recurring events
+- Immediate reminders for habit events
+
+#### Event Management
+- Events created when goals/habits are created
+- Events updated when goal details change
+- Events deleted when goals are deleted
+- Calendar event ID stored on goal record
+
+### Technical Implementation
+
+**OAuth Stack**:
+- Google OAuth 2.0 Web Application flow
+- `googleapis` npm package
+- Secure token storage in Firestore
+- Automatic token refresh
+
+**Database Fields** (users collection):
+- `google_calendar_connected` - Connection status
+- `google_calendar_access_token` - OAuth access token
+- `google_calendar_refresh_token` - OAuth refresh token
+- `google_calendar_expiry_date` - Token expiration
+
+**Goal Fields**:
+- `calendar_event_id` - Google Calendar event ID
+
+**API Endpoints**:
+- `GET /calendar/status` - Check connection status
+- `GET /calendar/connect` - Get OAuth authorization URL
+- `GET /calendar/callback` - OAuth callback handler
+- `DELETE /calendar/disconnect` - Disconnect calendar
+
+### Setup Requirements
+
+1. Create OAuth 2.0 credentials in Google Cloud Console
+2. Enable Google Calendar API
+3. Configure redirect URI: `{BACKEND_URL}/api/v1/calendar/callback`
+4. Set environment variables:
+   - `GOOGLE_CLIENT_ID`
+   - `GOOGLE_CLIENT_SECRET`
+   - `GOOGLE_REDIRECT_URI`
+   - `FRONTEND_URL`
+
+### Related Documentation
+- [Google Calendar Integration Guide](./integrations/google-calendar.md)
+- [Goals Feature](./features/goals.md)
+- [Environment Variables](./setup/environment-variables.md)
+- [API Reference](./API_REFERENCE.md#calendar)
+
+---
+
 ## Theming System
 
 **Status**: ✅ Complete
@@ -858,7 +1009,7 @@ Full Progressive Web App implementation enabling installation as a native app on
 #### Platform Features
 - 📋 Offline mode with sync
 - 📋 Push notifications
-- 📋 Calendar integration
+- ✅ Calendar integration (Google Calendar)
 - 📋 Cloud backup
 - 📋 Data export/import
 

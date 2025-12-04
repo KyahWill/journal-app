@@ -43,6 +43,13 @@ The Goals & Habits feature provides a complete system for setting, tracking, and
 - Cascade delete milestones and progress updates
 - Permanent deletion with warning
 
+#### Google Calendar Sync
+- Sync goals to Google Calendar as all-day events
+- Sync habits as recurring events (daily/weekly/monthly)
+- Smart reminders before target dates
+- Automatic event updates when goals change
+- Events removed when goals deleted
+
 ### Milestone Tracking
 
 #### Add Milestones
@@ -169,6 +176,9 @@ interface Goal {
   habit_frequency?: 'daily' | 'weekly' | 'monthly'
   habit_streak: number
   habit_completed_dates: string[]  // ISO dates (YYYY-MM-DD)
+  
+  // Google Calendar integration
+  calendar_event_id?: string  // Google Calendar event ID
 }
 
 type HabitFrequency = 'daily' | 'weekly' | 'monthly'
@@ -621,12 +631,16 @@ curl -X PATCH http://localhost:3001/api/v1/goal/$GOAL_ID/milestones/$MILESTONE_I
 
 ## Future Enhancements
 
+### Completed Features
+
+- [x] Google Calendar sync for goals and habits
+
 ### Planned Features
 
 - [ ] Goal templates
 - [ ] Goal dependencies
 - [ ] Goal sharing and collaboration
-- [ ] Goal reminders and notifications
+- [ ] Goal reminders and notifications (push)
 - [ ] Goal analytics dashboard
 - [ ] Goal export to PDF
 - [ ] Goal import from templates
@@ -635,7 +649,7 @@ curl -X PATCH http://localhost:3001/api/v1/goal/$GOAL_ID/milestones/$MILESTONE_I
 - [ ] Goal attachments
 - [ ] Goal comments
 - [ ] Goal activity feed
-- [ ] Habit reminders/notifications
+- [ ] Habit reminders/notifications (push)
 - [ ] Habit analytics and charts
 - [ ] Habit streaks leaderboard
 
@@ -646,7 +660,7 @@ curl -X PATCH http://localhost:3001/api/v1/goal/$GOAL_ID/milestones/$MILESTONE_I
 - [ ] Goal duplication
 - [ ] Advanced filtering
 - [ ] Saved filter presets
-- [ ] Goal calendar view
+- [x] Goal calendar view (via Google Calendar integration)
 - [ ] Goal kanban board
 - [ ] Goal timeline view
 - [ ] Habit calendar heatmap
@@ -656,6 +670,7 @@ curl -X PATCH http://localhost:3001/api/v1/goal/$GOAL_ID/milestones/$MILESTONE_I
 
 - [API Reference](../API_REFERENCE.md#goals)
 - [Custom Categories](./categories.md)
+- [Google Calendar Integration](../integrations/google-calendar.md)
 - [Database Setup](../setup/database-setup.md)
 - [Backend Architecture](../architecture/backend-architecture.md)
 
