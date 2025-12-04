@@ -165,7 +165,7 @@ export default function CookiePolicy() {
               If you have any questions about our use of cookies or this Cookie Policy, please contact us at:
             </p>
             <p className="text-gray-700 mt-4">
-              Email: <a href="mailto:privacy@journalapp.com" className="text-orange-600 hover:text-orange-700">privacy@journalapp.com</a>
+              Email: <a href="mailto:wvparrone@gmail.com" className="text-orange-600 hover:text-orange-700">wvparrone@gmail.com</a>
             </p>
           </section>
         </div>
