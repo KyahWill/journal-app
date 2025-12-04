@@ -1,6 +1,81 @@
-# Firestore Goal Collections Setup
+# Firestore Migrations
 
-This directory contains schema definitions and migration scripts for the goal-related Firestore collections.
+This directory contains schema definitions and migration scripts for Firestore collections.
+
+## Migration Scripts
+
+### User ID Migration (`migrate-user-id.ts`)
+
+Migrates all user data from one user ID (UID) to another. This is useful when:
+- A user's UID changed due to Google authentication creating a duplicate account
+- Merging two accounts into one
+- Recovering data after accidental account creation with wrong provider
+
+#### Usage
+
+```bash
+cd backend
+
+# Step 1: Preview migration (recommended)
+npx ts-node src/firebase/migrations/migrate-user-id.ts <OLD_UID> <NEW_UID> --dry-run
+
+# Step 2: Run actual migration
+npx ts-node src/firebase/migrations/migrate-user-id.ts <OLD_UID> <NEW_UID>
+```
+
+#### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `OLD_UID` | The user ID to migrate FROM (the one with existing data) |
+| `NEW_UID` | The user ID to migrate TO (the one you want to use) |
+| `--dry-run` | Optional. Preview changes without making them |
+
+#### What Gets Migrated
+
+| Collection | Migration Type |
+|------------|----------------|
+| `goals` | Updates `user_id` field |
+| `journal-entries` | Updates `user_id` field |
+| `chat_sessions` | Updates `user_id` field |
+| `user_prompts` | Updates `user_id` field |
+| `user_themes` | Updates `user_id` field |
+| `custom_categories` | Updates `user_id` field |
+| `goal_journal_links` | Updates `user_id` field |
+| `coach_personalities` | Updates `user_id` field |
+| `embeddings` | Updates `user_id` field |
+| `profiles` | Copies document to new ID, deletes old |
+| `user_usage` | Copies subcollection to new path, deletes old |
+
+#### Example
+
+```bash
+# Preview what would be migrated
+npx ts-node src/firebase/migrations/migrate-user-id.ts abc123olduid xyz789newuid --dry-run
+
+# Output:
+# ============================================================
+# USER ID MIGRATION
+# ============================================================
+# Old UID: abc123olduid
+# New UID: xyz789newuid
+# Mode: DRY RUN (no changes will be made)
+# ============================================================
+# 
+# Migrating collections with user_id field...
+#   [goals] Found 5 documents
+#   [journal-entries] Found 42 documents
+#   ...
+# 
+# MIGRATION SUMMARY
+# Total documents found: 67
+# Total documents would be updated: 67
+# ============================================================
+```
+
+---
+
+## Collections Structure
 
 ## Collections Structure
 
