@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MigrationService } from './rag/migration.service';
 import { MilestoneMigrationService } from './goal/milestone-migration.service';
+import { WeeklyInsightsMigrationService } from './chat/weekly-insights-migration.service';
 import { Logger } from '@nestjs/common';
 
 const logger = new Logger('CLI');
@@ -14,6 +15,7 @@ const logger = new Logger('CLI');
  *   npm run cli migrate-embeddings --all-users
  *   npm run cli migrate-embeddings --userId=<user-id> --dry-run
  *   npm run cli migrate-milestones [--userId=<user-id>] [--dry-run] [--cleanup]
+ *   npm run cli migrate-weekly-insights [--userId=<user-id>] [--dry-run] [--stats]
  */
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule, {
@@ -22,6 +24,7 @@ async function bootstrap() {
 
   const migrationService = app.get(MigrationService);
   const milestoneMigrationService = app.get(MilestoneMigrationService);
+  const weeklyInsightsMigrationService = app.get(WeeklyInsightsMigrationService);
 
   // Parse command line arguments
   const args = process.argv.slice(2);
@@ -40,6 +43,9 @@ async function bootstrap() {
         break;
       case 'migrate-milestones':
         await handleMigrateMilestones(milestoneMigrationService, args.slice(1));
+        break;
+      case 'migrate-weekly-insights':
+        await handleMigrateWeeklyInsights(weeklyInsightsMigrationService, args.slice(1));
         break;
       default:
         logger.error(`Unknown command: ${command}`);
@@ -381,13 +387,187 @@ async function handleMigrateMilestones(
 }
 
 /**
+ * Handle migrate-weekly-insights command
+ */
+async function handleMigrateWeeklyInsights(
+  migrationService: WeeklyInsightsMigrationService,
+  args: string[],
+): Promise<void> {
+  const options = parseOptions(args);
+
+  // Show help
+  if (options.help) {
+    printWeeklyInsightsUsage();
+    return;
+  }
+
+  // Show stats
+  if (options.stats) {
+    if (options.userId) {
+      logger.log(`\nFetching migration statistics for user: ${options.userId}...`);
+      const stats = await migrationService.getMigrationStats(options.userId);
+      logger.log('\n' + '='.repeat(60));
+      logger.log('WEEKLY INSIGHTS MIGRATION STATISTICS');
+      logger.log('='.repeat(60));
+      logger.log(`Total journal entries: ${stats.totalEntries}`);
+      logger.log(`Total weeks with entries: ${stats.totalWeeks}`);
+      logger.log(`Existing insights: ${stats.existingInsights}`);
+      logger.log(`Weeks needing migration: ${stats.weeksNeedingMigration}`);
+      if (stats.currentWeekExcluded) {
+        logger.log(`Current week excluded: Yes (will be generated on demand)`);
+      }
+      logger.log('='.repeat(60));
+    } else {
+      const userIds = await migrationService.getAllUserIds();
+      logger.log(`\nFound ${userIds.length} users with journal entries`);
+      logger.log('\nFetching statistics for all users...\n');
+      
+      let totalWeeksNeeding = 0;
+      let totalExisting = 0;
+      
+      for (const userId of userIds) {
+        const stats = await migrationService.getMigrationStats(userId);
+        totalWeeksNeeding += stats.weeksNeedingMigration;
+        totalExisting += stats.existingInsights;
+        logger.log(`  User ${userId}: ${stats.weeksNeedingMigration} weeks to migrate, ${stats.existingInsights} existing`);
+      }
+      
+      logger.log('\n' + '='.repeat(60));
+      logger.log('TOTAL WEEKLY INSIGHTS MIGRATION STATISTICS');
+      logger.log('='.repeat(60));
+      logger.log(`Total users: ${userIds.length}`);
+      logger.log(`Total existing insights: ${totalExisting}`);
+      logger.log(`Total weeks needing migration: ${totalWeeksNeeding}`);
+      logger.log(`Estimated time: ${estimateTime(totalWeeksNeeding * 3)}`); // ~3 seconds per insight
+      logger.log('='.repeat(60));
+    }
+    return;
+  }
+
+  // Dry run mode
+  if (options.dryRun) {
+    logger.log('DRY RUN MODE - No insights will be generated or saved');
+  }
+
+  const startTime = Date.now();
+
+  if (options.userId) {
+    // Migrate single user
+    logger.log(`\nMigrating weekly insights for user: ${options.userId}`);
+    const result = await migrationService.migrateUserInsights(options.userId, {
+      dryRun: options.dryRun,
+    });
+
+    printWeeklyInsightsResult(result);
+  } else {
+    // Migrate all users
+    logger.log('\nMigrating weekly insights for all users...');
+    
+    if (!options.dryRun) {
+      logger.warn('⚠️  This will generate AI insights for all past weeks.');
+      logger.warn('⚠️  This may take a long time and use API credits.');
+      logger.log('Waiting 5 seconds...');
+      await sleep(5000);
+    }
+
+    const results = await migrationService.migrateAllUsers({
+      dryRun: options.dryRun,
+    });
+
+    // Print summary
+    logger.log('\n' + '='.repeat(60));
+    logger.log('WEEKLY INSIGHTS MIGRATION SUMMARY');
+    logger.log('='.repeat(60));
+    logger.log(`Total users processed: ${results.totalUsers}`);
+    logger.log(`Total insights generated: ${results.totalGenerated}`);
+    logger.log(`Total failures: ${results.totalFailed}`);
+    logger.log(`Total duration: ${formatDuration(results.duration)}`);
+    logger.log('='.repeat(60));
+
+    // Print individual results
+    if (results.results.length > 0) {
+      logger.log('\nPer-user results:');
+      results.results.forEach((result) => {
+        logger.log(`  ${result.userId}: ${result.generatedCount} generated, ${result.failedCount} failed`);
+      });
+    }
+
+    // Print errors
+    const allErrors = results.results.flatMap((r) => 
+      r.errors.map((e) => ({ userId: r.userId, ...e }))
+    );
+    if (allErrors.length > 0) {
+      logger.log('\nErrors:');
+      allErrors.slice(0, 10).forEach((error) => {
+        logger.log(`  - User ${error.userId}, Week ${error.weekStart.toLocaleDateString()}: ${error.error}`);
+      });
+      if (allErrors.length > 10) {
+        logger.log(`  ... and ${allErrors.length - 10} more errors`);
+      }
+    }
+  }
+
+  if (options.dryRun) {
+    logger.log('\n✓ Dry run complete. Run without --dry-run to perform actual migration.');
+  } else {
+    logger.log('\n✓ Migration completed!');
+  }
+}
+
+/**
+ * Print weekly insights migration result
+ */
+function printWeeklyInsightsResult(result: any): void {
+  logger.log('\n' + '='.repeat(60));
+  logger.log('WEEKLY INSIGHTS MIGRATION RESULT');
+  logger.log('='.repeat(60));
+  logger.log(`User ID: ${result.userId}`);
+  logger.log(`Total weeks found: ${result.totalWeeks}`);
+  logger.log(`Insights generated: ${result.generatedCount}`);
+  logger.log(`Failed: ${result.failedCount}`);
+  logger.log(`Duration: ${formatDuration(result.duration)}`);
+  logger.log('='.repeat(60));
+
+  if (result.errors.length > 0) {
+    logger.log('\nErrors:');
+    result.errors.forEach((error: any) => {
+      logger.log(`  - Week ${error.weekStart.toLocaleDateString()}: ${error.error}`);
+    });
+  }
+}
+
+/**
+ * Print weekly insights migration usage
+ */
+function printWeeklyInsightsUsage(): void {
+  logger.log('\nUsage: npm run cli migrate-weekly-insights [options]');
+  logger.log('\nDescription:');
+  logger.log('  Generate weekly insights for past weeks that don\'t have insights yet.');
+  logger.log('  Weeks run Saturday to Friday. Current week is excluded (generated on demand).');
+  logger.log('\nOptions:');
+  logger.log('  --userId=<userId>     Migrate insights for a specific user only');
+  logger.log('  --dry-run             Perform a dry run without generating insights');
+  logger.log('  --stats               Show migration statistics without migrating');
+  logger.log('  --help                Show this help message');
+  logger.log('\nExamples:');
+  logger.log('  npm run cli migrate-weekly-insights --stats');
+  logger.log('  npm run cli migrate-weekly-insights --userId=user123 --stats');
+  logger.log('  npm run cli migrate-weekly-insights --dry-run');
+  logger.log('  npm run cli migrate-weekly-insights --userId=user123 --dry-run');
+  logger.log('  npm run cli migrate-weekly-insights');
+  logger.log('  npm run cli migrate-weekly-insights --userId=user123');
+  logger.log('\nNote: Always run with --dry-run or --stats first to verify the scope!');
+}
+
+/**
  * Print general usage
  */
 function printUsage(): void {
   logger.log('\nUsage: npm run cli <command> [options]');
   logger.log('\nAvailable commands:');
-  logger.log('  migrate-embeddings    Migrate existing content to generate embeddings');
-  logger.log('  migrate-milestones    Migrate milestones from subcollection to array');
+  logger.log('  migrate-embeddings      Migrate existing content to generate embeddings');
+  logger.log('  migrate-milestones      Migrate milestones from subcollection to array');
+  logger.log('  migrate-weekly-insights Generate weekly insights for past weeks');
   logger.log('\nFor command-specific help, run: npm run cli <command> --help');
 }
 

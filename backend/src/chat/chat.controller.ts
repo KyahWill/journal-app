@@ -149,5 +149,80 @@ export class ChatController {
       })()
     })
   }
+
+  // ============================================================================
+  // Weekly Insights APIs (Saturday to Friday intervals, saved to database)
+  // ============================================================================
+
+  @Get('weekly-insights/current')
+  async getCurrentWeekInsights(@CurrentUser() user: any) {
+    return this.chatService.getCurrentWeekInsights(user.uid)
+  }
+
+  @Get('weekly-insights/history')
+  async getWeeklyInsightsHistory(@CurrentUser() user: any) {
+    return this.chatService.getAllWeeklyInsights(user.uid)
+  }
+
+  @Get('weekly-insights/:id')
+  async getWeeklyInsightById(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.chatService.getWeeklyInsightById(user.uid, id)
+  }
+
+  @Post('weekly-insights/generate')
+  @HttpCode(HttpStatus.OK)
+  async generateWeeklyInsights(@CurrentUser() user: any, @Body() body: { forceRegenerate?: boolean }) {
+    return this.chatService.generateWeeklyInsights(user.uid, body?.forceRegenerate || false)
+  }
+
+  @Sse('weekly-insights/stream')
+  async generateWeeklyInsightsStream(@CurrentUser() user: any): Promise<Observable<MessageEvent>> {
+    return new Observable((subscriber) => {
+      (async () => {
+        try {
+          for await (const event of this.chatService.generateWeeklyInsightsStream(user.uid)) {
+            subscriber.next({ data: JSON.stringify(event) } as MessageEvent)
+          }
+          subscriber.complete()
+        } catch (error) {
+          subscriber.error(error)
+        }
+      })()
+    })
+  }
+
+  @Post('weekly-insights/regenerate')
+  @Header('Content-Type', 'text/event-stream')
+  @Header('Cache-Control', 'no-cache')
+  @Header('Connection', 'keep-alive')
+  @Header('X-Accel-Buffering', 'no')
+  async regenerateWeeklyInsightsStream(
+    @CurrentUser() user: any,
+    @Res() res: Response,
+  ): Promise<void> {
+    res.setHeader('Content-Type', 'text/event-stream')
+    res.setHeader('Cache-Control', 'no-cache')
+    res.setHeader('Connection', 'keep-alive')
+    res.setHeader('X-Accel-Buffering', 'no')
+    res.flushHeaders()
+    
+    try {
+      for await (const data of this.chatService.generateWeeklyInsightsStream(user.uid, true)) {
+        const sseData = `data: ${JSON.stringify(data)}\n\n`
+        res.write(sseData)
+      }
+      
+      res.end()
+    } catch (error) {
+      res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`)
+      res.end()
+    }
+  }
+
+  @Delete('weekly-insights/:id')
+  @HttpCode(HttpStatus.OK)
+  async deleteWeeklyInsight(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.chatService.deleteWeeklyInsight(user.uid, id)
+  }
 }
 

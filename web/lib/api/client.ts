@@ -252,6 +252,17 @@ export interface GoalJournalLink {
   created_at: string | Date
 }
 
+export interface WeeklyInsight {
+  id: string
+  user_id: string
+  week_start: string | Date
+  week_end: string | Date
+  content: string
+  entry_count: number
+  created_at: string | Date
+  updated_at: string | Date
+}
+
 export interface CreateGoalData {
   title: string
   description?: string
@@ -556,6 +567,121 @@ class ApiClient {
 
   async getSuggestedPrompts(): Promise<{ prompts: string[] }> {
     return this.request<{ prompts: string[] }>('/chat/prompts')
+  }
+
+  // ============================================================================
+  // Weekly Insights APIs (Saturday to Friday intervals, saved to database)
+  // ============================================================================
+
+  async getCurrentWeekInsights(): Promise<{ 
+    insight: WeeklyInsight | null
+    weekStart: string
+    weekEnd: string 
+  }> {
+    return this.request('/chat/weekly-insights/current')
+  }
+
+  async getWeeklyInsightsHistory(): Promise<WeeklyInsight[]> {
+    return this.request<WeeklyInsight[]>('/chat/weekly-insights/history')
+  }
+
+  async getWeeklyInsightById(id: string): Promise<WeeklyInsight> {
+    return this.request<WeeklyInsight>(`/chat/weekly-insights/${id}`)
+  }
+
+  async generateWeeklyInsights(forceRegenerate: boolean = false): Promise<{
+    insight: WeeklyInsight | null
+    isExisting?: boolean
+    message?: string
+    entryCount?: number
+    weekStart: string
+    weekEnd: string
+  }> {
+    return this.request('/chat/weekly-insights/generate', {
+      method: 'POST',
+      body: JSON.stringify({ forceRegenerate }),
+    })
+  }
+
+  async deleteWeeklyInsight(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/chat/weekly-insights/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  /**
+   * Stream weekly insights generation using Server-Sent Events
+   */
+  async *generateWeeklyInsightsStream(forceRegenerate: boolean = false, onChunk?: (chunk: string) => void): AsyncGenerator<any, void, unknown> {
+    const headers: HeadersInit = {}
+
+    if (this.getToken) {
+      try {
+        const token = await this.getToken()
+        if (token) {
+          (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+        }
+      } catch (error) {
+        console.error('Failed to get Firebase token:', error)
+      }
+    }
+
+    // Use regenerate endpoint if forcing, otherwise use regular stream
+    const endpoint = forceRegenerate ? '/chat/weekly-insights/regenerate' : '/chat/weekly-insights/stream'
+    const url = `${this.baseUrl}${endpoint}`
+    const response = await fetch(url, {
+      method: forceRegenerate ? 'POST' : 'GET',
+      headers,
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || 'Failed to generate weekly insights')
+    }
+
+    const reader = response.body?.getReader()
+    const decoder = new TextDecoder()
+
+    if (!reader) {
+      throw new Error('Response body is not readable')
+    }
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim()
+            if (data) {
+              try {
+                const event = JSON.parse(data)
+                
+                // Handle chunk events - call onChunk callback
+                if (event.type === 'chunk' && event.content && onChunk) {
+                  onChunk(event.content)
+                }
+                
+                yield event
+              } catch (e) {
+                // If not JSON, treat as raw string (backward compatibility)
+                if (onChunk) {
+                  onChunk(data)
+                }
+                yield { type: 'chunk', content: data }
+              }
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock()
+    }
   }
 
   async suggestGoals(): Promise<{ suggestions: any[]; usageInfo?: UsageInfo; message?: string }> {

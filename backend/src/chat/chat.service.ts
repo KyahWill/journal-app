@@ -2,8 +2,9 @@ import { Injectable, NotFoundException, Logger, HttpException, HttpStatus, Injec
 import { FirebaseService } from '@/firebase/firebase.service'
 import { GeminiService } from '@/gemini/gemini.service'
 import { JournalService } from '@/journal/journal.service'
+import { WeeklyInsightsService } from './weekly-insights.service'
 import { SendMessageDto } from '@/common/dto/chat.dto'
-import { ChatSession, ChatMessage } from '@/common/types/journal.types'
+import { ChatSession, ChatMessage, WeeklyInsight } from '@/common/types/journal.types'
 import { v4 as uuidv4 } from 'uuid'
 import { CoachPersonalityService } from '@/coach-personality/coach-personality.service'
 import { RateLimitService } from '@/common/services/rate-limit.service'
@@ -25,6 +26,7 @@ export class ChatService {
     @Inject(forwardRef(() => GoalService))
     private readonly goalService: GoalService,
     private readonly ragService: RagService,
+    private readonly weeklyInsightsService: WeeklyInsightsService,
   ) {}
 
   async sendMessage(userId: string, sendMessageDto: SendMessageDto) {
@@ -791,6 +793,264 @@ export class ChatService {
       this.logger.error(`[Goal Insights Stream] Error generating goal insights stream for goal: ${goalId}, user: ${userId}`, error.stack || error)
       throw error
     }
+  }
+
+  /**
+   * Get the current week info (Saturday to Friday)
+   */
+  getCurrentWeekInfo() {
+    const weekStart = this.weeklyInsightsService.getCurrentWeekStart()
+    const weekEnd = this.weeklyInsightsService.getCurrentWeekEnd()
+    return { weekStart, weekEnd }
+  }
+
+  /**
+   * Get journal entries for a specific week (Saturday to Friday)
+   */
+  async getEntriesForWeek(userId: string, weekStart: Date, weekEnd: Date) {
+    const allEntries = await this.journalService.findAll(userId)
+    
+    return allEntries.filter((entry) => {
+      const entryDate = new Date(entry.created_at)
+      return entryDate >= weekStart && entryDate <= weekEnd
+    })
+  }
+
+  /**
+   * Get current week insights - returns existing or generates new
+   */
+  async getCurrentWeekInsights(userId: string): Promise<{ insight: WeeklyInsight | null; weekStart: Date; weekEnd: Date }> {
+    const { weekStart, weekEnd } = this.getCurrentWeekInfo()
+    const existingInsight = await this.weeklyInsightsService.getInsightsForWeek(userId, weekStart)
+    
+    return {
+      insight: existingInsight,
+      weekStart,
+      weekEnd,
+    }
+  }
+
+  /**
+   * Get all saved weekly insights for a user
+   */
+  async getAllWeeklyInsights(userId: string, limit: number = 52): Promise<WeeklyInsight[]> {
+    return this.weeklyInsightsService.getAllInsights(userId, limit)
+  }
+
+  /**
+   * Get a specific weekly insight by ID
+   */
+  async getWeeklyInsightById(userId: string, insightId: string): Promise<WeeklyInsight> {
+    return this.weeklyInsightsService.getInsightById(userId, insightId)
+  }
+
+  /**
+   * Generate and save weekly insights (non-streaming)
+   */
+  async generateWeeklyInsights(userId: string, forceRegenerate: boolean = false) {
+    try {
+      // Check rate limit
+      const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'insights')
+      if (!usageInfo.allowed) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: usageInfo.warning || 'Daily insights limit reached',
+            error: 'Too Many Requests',
+            usageInfo,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        )
+      }
+
+      // Get current week info (Saturday to Friday)
+      const weekStart = this.weeklyInsightsService.getCurrentWeekStart()
+      const weekEnd = this.weeklyInsightsService.getCurrentWeekEnd()
+
+      // Check if insights already exist for this week
+      if (!forceRegenerate) {
+        const existingInsight = await this.weeklyInsightsService.getInsightsForWeek(userId, weekStart)
+        if (existingInsight) {
+          this.logger.log(`Returning existing weekly insights for user: ${userId}`)
+          return {
+            insight: existingInsight,
+            isExisting: true,
+            weekStart,
+            weekEnd,
+          }
+        }
+      }
+
+      // Get journal entries for this week
+      const journalEntries = await this.getEntriesForWeek(userId, weekStart, weekEnd)
+
+      if (journalEntries.length === 0) {
+        return {
+          insight: null,
+          message: 'No journal entries for this week (Saturday to Friday). Start writing to get your weekly reflection!',
+          entryCount: 0,
+          weekStart,
+          weekEnd,
+        }
+      }
+
+      // Generate insights
+      const content = await this.geminiService.generateWeeklyInsights(journalEntries)
+
+      // Save to database
+      const savedInsight = await this.weeklyInsightsService.saveInsights(
+        userId,
+        weekStart,
+        weekEnd,
+        content,
+        journalEntries.length,
+      )
+
+      this.logger.log(`Weekly insights generated and saved for user: ${userId}`)
+
+      return {
+        insight: savedInsight,
+        isExisting: false,
+        weekStart,
+        weekEnd,
+      }
+    } catch (error) {
+      this.logger.error('Error generating weekly insights', error)
+      throw error
+    }
+  }
+
+  /**
+   * Generate and save weekly insights with streaming
+   */
+  async *generateWeeklyInsightsStream(userId: string, forceRegenerate: boolean = false): AsyncGenerator<any, void, unknown> {
+    this.logger.log(`[Weekly Insights Stream] Starting streaming weekly insight generation for user: ${userId}`)
+    
+    try {
+      // Check rate limit
+      this.logger.debug(`[Weekly Insights Stream] Checking rate limit for user: ${userId}`)
+      const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'insights')
+      
+      if (!usageInfo.allowed) {
+        this.logger.warn(`[Weekly Insights Stream] Rate limit exceeded for user: ${userId}`)
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: usageInfo.warning || 'Daily insights limit reached',
+            error: 'Too Many Requests',
+            usageInfo,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        )
+      }
+
+      this.logger.debug(`[Weekly Insights Stream] Rate limit check passed. Remaining: ${usageInfo.remaining}/${usageInfo.limit}`)
+
+      // Get current week info (Saturday to Friday)
+      const weekStart = this.weeklyInsightsService.getCurrentWeekStart()
+      const weekEnd = this.weeklyInsightsService.getCurrentWeekEnd()
+
+      // Check if insights already exist for this week
+      if (!forceRegenerate) {
+        const existingInsight = await this.weeklyInsightsService.getInsightsForWeek(userId, weekStart)
+        if (existingInsight) {
+          this.logger.log(`[Weekly Insights Stream] Returning existing insights for user: ${userId}`)
+          
+          yield {
+            type: 'start',
+            usageInfo,
+            entryCount: existingInsight.entry_count,
+            weekStart: weekStart.toISOString(),
+            weekEnd: weekEnd.toISOString(),
+            insightId: existingInsight.id,
+            isExisting: true,
+          }
+          
+          yield {
+            type: 'chunk',
+            content: existingInsight.content,
+          }
+          
+          yield {
+            type: 'done',
+            insight: existingInsight,
+          }
+          return
+        }
+      }
+
+      // Get journal entries for this week
+      this.logger.debug(`[Weekly Insights Stream] Fetching journal entries for week for user: ${userId}`)
+      const journalEntries = await this.getEntriesForWeek(userId, weekStart, weekEnd)
+      this.logger.log(`[Weekly Insights Stream] Retrieved ${journalEntries.length} journal entries for user: ${userId}`)
+
+      // Send initial event with metadata
+      yield {
+        type: 'start',
+        usageInfo,
+        entryCount: journalEntries.length,
+        weekStart: weekStart.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        isExisting: false,
+      }
+
+      if (journalEntries.length === 0) {
+        this.logger.warn(`[Weekly Insights Stream] No journal entries found for user: ${userId}`)
+        yield {
+          type: 'chunk',
+          content: 'No journal entries for this week (Saturday to Friday). Start writing to get your weekly reflection!',
+        }
+        yield {
+          type: 'done',
+        }
+        return
+      }
+
+      this.logger.debug(`[Weekly Insights Stream] Starting streaming response from Gemini for user: ${userId}`)
+      let fullContent = ''
+      let chunkCount = 0
+      
+      for await (const chunk of this.geminiService.generateWeeklyInsightsStream(journalEntries)) {
+        chunkCount++
+        fullContent += chunk
+        yield {
+          type: 'chunk',
+          content: chunk,
+        }
+      }
+
+      // Save to database after streaming completes
+      const savedInsight = await this.weeklyInsightsService.saveInsights(
+        userId,
+        weekStart,
+        weekEnd,
+        fullContent,
+        journalEntries.length,
+      )
+
+      this.logger.log(`[Weekly Insights Stream] Successfully completed and saved weekly insights for user: ${userId}`, {
+        chunkCount,
+        entryCount: journalEntries.length,
+        insightId: savedInsight.id,
+      })
+
+      // Send completion event with saved insight
+      yield {
+        type: 'done',
+        insight: savedInsight,
+      }
+
+    } catch (error) {
+      this.logger.error(`[Weekly Insights Stream] Error generating weekly insights stream for user: ${userId}`, error.stack || error)
+      throw error
+    }
+  }
+
+  /**
+   * Delete a weekly insight
+   */
+  async deleteWeeklyInsight(userId: string, insightId: string) {
+    return this.weeklyInsightsService.deleteInsight(userId, insightId)
   }
 
   /**

@@ -88,3 +88,14 @@ export interface UserTheme {
   updated_at: Date
 }
 
+export interface WeeklyInsight {
+  id: string
+  user_id: string
+  week_start: Date  // Saturday start of the week
+  week_end: Date    // Friday end of the week
+  content: string   // The generated insights markdown
+  entry_count: number
+  created_at: Date
+  updated_at: Date
+}
+

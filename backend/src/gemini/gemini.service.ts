@@ -566,5 +566,128 @@ Keep your response conversational, supportive, and actionable (3-4 paragraphs).`
       throw error
     }
   }
+
+  async generateWeeklyInsights(journalEntries: JournalEntry[], weekStart?: Date, weekEnd?: Date): Promise<string> {
+    try {
+      if (journalEntries.length === 0) {
+        return 'No journal entries from this week to generate insights.'
+      }
+
+      const journalContext = this.formatJournalContext(journalEntries)
+      
+      // Use provided dates or calculate from entries
+      const start = weekStart || new Date(Math.min(...journalEntries.map(e => new Date(e.created_at).getTime())))
+      const end = weekEnd || new Date(Math.max(...journalEntries.map(e => new Date(e.created_at).getTime())))
+      
+      const formatDate = (date: Date) => date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+      
+      const prompt = `You are an insightful life analyst reviewing a user's journal entries from the week of ${formatDate(start)} to ${formatDate(end)}.
+
+${journalContext}
+
+Generate a comprehensive weekly reflection report with the following sections. Use markdown formatting with headers:
+
+## 📊 Week at a Glance
+Provide a brief 2-3 sentence summary of the overall week based on the journal entries.
+
+## 🎭 Emotional Journey
+Analyze the emotional patterns throughout the week. What moods were dominant? Were there any emotional shifts or triggers?
+
+## 🏆 Wins & Accomplishments
+Highlight any achievements, progress, or positive moments mentioned in the entries.
+
+## 🌊 Challenges & Obstacles
+Identify any struggles, frustrations, or difficulties the user faced.
+
+## 🔍 Patterns & Observations
+What recurring themes, behaviors, or thought patterns do you notice?
+
+## 💡 Key Insights
+What are the most important takeaways from this week's reflections?
+
+## 🚀 Focus for Next Week
+Based on the patterns and insights, what should the user focus on or be mindful of in the coming week?
+
+Be warm, supportive, and specific. Reference actual content from the journal entries when making observations.`
+
+      const result = await this.model.generateContent(prompt)
+      const response = result.response
+      return response.text()
+    } catch (error) {
+      this.logger.error('Error generating weekly insights', error)
+      throw error
+    }
+  }
+
+  async *generateWeeklyInsightsStream(journalEntries: JournalEntry[], weekStart?: Date, weekEnd?: Date): AsyncGenerator<string, void, unknown> {
+    try {
+      if (journalEntries.length === 0) {
+        yield 'No journal entries from this week to generate insights.'
+        return
+      }
+
+      const journalContext = this.formatJournalContext(journalEntries)
+      
+      // Use provided dates or calculate from entries
+      const start = weekStart || new Date(Math.min(...journalEntries.map(e => new Date(e.created_at).getTime())))
+      const end = weekEnd || new Date(Math.max(...journalEntries.map(e => new Date(e.created_at).getTime())))
+      
+      const formatDate = (date: Date) => date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+      
+      const prompt = `You are an insightful life analyst reviewing a user's journal entries from the week of ${formatDate(start)} to ${formatDate(end)}.
+
+${journalContext}
+
+Generate a comprehensive weekly reflection report with the following sections. Use markdown formatting with headers:
+
+## 📊 Week at a Glance
+Provide a brief 2-3 sentence summary of the overall week based on the journal entries.
+
+## 🎭 Emotional Journey
+Analyze the emotional patterns throughout the week. What moods were dominant? Were there any emotional shifts or triggers?
+
+## 🏆 Wins & Accomplishments
+Highlight any achievements, progress, or positive moments mentioned in the entries.
+
+## 🌊 Challenges & Obstacles
+Identify any struggles, frustrations, or difficulties the user faced.
+
+## 🔍 Patterns & Observations
+What recurring themes, behaviors, or thought patterns do you notice?
+
+## 💡 Key Insights
+What are the most important takeaways from this week's reflections?
+
+## 🚀 Focus for Next Week
+Based on the patterns and insights, what should the user focus on or be mindful of in the coming week?
+
+Be warm, supportive, and specific. Reference actual content from the journal entries when making observations.`
+
+      const result = await this.model.generateContentStream(prompt)
+
+      let buffer = ''
+      const maxChunkSize = 50
+      
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text()
+        if (chunkText) {
+          buffer += chunkText
+          
+          while (buffer.length >= maxChunkSize) {
+            const toSend = buffer.slice(0, maxChunkSize)
+            buffer = buffer.slice(maxChunkSize)
+            yield toSend
+          }
+        }
+      }
+      
+      if (buffer.length > 0) {
+        yield buffer
+      }
+    } catch (error) {
+      this.logger.error('Error generating weekly insights stream', error)
+      throw error
+    }
+  }
 }
 

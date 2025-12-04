@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { LogOut, Menu, X, Mic } from 'lucide-react'
+import { LogOut, Menu, X, Mic, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { useGoals } from '@/lib/contexts/goal-context'
@@ -96,6 +96,18 @@ export default function AppHeader() {
                 )}
               >
                 AI Coach
+              </Link>
+              <Link
+                href="/app/insights"
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5",
+                  isActive('/app/insights')
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
+              >
+                <Sparkles className="h-4 w-4" />
+                Insights
               </Link>
               {voiceCoachEnabled && (
                 <Link
@@ -196,6 +208,19 @@ export default function AppHeader() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 AI Coach
+              </Link>
+              <Link
+                href="/app/insights"
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5",
+                  isActive('/app/insights')
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Sparkles className="h-4 w-4" />
+                Insights
               </Link>
               {voiceCoachEnabled && (
                 <Link

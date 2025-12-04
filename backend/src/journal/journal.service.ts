@@ -259,6 +259,22 @@ export class JournalService {
     }
   }
 
+  async getEntriesFromPastDays(userId: string, days: number = 7): Promise<JournalEntry[]> {
+    try {
+      const entries = await this.findAll(userId)
+      const cutoffDate = new Date()
+      cutoffDate.setDate(cutoffDate.getDate() - days)
+      
+      return entries.filter((entry) => {
+        const entryDate = new Date(entry.created_at)
+        return entryDate >= cutoffDate
+      })
+    } catch (error) {
+      this.logger.error(`Error fetching journal entries from past ${days} days`, error)
+      throw error
+    }
+  }
+
   async findAllGroupedByDate(userId: string): Promise<Record<string, JournalEntry[]>> {
     try {
       const entries = await this.findAll(userId)
