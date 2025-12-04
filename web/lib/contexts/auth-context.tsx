@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from 'react'
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { GoogleAuthProvider, signInWithPopup, signInWithCustomToken } from 'firebase/auth'
 import { apiClient } from '@/lib/api/client'
 import { getAuthInstance } from '@/lib/firebase/config'
 
@@ -254,6 +254,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Clear old token cache
       clearTokenCache()
+
+      // Handle account linking - server found an existing account with same email
+      if (data.accountLinked && data.customToken) {
+        console.log('Account linked - signing in with existing account')
+        
+        // Sign in with the custom token to use the correct (original) UID
+        await signInWithCustomToken(auth, data.customToken)
+        
+        // Now create a proper session with the linked account
+        const linkedUser = auth.currentUser
+        if (linkedUser) {
+          const newIdToken = await linkedUser.getIdToken()
+          
+          // Create session for the linked account
+          const sessionResponse = await fetch('/api/auth/google', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ idToken: newIdToken }),
+          })
+          
+          if (!sessionResponse.ok) {
+            const sessionError = await sessionResponse.json()
+            throw new Error(sessionError.error || 'Failed to create session for linked account')
+          }
+        }
+      }
 
       // Wait for token to be available
       let retries = 5
