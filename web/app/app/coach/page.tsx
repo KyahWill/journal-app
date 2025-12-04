@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from 'react'
 import { useChat, useChatSessions } from '@/lib/hooks/useChat'
-import { usePrompts } from '@/lib/hooks/usePrompts'
+import { useCoachPersonalities } from '@/lib/hooks/useCoachPersonalities'
 import { useAuthReady } from '@/lib/hooks/useAuthReady'
 import { useTextToSpeech } from '@/lib/hooks/useTextToSpeech'
 import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
@@ -57,11 +57,11 @@ export default function CoachChatPage() {
   } = useChatSessions()
   
   const {
-    prompts,
-    loading: promptsLoading,
-    fetchPrompts,
-    getDefaultPrompt,
-  } = usePrompts()
+    personalities,
+    loading: personalitiesLoading,
+    fetchPersonalities,
+    getDefaultPersonality,
+  } = useCoachPersonalities()
   
   const [input, setInput] = useState('')
   const [showInsights, setShowInsights] = useState(false)
@@ -70,7 +70,7 @@ export default function CoachChatPage() {
   const [loadingJournalInsights, setLoadingJournalInsights] = useState(false)
   const [loadingPrompts, setLoadingPrompts] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
-  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
+  const [selectedPersonalityId, setSelectedPersonalityId] = useState<string | null>(null)
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null)
   const [showMobileSuggestions, setShowMobileSuggestions] = useState(false)
   const [showGoalSuggestions, setShowGoalSuggestions] = useState(false)
@@ -117,7 +117,7 @@ export default function CoachChatPage() {
     }
   }, [transcription, clearTranscription])
 
-  // Load suggested prompts, sessions, and user prompts on mount
+  // Load suggested prompts, sessions, and coach personalities on mount
   useEffect(() => {
     // Don't make API calls until auth is ready
     if (!isAuthReady) return
@@ -125,19 +125,19 @@ export default function CoachChatPage() {
     setIsMounted(true)
     loadPrompts()
     fetchSessions()
-    loadUserPrompts()
+    loadCoachPersonalities()
   }, [isAuthReady])
 
-  async function loadUserPrompts() {
+  async function loadCoachPersonalities() {
     try {
-      await fetchPrompts()
-      // Load and set default prompt
-      const defaultPrompt = await getDefaultPrompt()
-      if (defaultPrompt) {
-        setSelectedPromptId(defaultPrompt.id)
+      await fetchPersonalities()
+      // Load and set default personality
+      const defaultPersonality = await getDefaultPersonality()
+      if (defaultPersonality) {
+        setSelectedPersonalityId(defaultPersonality.id)
       }
     } catch (err) {
-      console.error('Failed to load user prompts:', err)
+      console.error('Failed to load coach personalities:', err)
     }
   }
 
@@ -160,7 +160,7 @@ export default function CoachChatPage() {
     setInput('')
 
     try {
-      await sendMessage(message, selectedPromptId || undefined)
+      await sendMessage(message, selectedPersonalityId || undefined)
     } catch (err) {
       console.error('Failed to send message:', err)
     }
@@ -373,28 +373,28 @@ export default function CoachChatPage() {
             </div>
           </div>
 
-          {/* Prompt Selector */}
-          {isMounted && prompts.length > 0 && (
+          {/* Coach Personality Selector */}
+          {isMounted && personalities.length > 0 && (
             <Card className="mb-6">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
                   <Brain className="h-5 w-5 text-purple-600 flex-shrink-0" />
                   <div className="flex-1">
-                    <Label htmlFor="prompt-select" className="text-sm font-medium mb-2 block">
-                      AI Personality
+                    <Label htmlFor="personality-select" className="text-sm font-medium mb-2 block">
+                      AI Coach Personality
                     </Label>
                     <Select
-                      value={selectedPromptId || undefined}
-                      onValueChange={setSelectedPromptId}
+                      value={selectedPersonalityId || undefined}
+                      onValueChange={setSelectedPersonalityId}
                     >
-                      <SelectTrigger id="prompt-select" className="w-full">
-                        <SelectValue placeholder="Select a prompt..." />
+                      <SelectTrigger id="personality-select" className="w-full">
+                        <SelectValue placeholder="Select a coach personality..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {prompts.map((prompt) => (
-                          <SelectItem key={prompt.id} value={prompt.id}>
-                            {prompt.name}
-                            {prompt.is_default && ' (Default)'}
+                        {personalities.map((personality) => (
+                          <SelectItem key={personality.id} value={personality.id}>
+                            {personality.name}
+                            {personality.isDefault && ' (Default)'}
                           </SelectItem>
                         ))}
                       </SelectContent>

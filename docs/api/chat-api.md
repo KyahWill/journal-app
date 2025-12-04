@@ -23,7 +23,7 @@ Send a message to the AI coach and receive a complete response.
 {
   "message": "What are my goals for this month?",
   "sessionId": "session_abc123",
-  "promptId": "prompt_1"
+  "personalityId": "personality_abc123"
 }
 ```
 
@@ -32,7 +32,7 @@ Send a message to the AI coach and receive a complete response.
 |-------|------|----------|-------------|
 | message | string | Yes | User's message (minimum 1 character) |
 | sessionId | string | No | Existing session ID (creates new if omitted) |
-| promptId | string | No | Suggested prompt ID if using a prompt |
+| personalityId | string | No | Coach personality ID for customized responses |
 
 **Response** (200 OK):
 ```json

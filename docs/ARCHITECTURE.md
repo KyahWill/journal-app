@@ -897,11 +897,20 @@ firestore/
 │       ├── created_at: Timestamp
 │       └── updated_at: Timestamp
 │
-└── prompts/                           # AI prompts
-    └── {promptId}/
-        ├── category: string
-        ├── text: string
-        ├── is_active: boolean
+└── coach_personalities/               # AI coach personalities (unified for text & voice)
+    └── {personalityId}/
+        ├── user_id: string
+        ├── name: string
+        ├── description: string
+        ├── style: string              # supportive, direct, motivational, analytical, empathetic
+        ├── system_prompt: string
+        ├── voice_id?: string          # ElevenLabs voice ID
+        ├── voice_stability?: number
+        ├── voice_similarity_boost?: number
+        ├── first_message?: string
+        ├── language?: string
+        ├── is_default: boolean
+        ├── elevenlabs_agent_id?: string
         ├── created_at: Timestamp
         └── updated_at: Timestamp
 ```
@@ -922,8 +931,14 @@ User (Firebase Auth)
   │     └─► progress_updates (1:many)
   │
   ├─► chat_sessions (1:many)
+  │     │
+  │     └─► coach_personalities (many:1)
   │
   ├─► voice_sessions (1:many)
+  │     │
+  │     └─► coach_personalities (many:1)
+  │
+  ├─► coach_personalities (1:many)
   │
   ├─► user_themes (1:many)
   │
@@ -1119,16 +1134,9 @@ service cloud.firestore {
       allow read, write: if isOwner(resource.data.user_id);
     }
     
-    // Coach personalities (read-only for users)
+    // Coach personalities (user-owned, unified for text & voice)
     match /coach_personalities/{personalityId} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Admin only
-    }
-    
-    // Prompts (read-only for users)
-    match /prompts/{promptId} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Admin only
+      allow read, write: if isOwner(resource.data.user_id);
     }
   }
 }

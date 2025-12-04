@@ -68,27 +68,31 @@ service cloud.firestore {
                        resource.data.user_id == request.auth.uid;
     }
     
-    // User prompts
-    match /user_prompts/{promptId} {
-      // Users can read their own prompts
+    // Coach personalities (unified coaching system for text and voice)
+    match /coach_personalities/{personalityId} {
+      // Users can read their own personalities
       allow read: if isAuthenticated() && 
                      resource.data.user_id == request.auth.uid;
       
-      // Users can create prompts with their own user_id
+      // Users can create personalities with their own user_id
       allow create: if isAuthenticated() && 
                        request.resource.data.user_id == request.auth.uid &&
-                       request.resource.data.keys().hasAll(['user_id', 'name', 'prompt_text', 'is_default', 'created_at', 'updated_at']) &&
+                       request.resource.data.keys().hasAll(['user_id', 'name', 'description', 'style', 'system_prompt', 'is_default', 'created_at', 'updated_at']) &&
                        request.resource.data.name.size() <= 100 &&
-                       request.resource.data.prompt_text.size() <= 10000;
+                       request.resource.data.description.size() <= 500 &&
+                       request.resource.data.system_prompt.size() <= 10000 &&
+                       request.resource.data.style in ['supportive', 'direct', 'motivational', 'analytical', 'empathetic'];
       
-      // Users can update their own prompts
+      // Users can update their own personalities
       allow update: if isAuthenticated() && 
                        resource.data.user_id == request.auth.uid &&
                        request.resource.data.user_id == request.auth.uid &&
                        (!request.resource.data.keys().hasAny(['name']) || request.resource.data.name.size() <= 100) &&
-                       (!request.resource.data.keys().hasAny(['prompt_text']) || request.resource.data.prompt_text.size() <= 10000);
+                       (!request.resource.data.keys().hasAny(['description']) || request.resource.data.description.size() <= 500) &&
+                       (!request.resource.data.keys().hasAny(['system_prompt']) || request.resource.data.system_prompt.size() <= 10000) &&
+                       (!request.resource.data.keys().hasAny(['style']) || request.resource.data.style in ['supportive', 'direct', 'motivational', 'analytical', 'empathetic']);
       
-      // Users can delete their own prompts
+      // Users can delete their own personalities
       allow delete: if isAuthenticated() && 
                        resource.data.user_id == request.auth.uid;
     }

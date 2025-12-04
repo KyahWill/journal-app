@@ -587,16 +587,9 @@ service cloud.firestore {
       allow read, write: if isOwner(resource.data.user_id);
     }
     
-    // Coach personalities (read-only for users)
+    // Coach personalities (user-owned, unified for text & voice)
     match /coach_personalities/{personalityId} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Admin only
-    }
-    
-    // Prompts (read-only for users)
-    match /prompts/{promptId} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Admin only
+      allow read, write: if isOwner(resource.data.user_id);
     }
   }
 }

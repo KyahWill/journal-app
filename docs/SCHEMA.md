@@ -9,13 +9,12 @@ The application uses the following top-level Firestore collections:
 1. **goals** - User goals with milestones and progress tracking
 2. **journal-entries** - User journal entries
 3. **chat_sessions** - AI chat conversations
-4. **user_prompts** - Custom AI prompts
-5. **user_themes** - Custom UI themes
-6. **custom_categories** - User-defined goal categories
-7. **goal_journal_links** - Links between goals and journal entries
-8. **coach_personalities** - Voice coach personality configurations
-9. **embeddings** - Vector embeddings for RAG (Retrieval-Augmented Generation)
-10. **user_usage** - Rate limiting and usage tracking
+4. **user_themes** - Custom UI themes
+5. **custom_categories** - User-defined goal categories
+6. **goal_journal_links** - Links between goals and journal entries
+7. **coach_personalities** - AI coach personality configurations (unified for text and voice)
+8. **embeddings** - Vector embeddings for RAG (Retrieval-Augmented Generation)
+9. **user_usage** - Rate limiting and usage tracking
 
 ---
 
@@ -115,7 +114,7 @@ Stores AI chat conversation sessions with message history.
 | `user_id` | string | Firebase Auth user ID |
 | `title` | string \| undefined | Optional session title (auto-generated from first message) |
 | `messages` | array | Array of message objects |
-| `prompt_id` | string \| undefined | Optional custom prompt ID |
+| `personality_id` | string \| undefined | Optional coach personality ID |
 | `created_at` | timestamp | Creation timestamp |
 | `updated_at` | timestamp | Last update timestamp |
 
@@ -136,28 +135,6 @@ Stores AI chat conversation sessions with message history.
 
 ---
 
-## 4. user_prompts
-
-Stores custom AI coaching prompts created by users.
-
-### Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | Auto-generated document ID |
-| `user_id` | string | Firebase Auth user ID |
-| `name` | string | Prompt name |
-| `prompt_text` | string | Full prompt text |
-| `is_default` | boolean | Whether this is the user's default prompt |
-| `created_at` | timestamp | Creation timestamp |
-| `updated_at` | timestamp | Last update timestamp |
-
-### Indexes Required
-
-- `user_id` (ascending) + `created_at` (descending)
-- `user_id` (ascending) + `is_default` (ascending)
-
----
 
 ## 5. user_themes
 

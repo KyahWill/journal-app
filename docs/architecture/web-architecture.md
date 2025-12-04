@@ -284,7 +284,7 @@ async *sendChatMessageStream(message: string, sessionId?: string) {
 
 **useChat Hook** (`lib/hooks/useChat.ts`):
 ```typescript
-const sendMessage = async (message: string, promptId?: string) => {
+const sendMessage = async (message: string, personalityId?: string) => {
   setLoading(true)
   
   // Add user message immediately
@@ -307,7 +307,7 @@ const sendMessage = async (message: string, promptId?: string) => {
   
   try {
     // Stream response
-    for await (const event of apiClient.sendChatMessageStream(message, sessionId, promptId)) {
+    for await (const event of apiClient.sendChatMessageStream(message, sessionId, personalityId)) {
       if (event.type === 'session') {
         setSessionId(event.sessionId)
         // Replace temp user message with real one

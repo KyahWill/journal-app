@@ -28,9 +28,9 @@ export function useChat(initialSessionId?: string) {
 
   // Send a message to the AI coach with streaming
   const sendMessage = useCallback(
-    async (content: string, promptId?: string, useStreaming: boolean = true) => {
+    async (content: string, personalityId?: string, useStreaming: boolean = true) => {
       console.group('🚀 [useChat] Sending Message')
-      console.log('[useChat] sendMessage called:', { content, promptId, useStreaming })
+      console.log('[useChat] sendMessage called:', { content, personalityId, useStreaming })
       setState((prev) => ({ ...prev, loading: true, error: null, usageWarning: null }))
 
       // Generate unique IDs using timestamp + random suffix to avoid collisions
@@ -79,7 +79,7 @@ export function useChat(initialSessionId?: string) {
           for await (const event of apiClient.sendChatMessageStream(
             content,
             state.sessionId || undefined,
-            promptId,
+            personalityId,
             (chunk) => {
               streamedContent += chunk
               console.log(`[useChat] 📝 Chunk received (${chunk.length} chars), total: ${streamedContent.length} chars`)
@@ -175,7 +175,7 @@ export function useChat(initialSessionId?: string) {
           const response = await apiClient.sendChatMessage(
             content,
             state.sessionId || undefined,
-            promptId
+            personalityId
           )
 
           console.log('[useChat] Non-streaming response received:', response)

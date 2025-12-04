@@ -50,19 +50,59 @@ export interface ChatSession {
   user_id: string
   title?: string
   messages: ChatMessage[]
-  prompt_id?: string
+  personality_id?: string
   created_at: string | Date
   updated_at: string | Date
 }
 
-export interface UserPrompt {
+// ============================================================================
+// Coach Personality Types
+// ============================================================================
+
+export type CoachingStyle = 'supportive' | 'direct' | 'motivational' | 'analytical' | 'empathetic'
+
+export interface CoachPersonality {
   id: string
-  user_id: string
+  userId: string
   name: string
-  prompt_text: string
-  is_default: boolean
-  created_at: string | Date
-  updated_at: string | Date
+  description: string
+  style: CoachingStyle
+  systemPrompt: string
+  voiceId?: string
+  voiceStability?: number
+  voiceSimilarityBoost?: number
+  firstMessage?: string
+  language?: string
+  isDefault: boolean
+  elevenLabsAgentId?: string
+  createdAt: string | Date
+  updatedAt: string | Date
+}
+
+export interface CreateCoachPersonalityData {
+  name: string
+  description: string
+  style: CoachingStyle
+  systemPrompt: string
+  voiceId?: string
+  voiceStability?: number
+  voiceSimilarityBoost?: number
+  firstMessage?: string
+  language?: string
+  isDefault?: boolean
+}
+
+export interface UpdateCoachPersonalityData {
+  name?: string
+  description?: string
+  style?: CoachingStyle
+  systemPrompt?: string
+  voiceId?: string
+  voiceStability?: number
+  voiceSimilarityBoost?: number
+  firstMessage?: string
+  language?: string
+  isDefault?: boolean
 }
 
 export interface ThemeColors {
@@ -463,7 +503,7 @@ class ApiClient {
   async sendChatMessage(
     message: string,
     sessionId?: string,
-    promptId?: string
+    personalityId?: string
   ): Promise<{
     sessionId: string
     userMessage: ChatMessage
@@ -472,7 +512,7 @@ class ApiClient {
   }> {
     return this.request('/chat/message', {
       method: 'POST',
-      body: JSON.stringify({ message, sessionId, promptId }),
+      body: JSON.stringify({ message, sessionId, personalityId }),
     })
   }
 
@@ -527,10 +567,10 @@ class ApiClient {
   async *sendChatMessageStream(
     message: string,
     sessionId?: string,
-    promptId?: string,
+    personalityId?: string,
     onChunk?: (chunk: string) => void
   ): AsyncGenerator<{ type: string; content?: string; sessionId?: string; userMessage?: ChatMessage; assistantMessage?: ChatMessage; usageInfo?: UsageInfo }, void, unknown> {
-    console.log('[apiClient] sendChatMessageStream called:', { message, sessionId, promptId })
+    console.log('[apiClient] sendChatMessageStream called:', { message, sessionId, personalityId })
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     }
@@ -551,7 +591,7 @@ class ApiClient {
     const response = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ message, sessionId, promptId }),
+      body: JSON.stringify({ message, sessionId, personalityId }),
       credentials: 'include',
     })
 
@@ -786,62 +826,53 @@ class ApiClient {
   }
 
   // ============================================================================
-  // Prompt APIs
+  // Coach Personality APIs (Unified Coach System)
   // ============================================================================
 
-  async getUserPrompts(): Promise<UserPrompt[]> {
-    return this.request<UserPrompt[]>('/prompt')
+  async getCoachPersonalities(): Promise<CoachPersonality[]> {
+    return this.request<CoachPersonality[]>('/coach-personalities')
   }
 
-  async getPrompt(id: string): Promise<UserPrompt> {
-    return this.request<UserPrompt>(`/prompt/${id}`)
+  async getCoachPersonality(id: string): Promise<CoachPersonality> {
+    return this.request<CoachPersonality>(`/coach-personalities/${id}`)
   }
 
-  async getDefaultPrompt(): Promise<UserPrompt> {
-    return this.request<UserPrompt>('/prompt/default')
+  async getDefaultCoachPersonality(): Promise<CoachPersonality | null> {
+    return this.request<CoachPersonality | null>('/coach-personalities/default')
   }
 
-  async createPrompt(data: {
-    name: string
-    prompt_text: string
-    is_default?: boolean
-  }): Promise<UserPrompt> {
-    return this.request<UserPrompt>('/prompt', {
+  async createCoachPersonality(data: CreateCoachPersonalityData): Promise<CoachPersonality> {
+    return this.request<CoachPersonality>('/coach-personalities', {
       method: 'POST',
       body: JSON.stringify(data),
     })
   }
 
-  async updatePrompt(
+  async updateCoachPersonality(
     id: string,
-    data: {
-      name?: string
-      prompt_text?: string
-      is_default?: boolean
-    }
-  ): Promise<UserPrompt> {
-    return this.request<UserPrompt>(`/prompt/${id}`, {
-      method: 'PATCH',
+    data: UpdateCoachPersonalityData
+  ): Promise<CoachPersonality> {
+    return this.request<CoachPersonality>(`/coach-personalities/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(data),
     })
   }
 
-  async deletePrompt(id: string): Promise<{ success: boolean; message: string }> {
-    return this.request(`/prompt/${id}`, {
+  async deleteCoachPersonality(id: string): Promise<void> {
+    await this.request(`/coach-personalities/${id}`, {
       method: 'DELETE',
     })
   }
 
-  async setDefaultPrompt(id: string): Promise<UserPrompt> {
-    return this.request<UserPrompt>(`/prompt/${id}/set-default`, {
-      method: 'PATCH',
+  async initializeCoachPersonalities(): Promise<CoachPersonality[]> {
+    return this.request<CoachPersonality[]>('/coach-personalities/initialize', {
+      method: 'POST',
     })
   }
 
-  async getPromptImprovements(promptText: string): Promise<{ suggestions: string }> {
-    return this.request<{ suggestions: string }>('/prompt/improve', {
+  async generateCoachPersonalityAgent(id: string): Promise<CoachPersonality> {
+    return this.request<CoachPersonality>(`/coach-personalities/${id}/generate-agent`, {
       method: 'POST',
-      body: JSON.stringify({ prompt_text: promptText }),
     })
   }
 

@@ -443,35 +443,6 @@ match /rag_embeddings/{embeddingId} {
 }
 ```
 
----
-
-### prompts
-
-AI coaching prompts.
-
-```typescript
-{
-  id: string                    // Auto-generated document ID
-  category: string              // Prompt category
-  text: string                  // Prompt text
-  is_active: boolean            // Active status
-  created_at: Timestamp         // Creation date
-  updated_at: Timestamp         // Last update date
-}
-```
-
-**Indexes**:
-- Composite: `category` (ASC) + `is_active` (ASC)
-
-**Security Rules**:
-```javascript
-match /prompts/{promptId} {
-  allow read: if request.auth != null;
-  allow write: if false; // Admin only
-}
-```
-
----
 
 ## Data Relationships
 
