@@ -157,7 +157,7 @@ export default function TermsOfService() {
               If you have any questions about these Terms of Service, please contact us at:
             </p>
             <p className="text-gray-700 mt-4">
-              Email: <a href="mailto:legal@journalapp.com" className="text-orange-600 hover:text-orange-700">legal@journalapp.com</a>
+              Email: <a href="mailto:wvparrone@gmail.com" className="text-orange-600 hover:text-orange-700">wvparrone@gmail.com</a>
             </p>
           </section>
         </div>
