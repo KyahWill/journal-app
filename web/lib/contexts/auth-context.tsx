@@ -1,7 +1,9 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from 'react'
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { apiClient } from '@/lib/api/client'
+import { getAuthInstance } from '@/lib/firebase/config'
 
 export interface User {
   uid: string
@@ -20,6 +22,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   signIn: (email: string, password: string) => Promise<User>
+  signInWithGoogle: () => Promise<User>
   signUp: (email: string, password: string, displayName?: string) => Promise<User>
   signOut: () => Promise<void>
   refreshUser: () => Promise<void>
@@ -218,6 +221,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clearTokenCache, fetchToken])
 
+  // Sign in with Google
+  const signInWithGoogle = useCallback(async () => {
+    try {
+      setAuthState((prev) => ({ ...prev, loading: true, error: null }))
+      
+      // Use Firebase client-side auth for Google popup
+      const auth = getAuthInstance()
+      const provider = new GoogleAuthProvider()
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      })
+      
+      const result = await signInWithPopup(auth, provider)
+      const idToken = await result.user.getIdToken()
+      
+      // Send the ID token to our API to create a session
+      const response = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ idToken }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Google sign-in failed')
+      }
+
+      // Clear old token cache
+      clearTokenCache()
+
+      // Wait for token to be available
+      let retries = 5
+      let token = null
+      while (retries > 0 && !token) {
+        token = await fetchToken(true)
+        if (!token) {
+          await new Promise(resolve => setTimeout(resolve, 200))
+          retries--
+        }
+      }
+
+      if (!token) {
+        console.warn('Token not available after Google sign-in, but proceeding anyway')
+      }
+
+      setAuthState({
+        user: data.user,
+        loading: false,
+        error: null,
+        ready: true,
+      })
+
+      return data.user
+    } catch (error: any) {
+      const errorMessage = error.message || 'Google sign in failed'
+      setAuthState((prev) => ({ ...prev, loading: false, error: errorMessage }))
+      throw error
+    }
+  }, [clearTokenCache, fetchToken])
+
   // Sign up with email and password
   const signUp = useCallback(async (email: string, password: string, displayName?: string) => {
     try {
@@ -308,6 +375,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error: authState.error,
     ready: authState.ready,
     signIn,
+    signInWithGoogle,
     signUp,
     signOut,
     refreshUser,

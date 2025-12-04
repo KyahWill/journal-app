@@ -1,5 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app'
 import { getFirestore, Firestore } from 'firebase/firestore'
+import { getAuth, Auth } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,10 +12,11 @@ const firebaseConfig = {
 }
 
 // Initialize Firebase - CLIENT SIDE ONLY
-// Note: Client-side Firebase Auth is no longer used.
-// Authentication is now handled entirely server-side.
+// Note: Client-side Firebase Auth is used only for Google Sign-in popup.
+// Session management is still handled server-side via cookies.
 let app: FirebaseApp | undefined
 let db: Firestore | undefined
+let auth: Auth | undefined
 
 if (typeof window !== 'undefined') {
   if (!getApps().length) {
@@ -23,11 +25,11 @@ if (typeof window !== 'undefined') {
     app = getApps()[0]
   }
   db = getFirestore(app)
+  auth = getAuth(app)
 }
 
 // Export with proper typing
-// Note: 'auth' is no longer exported as it's not used
-export { app, db }
+export { app, db, auth }
 
 // Helper to ensure firestore is initialized
 export function getDbInstance(): Firestore {
@@ -35,4 +37,12 @@ export function getDbInstance(): Firestore {
     throw new Error('Firestore not initialized. Make sure this is called client-side only.')
   }
   return db
+}
+
+// Helper to get auth instance for Google Sign-in
+export function getAuthInstance(): Auth {
+  if (!auth) {
+    throw new Error('Firebase Auth not initialized. Make sure this is called client-side only.')
+  }
+  return auth
 }
