@@ -16,8 +16,6 @@
     "migrate:milestones": "ts-node -r tsconfig-paths/register scripts/migrate-milestones.ts",
     "rag:deploy-indexes": "./scripts/deploy-rag-indexes.sh",
     "rag:verify-indexes": "./scripts/verify-rag-indexes.sh",
-    "mcp:register": "ts-node -r tsconfig-paths/register scripts/register-mcp-server.ts",
-    "mcp:setup-agents": "ts-node -r tsconfig-paths/register scripts/add-mcp-to-agents.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
