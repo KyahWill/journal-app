@@ -45,6 +45,7 @@ export default function Home() {
         </div>
 
         <div id="features" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto mt-12 sm:mt-16 md:mt-24">
+          {/* Express Yourself */}
           <Card className="border-orange-100 bg-white/80 backdrop-blur hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
             <CardHeader>
               <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">📝</div>
@@ -75,6 +76,7 @@ export default function Home() {
             </CardContent>
           </Card>
 
+          {/* AI-Powered Guidance */}
           <Card className="border-orange-100 bg-white/80 backdrop-blur hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
             <CardHeader>
               <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">🤖</div>
@@ -105,6 +107,193 @@ export default function Home() {
             </CardContent>
           </Card>
 
+          {/* Goals & Milestones */}
+          <Card className="border-orange-100 bg-white/80 backdrop-blur hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
+            <CardHeader>
+              <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">🎯</div>
+              <CardTitle className="text-2xl text-gray-900">Goals & Milestones</CardTitle>
+              <CardDescription className="text-base text-gray-600 mt-2">
+                Set meaningful goals, track milestones, and celebrate your progress with a comprehensive goal management system
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3 text-sm text-gray-700">
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Create and organize goals with customizable categories</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Break down goals into actionable milestones and tasks</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Visual progress tracking to stay motivated</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Link journal entries to goals for deeper context</span>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Weekly Insights */}
+          <Card className="border-orange-100 bg-white/80 backdrop-blur hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
+            <CardHeader>
+              <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">📊</div>
+              <CardTitle className="text-2xl text-gray-900">Weekly Insights</CardTitle>
+              <CardDescription className="text-base text-gray-600 mt-2">
+                Receive AI-generated summaries that reveal patterns, themes, and growth opportunities from your journal entries
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3 text-sm text-gray-700">
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Automated weekly summaries of your reflections</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Identify recurring themes and emotional patterns</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Track your personal growth over time</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Actionable recommendations for self-improvement</span>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Voice Journaling */}
+          <Card className="border-orange-100 bg-white/80 backdrop-blur hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
+            <CardHeader>
+              <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">🎙️</div>
+              <CardTitle className="text-2xl text-gray-900">Voice Journaling</CardTitle>
+              <CardDescription className="text-base text-gray-600 mt-2">
+                Speak your thoughts freely with advanced speech-to-text technology that captures your voice naturally
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3 text-sm text-gray-700">
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Hands-free journaling with accurate transcription</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Perfect for capturing thoughts on the go</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Voice conversations with your AI coach</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Text-to-speech for listening to past entries</span>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Theme Customization */}
+          <Card className="border-orange-100 bg-white/80 backdrop-blur hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
+            <CardHeader>
+              <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">🎨</div>
+              <CardTitle className="text-2xl text-gray-900">Theme Customization</CardTitle>
+              <CardDescription className="text-base text-gray-600 mt-2">
+                Personalize your journaling experience with beautiful themes that match your mood and style
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3 text-sm text-gray-700">
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Choose from curated color palettes and themes</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Create and save your own custom themes</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Light and dark mode support</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Seamless experience across all devices</span>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Google Calendar Sync */}
+          <Card className="border-orange-100 bg-white/80 backdrop-blur hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
+            <CardHeader>
+              <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">📅</div>
+              <CardTitle className="text-2xl text-gray-900">Google Calendar Sync</CardTitle>
+              <CardDescription className="text-base text-gray-600 mt-2">
+                Connect your calendar for context-aware coaching and seamless integration with your daily life
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3 text-sm text-gray-700">
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Automatic context from your schedule</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>AI coach understands your commitments</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Schedule journaling and reflection time</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Secure OAuth integration with Google</span>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* AI Coach Personalities */}
+          <Card className="border-orange-100 bg-white/80 backdrop-blur hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
+            <CardHeader>
+              <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">💬</div>
+              <CardTitle className="text-2xl text-gray-900">AI Coach Personalities</CardTitle>
+              <CardDescription className="text-base text-gray-600 mt-2">
+                Choose from different coaching styles to find the perfect match for your personal growth journey
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3 text-sm text-gray-700">
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Multiple coaching personalities to choose from</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>From gentle encouragement to direct accountability</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Switch styles based on your current needs</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-500 mr-2 mt-0.5">✓</span>
+                  <span>Personalized approach that evolves with you</span>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Private & Secure */}
           <Card className="border-orange-100 bg-white/80 backdrop-blur hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
             <CardHeader>
               <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">🔒</div>
