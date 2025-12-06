@@ -18,7 +18,7 @@ export default function PrivacyPolicy() {
             </Button>
           </Link>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Privacy Policy</h1>
-          <p className="text-gray-600">Last updated: December 6, 2024</p>
+          <p className="text-gray-600">Last updated: December 6, 2025</p>
         </div>
 
         <div className="prose prose-lg max-w-none">
