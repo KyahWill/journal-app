@@ -106,11 +106,12 @@ export function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
       return 'Target date is required'
     }
     const selectedDate = new Date(value)
+    selectedDate.setHours(0, 0, 0, 0)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
     if (selectedDate < today) {
-      return 'Target date must be in the future'
+      return 'Target date must be today or in the future'
     }
     return undefined
   }
@@ -286,11 +287,9 @@ export function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
     }
   }
 
-  // Get minimum date (tomorrow)
+  // Get minimum date (today)
   const getMinDate = () => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    return format(tomorrow, 'yyyy-MM-dd')
+    return format(new Date(), 'yyyy-MM-dd')
   }
 
   return (
@@ -417,7 +416,7 @@ export function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
               <p id="target-date-error" className="text-sm text-red-500" role="alert">{errors.target_date}</p>
             )}
             <p id="target-date-hint" className="text-xs text-gray-500">
-              Select a future date for your goal
+              Select today or a future date for your goal
             </p>
           </div>
           

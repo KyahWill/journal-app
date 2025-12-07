@@ -34,10 +34,12 @@ export class GoalService {
 
   async createGoal(userId: string, createGoalDto: CreateGoalDto): Promise<Goal> {
     try {
-      // Validate target date is in the future
+      // Validate target date is today or in the future
       const targetDate = new Date(createGoalDto.target_date)
-      if (targetDate < new Date()) {
-        throw new BadRequestException('Target date must be in the future')
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (targetDate < today) {
+        throw new BadRequestException('Target date must be today or in the future')
       }
 
       const now = new Date()
@@ -135,10 +137,12 @@ export class GoalService {
       const createdGoals: Goal[] = []
 
       for (const goalDto of goalsData) {
-        // Validate target date
+        // Validate target date is today or in the future
         const targetDate = new Date(goalDto.target_date)
-        if (targetDate < new Date()) {
-          throw new BadRequestException(`Target date must be in the future for goal: ${goalDto.title}`)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        if (targetDate < today) {
+          throw new BadRequestException(`Target date must be today or in the future for goal: ${goalDto.title}`)
         }
 
         const goalRef = firestore.collection(this.goalsCollection).doc()
@@ -232,8 +236,10 @@ export class GoalService {
         
         if (updateData.target_date) {
           const targetDate = new Date(updateData.target_date)
-          if (targetDate < new Date()) {
-            throw new BadRequestException(`Target date must be in the future for goal: ${update.goalId}`)
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          if (targetDate < today) {
+            throw new BadRequestException(`Target date must be today or in the future for goal: ${update.goalId}`)
           }
           updateData.target_date = targetDate
         }
@@ -411,8 +417,10 @@ export class GoalService {
 
       if (updateGoalDto.target_date !== undefined) {
         const targetDate = new Date(updateGoalDto.target_date)
-        if (targetDate < new Date()) {
-          throw new BadRequestException('Target date must be in the future')
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        if (targetDate < today) {
+          throw new BadRequestException('Target date must be today or in the future')
         }
         updateData.target_date = targetDate
       }

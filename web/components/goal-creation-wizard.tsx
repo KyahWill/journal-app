@@ -255,12 +255,12 @@ export function GoalCreationWizard({ onSuccess, onCancel }: GoalCreationWizardPr
                   type="date" 
                   value={targetDate} 
                   onChange={(e) => setTargetDate(e.target.value)}
-                  min={format(addDays(new Date(), 1), 'yyyy-MM-dd')}
+                  min={format(addDays(new Date(), 0), 'yyyy-MM-dd')}
                   className="max-w-xs"
                 />
               </div>
               <p className="text-sm text-muted-foreground mt-2">
-                Give yourself enough time to achieve this goal realistically.
+                Select today for immediate goals, or give yourself enough time to achieve this goal realistically.
               </p>
             </div>
 

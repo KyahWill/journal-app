@@ -24,6 +24,8 @@ function GoalTodoItemComponent({ goal, onDelete }: GoalTodoItemProps) {
 
   const targetDate = new Date(goal.target_date)
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  targetDate.setHours(0, 0, 0, 0)
   const daysRemaining = differenceInDays(targetDate, today)
   const isOverdue = daysRemaining < 0 && goal.status !== 'completed' && goal.status !== 'abandoned'
   const isCompleted = goal.status === 'completed'
@@ -69,8 +71,9 @@ function GoalTodoItemComponent({ goal, onDelete }: GoalTodoItemProps) {
   }
 
   const getDateLabel = () => {
+    
     if (isCompleted) return null
-    if (isOverdue) return `${Math.abs(daysRemaining)}d overdue`
+    if (isOverdue) return `${Math.abs(daysRemaining)} days overdue`
     if (daysRemaining === 0) return 'Today'
     if (daysRemaining === 1) return 'Tomorrow'
     if (daysRemaining < 7) return `${daysRemaining}d`
