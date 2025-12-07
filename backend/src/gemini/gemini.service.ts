@@ -339,7 +339,7 @@ Please provide a thoughtful analysis in 3-5 paragraphs.`
       const result = await this.model.generateContentStream(prompt)
 
       let buffer = ''
-      const maxChunkSize = 100
+      const maxChunkSize = 5
       
       for await (const chunk of result.stream) {
         const chunkText = chunk.text()
@@ -543,7 +543,7 @@ Keep your response conversational, supportive, and actionable (3-4 paragraphs).`
       const result = await this.model.generateContentStream(prompt)
 
       let buffer = ''
-      const maxChunkSize = 20
+      const maxChunkSize = 5
       
       for await (const chunk of result.stream) {
         const chunkText = chunk.text()
@@ -666,7 +666,7 @@ Be warm, supportive, and specific. Reference actual content from the journal ent
       const result = await this.model.generateContentStream(prompt)
 
       let buffer = ''
-      const maxChunkSize = 50
+      const maxChunkSize = 5
       
       for await (const chunk of result.stream) {
         const chunkText = chunk.text()
