@@ -12,9 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, Plus, Loader2, Target, Flame, Settings } from 'lucide-react'
+import { Search, Plus, Loader2, Target, Settings } from 'lucide-react'
 import { GoalTodoItem } from '@/components/goal-todo-item'
-import { HabitItem } from '@/components/habit-item'
 import { GoalQuickAdd } from '@/components/goal-quick-add'
 import { GoalCreationDialog } from '@/components/goal-creation-dialog'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -31,35 +30,9 @@ export default function GoalsPage() {
   const [viewFilter, setViewFilter] = useState<ViewFilter>('active')
   const [sortBy, setSortBy] = useState<'target_date' | 'created_at'>('target_date')
 
-  // Separate habits and regular goals
-  const { habits, regularGoals } = useMemo(() => {
-    const h = goals.filter(g => g.is_habit)
-    const r = goals.filter(g => !g.is_habit)
-    return { habits: h, regularGoals: r }
-  }, [goals])
-
-  // Filter and sort habits
-  const filteredHabits = useMemo(() => {
-    let filtered = [...habits]
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(g => g.title.toLowerCase().includes(query))
-    }
-
-    // Sort by streak (highest first) then by title
-    filtered.sort((a, b) => {
-      const streakDiff = (b.habit_streak || 0) - (a.habit_streak || 0)
-      if (streakDiff !== 0) return streakDiff
-      return a.title.localeCompare(b.title)
-    })
-
-    return filtered
-  }, [habits, searchQuery])
-
-  // Filter and sort regular goals
+  // Filter and sort goals
   const filteredGoals = useMemo(() => {
-    let filtered = [...regularGoals]
+    let filtered = [...goals]
     const now = new Date()
 
     if (searchQuery.trim()) {
@@ -96,15 +69,14 @@ export default function GoalsPage() {
     }
 
     return filtered
-  }, [regularGoals, searchQuery, viewFilter, sortBy])
+  }, [goals, searchQuery, viewFilter, sortBy])
 
   // Stats
   const stats = useMemo(() => {
-    const activeGoals = regularGoals.filter(g => g.status === 'in_progress' || g.status === 'not_started').length
-    const completedGoals = regularGoals.filter(g => g.status === 'completed').length
-    const totalStreak = habits.reduce((sum, h) => sum + (h.habit_streak || 0), 0)
-    return { activeGoals, completedGoals, totalStreak, habitCount: habits.length }
-  }, [regularGoals, habits])
+    const activeGoals = goals.filter(g => g.status === 'in_progress' || g.status === 'not_started').length
+    const completedGoals = goals.filter(g => g.status === 'completed').length
+    return { activeGoals, completedGoals }
+  }, [goals])
 
   if (!isAuthReady || (loading && goals.length === 0)) {
     return (
@@ -122,9 +94,9 @@ export default function GoalsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Goals & Habits</h1>
+            <h1 className="text-2xl font-bold">Goals</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {stats.habitCount} habits · {stats.activeGoals} active goals
+              {stats.activeGoals} active · {stats.completedGoals} completed
             </p>
           </div>
           <div className="flex gap-2">
@@ -149,37 +121,10 @@ export default function GoalsPage() {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search habits & goals..."
+            placeholder="Search goals..."
             className="pl-9"
           />
         </div>
-
-        {/* ==================== HABITS SECTION ==================== */}
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <Flame className="h-5 w-5 text-orange-500" />
-            <h2 className="text-lg font-semibold">Habits</h2>
-            {stats.totalStreak > 0 && (
-              <span className="text-sm text-orange-500 font-medium">
-                🔥 {stats.totalStreak} total streak
-              </span>
-            )}
-          </div>
-
-          {filteredHabits.length === 0 ? (
-            <div className="text-center py-8 border-2 border-dashed rounded-lg text-muted-foreground">
-              <Flame className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No habits yet</p>
-              <p className="text-xs mt-1">Create a goal and mark it as a habit to track daily progress</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredHabits.map((habit) => (
-                <HabitItem key={habit.id} goal={habit} />
-              ))}
-            </div>
-          )}
-        </section>
 
         {/* ==================== GOALS SECTION ==================== */}
         <section>
@@ -220,11 +165,11 @@ export default function GoalsPage() {
             <div className="text-center py-8 border-2 border-dashed rounded-lg text-muted-foreground">
               <Target className="h-8 w-8 mx-auto mb-2 opacity-30" />
               <p className="text-sm">
-                {regularGoals.length === 0 
+                {goals.length === 0 
                   ? "No goals yet" 
                   : "No goals match your filter"}
               </p>
-              {regularGoals.length === 0 && (
+              {goals.length === 0 && (
                 <p className="text-xs mt-1">Add your first goal above to get started</p>
               )}
             </div>

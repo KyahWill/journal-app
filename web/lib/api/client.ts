@@ -201,7 +201,6 @@ export interface UpdateCategoryData {
 
 export type GoalCategory = 'career' | 'health' | 'personal' | 'financial' | 'relationships' | 'learning' | 'other'
 export type GoalStatus = 'not_started' | 'in_progress' | 'completed' | 'abandoned'
-export type HabitFrequency = 'daily' | 'weekly' | 'monthly'
 
 export interface Goal {
   id: string
@@ -218,11 +217,6 @@ export interface Goal {
   last_activity: string | Date
   progress_percentage: number
   milestones: Milestone[]
-  // Habit-related fields
-  is_habit: boolean
-  habit_frequency?: HabitFrequency
-  habit_streak: number
-  habit_completed_dates: string[]
   // Google Calendar integration
   calendar_event_id?: string
 }
@@ -268,8 +262,6 @@ export interface CreateGoalData {
   description?: string
   category: string | CustomCategory 
   target_date: string
-  is_habit?: boolean
-  habit_frequency?: HabitFrequency
 }
 
 export interface UpdateGoalData {
@@ -277,13 +269,55 @@ export interface UpdateGoalData {
   description?: string
   category?: string | CustomCategory
   target_date?: string
-  is_habit?: boolean
-  habit_frequency?: HabitFrequency
 }
 
 export interface GoalFilters {
   category?: string
   status?: string
+}
+
+// ============================================================================
+// Routine Types
+// ============================================================================
+
+export type RoutineFrequency = 'daily' | 'weekly' | 'monthly'
+
+export interface RoutineStep {
+  id: string
+  title: string
+  completed: boolean
+  order: number
+}
+
+export interface Routine {
+  id: string
+  user_id: string
+  title: string
+  description: string
+  group: string | null
+  frequency: RoutineFrequency
+  steps: RoutineStep[]
+  completed_dates: string[]
+  streak: number
+  last_completed_at: string | Date | null
+  created_at: string | Date
+  updated_at: string | Date
+}
+
+export interface CreateRoutineData {
+  title: string
+  description?: string
+  group?: string
+  frequency: RoutineFrequency
+  steps: Array<{ title: string; order: number }>
+}
+
+export interface UpdateRoutineData {
+  title?: string
+  description?: string
+  group?: string
+  frequency?: RoutineFrequency
+  steps?: Array<{ title: string; order: number }>
 }
 
 class ApiClient {
@@ -1292,12 +1326,6 @@ class ApiClient {
     return this.request<Goal[]>('/goal/overdue')
   }
 
-  async toggleHabitCompletion(id: string): Promise<Goal> {
-    return this.request<Goal>(`/goal/${id}/habit/toggle`, {
-      method: 'PATCH',
-    })
-  }
-
   async getGoalsByCategory(category: string): Promise<Goal[]> {
     return this.request<Goal[]>(`/goal/category/${category}`)
   }
@@ -1396,6 +1424,60 @@ class ApiClient {
 
   async getLinkedGoalsForJournal(journalEntryId: string): Promise<Goal[]> {
     return this.request<Goal[]>(`/journal/${journalEntryId}/goals`)
+  }
+
+  // ============================================================================
+  // Routine APIs
+  // ============================================================================
+
+  async createRoutine(data: CreateRoutineData): Promise<Routine> {
+    return this.request<Routine>('/routine', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async getRoutines(): Promise<Routine[]> {
+    return this.request<Routine[]>('/routine')
+  }
+
+  async getRoutineById(id: string): Promise<Routine> {
+    return this.request<Routine>(`/routine/${id}`)
+  }
+
+  async updateRoutine(id: string, data: UpdateRoutineData): Promise<Routine> {
+    return this.request<Routine>(`/routine/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async toggleRoutineStep(routineId: string, stepId: string): Promise<Routine> {
+    return this.request<Routine>(`/routine/${routineId}/steps/${stepId}/toggle`, {
+      method: 'POST',
+    })
+  }
+
+  async completeRoutine(id: string): Promise<Routine> {
+    return this.request<Routine>(`/routine/${id}/complete`, {
+      method: 'POST',
+    })
+  }
+
+  async resetRoutineSteps(id: string): Promise<Routine> {
+    return this.request<Routine>(`/routine/${id}/reset`, {
+      method: 'POST',
+    })
+  }
+
+  async deleteRoutine(id: string): Promise<void> {
+    return this.request(`/routine/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async getRoutineGroups(): Promise<string[]> {
+    return this.request<string[]>('/routine/groups')
   }
 
   // ============================================================================

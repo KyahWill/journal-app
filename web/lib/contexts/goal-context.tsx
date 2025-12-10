@@ -18,9 +18,6 @@ export interface GoalContextValue extends GoalState {
   deleteGoal: (id: string) => Promise<void>
   updateStatus: (id: string, status: GoalStatus) => Promise<Goal>
   
-  // Habit operations
-  toggleHabitCompletion: (id: string) => Promise<Goal>
-  
   // Milestone operations
   addMilestone: (goalId: string, data: { title: string; due_date?: string }) => Promise<Milestone>
   toggleMilestone: (goalId: string, milestoneId: string) => Promise<Milestone>
@@ -200,61 +197,6 @@ export function GoalProvider({ children }: { children: ReactNode }) {
   // ============================================================================
   // Habit Operations
   // ============================================================================
-
-  const toggleHabitCompletion = useCallback(async (id: string): Promise<Goal> => {
-    try {
-      setGoalState((prev) => ({ ...prev, error: null }))
-      
-      // Store previous state for rollback
-      const previousGoals = goalState.goals
-      const goal = previousGoals.find(g => g.id === id)
-      
-      if (!goal) {
-        throw new Error('Goal not found')
-      }
-      
-      // Optimistic update
-      const today = new Date().toISOString().split('T')[0]
-      const isCompletedToday = goal.habit_completed_dates?.includes(today) || false
-      const newCompletedDates = isCompletedToday
-        ? goal.habit_completed_dates.filter(d => d !== today)
-        : [...(goal.habit_completed_dates || []), today]
-      
-      setGoalState((prev) => ({
-        ...prev,
-        goals: prev.goals.map((g) =>
-          g.id === id
-            ? {
-                ...g,
-                habit_completed_dates: newCompletedDates,
-                last_activity: new Date().toISOString(),
-              }
-            : g
-        ),
-      }))
-      
-      try {
-        // Call API to toggle habit completion
-        const updatedGoal = await apiClient.toggleHabitCompletion(id)
-        
-        // Update with server response
-        setGoalState((prev) => ({
-          ...prev,
-          goals: prev.goals.map((g) => (g.id === id ? updatedGoal : g)),
-        }))
-        
-        return updatedGoal
-      } catch (error) {
-        // Rollback on error
-        setGoalState((prev) => ({ ...prev, goals: previousGoals }))
-        throw error
-      }
-    } catch (error: any) {
-      const errorMessage = error.message || 'Failed to toggle habit completion'
-      setGoalState((prev) => ({ ...prev, error: errorMessage }))
-      throw error
-    }
-  }, [goalState.goals])
 
   // ============================================================================
   // Milestone Operations
@@ -523,7 +465,6 @@ export function GoalProvider({ children }: { children: ReactNode }) {
     updateGoal,
     deleteGoal,
     updateStatus,
-    toggleHabitCompletion,
     addMilestone,
     toggleMilestone,
     addProgress,
@@ -541,7 +482,6 @@ export function GoalProvider({ children }: { children: ReactNode }) {
     updateGoal,
     deleteGoal,
     updateStatus,
-    toggleHabitCompletion,
     addMilestone,
     toggleMilestone,
     addProgress,
