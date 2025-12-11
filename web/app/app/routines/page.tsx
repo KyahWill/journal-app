@@ -9,6 +9,8 @@ import { Search, Plus, Loader2, ListChecks } from 'lucide-react'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { RoutineItem } from '@/components/routine-item'
 import { RoutineCreationDialog } from '@/components/routine-creation-dialog'
+import { RoutineEditDialog } from '@/components/routine-edit-dialog'
+import { Routine } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 
 export default function RoutinesPage() {
@@ -17,6 +19,7 @@ export default function RoutinesPage() {
   
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
+  const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null)
 
   const groups = useMemo(() => {
     const allGroups = getGroups()
@@ -157,7 +160,11 @@ export default function RoutinesPage() {
                 </div>
                 <div className="space-y-2">
                   {groupRoutines.map((routine) => (
-                    <RoutineItem key={routine.id} routine={routine} />
+                    <RoutineItem 
+                      key={routine.id} 
+                      routine={routine}
+                      onEdit={() => setEditingRoutine(routine)}
+                    />
                   ))}
                 </div>
               </div>
@@ -165,6 +172,17 @@ export default function RoutinesPage() {
           </div>
         )}
       </div>
+
+      {/* Edit Dialog */}
+      {editingRoutine && (
+        <RoutineEditDialog
+          routine={editingRoutine}
+          open={!!editingRoutine}
+          onOpenChange={(open) => {
+            if (!open) setEditingRoutine(null)
+          }}
+        />
+      )}
     </ErrorBoundary>
   )
 }

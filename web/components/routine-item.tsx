@@ -24,7 +24,7 @@ interface RoutineItemProps {
 
 export function RoutineItem({ routine, onEdit }: RoutineItemProps) {
   const { toggleStep, completeRoutine, resetSteps, deleteRoutine } = useRoutines()
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(true)
   const [isToggling, setIsToggling] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)

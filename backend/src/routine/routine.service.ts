@@ -53,7 +53,7 @@ export class RoutineService {
 
   async getRoutines(userId: string): Promise<Routine[]> {
     try {
-      const conditions = [{ field: 'user_id', operator: '==', value: userId }]
+      const conditions = [{ field: 'user_id', operator: '==' as const, value: userId }]
       const routines = await this.firebaseService.getCollection(
         this.routinesCollection,
         conditions,

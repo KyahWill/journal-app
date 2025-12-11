@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import { google, calendar_v3 } from 'googleapis'
 import { OAuth2Client } from 'google-auth-library'
 import { FirebaseService } from '@/firebase/firebase.service'
-import { Goal, HabitFrequency } from '@/common/types/goal.types'
+import { Goal } from '@/common/types/goal.types'
 
 export interface CalendarTokens {
   access_token: string
@@ -220,15 +220,8 @@ export class GoogleCalendarService {
         ? goal.target_date 
         : new Date(goal.target_date)
 
-      let event: calendar_v3.Schema$Event
-
-      if (goal.is_habit && goal.habit_frequency) {
-        // Create recurring event for habits
-        event = this.createRecurringEvent(goal, targetDate)
-      } else {
-        // Create one-time event for regular goals
-        event = this.createOneTimeEvent(goal, targetDate)
-      }
+      // Create one-time event for goal
+      const event = this.createOneTimeEvent(goal, targetDate)
 
       const response = await calendar.events.insert({
         calendarId: 'primary',
@@ -271,48 +264,6 @@ export class GoogleCalendarService {
   }
 
   /**
-   * Create a recurring all-day event for a habit
-   */
-  private createRecurringEvent(goal: Goal, startDate: Date): calendar_v3.Schema$Event {
-    const dateStr = startDate.toISOString().split('T')[0]
-    const rrule = this.getRecurrenceRule(goal.habit_frequency!)
-    
-    return {
-      summary: `🔥 ${goal.title}`,
-      description: goal.description || `Habit: ${goal.title}`,
-      start: {
-        date: dateStr,
-      },
-      end: {
-        date: dateStr,
-      },
-      recurrence: [rrule],
-      reminders: {
-        useDefault: false,
-        overrides: [
-          { method: 'popup', minutes: 0 }, // At the time of event
-        ],
-      },
-    }
-  }
-
-  /**
-   * Get RRULE string based on habit frequency
-   */
-  private getRecurrenceRule(frequency: HabitFrequency): string {
-    switch (frequency) {
-      case 'daily':
-        return 'RRULE:FREQ=DAILY'
-      case 'weekly':
-        return 'RRULE:FREQ=WEEKLY'
-      case 'monthly':
-        return 'RRULE:FREQ=MONTHLY'
-      default:
-        return 'RRULE:FREQ=DAILY'
-    }
-  }
-
-  /**
    * Update a calendar event for a goal
    */
   async updateGoalEvent(
@@ -332,23 +283,11 @@ export class GoogleCalendarService {
         : new Date(goal.target_date)
       const dateStr = targetDate.toISOString().split('T')[0]
 
-      let event: calendar_v3.Schema$Event
-
-      if (goal.is_habit && goal.habit_frequency) {
-        event = {
-          summary: `🔥 ${goal.title}`,
-          description: goal.description || `Habit: ${goal.title}`,
-          start: { date: dateStr },
-          end: { date: dateStr },
-          recurrence: [this.getRecurrenceRule(goal.habit_frequency)],
-        }
-      } else {
-        event = {
-          summary: `🎯 ${goal.title}`,
-          description: goal.description || `Goal: ${goal.title}`,
-          start: { date: dateStr },
-          end: { date: dateStr },
-        }
+      const event: calendar_v3.Schema$Event = {
+        summary: `🎯 ${goal.title}`,
+        description: goal.description || `Goal: ${goal.title}`,
+        start: { date: dateStr },
+        end: { date: dateStr },
       }
 
       await calendar.events.update({

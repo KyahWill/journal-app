@@ -8,7 +8,7 @@ import {
   UpdateMilestoneDto,
   CreateProgressDto,
 } from '@/common/dto/goal.dto'
-import { Goal, Milestone, GoalStatus, ProgressUpdate, HabitFrequency } from '@/common/types/goal.types'
+import { Goal, Milestone, GoalStatus, ProgressUpdate } from '@/common/types/goal.types'
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, differenceInCalendarDays } from 'date-fns'
 import { RagService } from '@/rag/rag.service'
 import { CategoryService } from '@/category/category.service'
@@ -155,11 +155,6 @@ export class GoalService {
           milestones: [],
           created_at: now,
           updated_at: now,
-          // Habit fields
-          is_habit: goalDto.is_habit || false,
-          habit_frequency: goalDto.habit_frequency || null,
-          habit_streak: 0,
-          habit_completed_dates: [],
         }
 
         batch.set(goalRef, data)
@@ -376,10 +371,6 @@ export class GoalService {
         last_activity: goal.last_activity?.toDate() || new Date(),
         progress_percentage: goal.progress_percentage || 0,
         milestones: this.mapMilestones(goal.milestones || []),
-        is_habit: goal.is_habit || false,
-        habit_frequency: goal.habit_frequency || null,
-        habit_streak: goal.habit_streak || 0,
-        habit_completed_dates: goal.habit_completed_dates || [],
         calendar_event_id: goal.calendar_event_id || undefined,
       }
     } catch (error) {
