@@ -414,7 +414,92 @@ web/
 - Cloud backup
 - Data export/import
 
-## 12. Configuration Details
+## 12. Routines Management
+
+### 12.1 Create Routines
+- **Create multi-step routines** with title, description, and steps
+- Required fields: title, at least one step
+- Frequency options: daily, weekly, monthly
+- Optional group/category assignment
+- Step ordering and management
+- Validation for empty fields
+- Success feedback after creation
+
+### 12.2 View Routines
+
+#### List View
+- **Display all user's routines** organized by groups
+- Group-based organization (collapsible sections)
+- Filter by group (all groups, specific group, ungrouped)
+- Search functionality across routine titles and descriptions
+- Routine preview showing:
+  - Title and description
+  - Frequency badge (daily/weekly/monthly)
+  - Current streak count
+  - Step progress (completed/total)
+  - Expandable to show all steps
+
+#### Detail View (Expanded Routine)
+- **View individual routine** with all steps
+- Step-by-step checklist with checkboxes
+- Individual step completion toggle
+- Progress bar visualization
+- Complete All button (when all steps checked)
+- Reset button (clear all step completions)
+
+### 12.3 Update Routines
+- **Edit existing routines**
+- Modify title, description, group, frequency
+- Add, remove, or reorder steps
+- Changes update immediately
+- Validation on save
+
+### 12.4 Delete Routines
+- **Delete routines** with confirmation
+- Permanent deletion warning
+- Removes all associated completion history
+- Success feedback after deletion
+
+### 12.5 Complete Routines
+
+#### Step-Level Completion
+- **Toggle individual steps** with checkbox
+- Optimistic UI updates
+- Automatic progress calculation
+- Visual feedback (strikethrough, checkmark)
+
+#### Routine-Level Completion
+- **Mark entire routine complete** for the current period
+- Marks all steps as completed
+- Records completion date
+- Updates streak count
+- Can only complete once per period (day/week/month)
+- Visual indicator when completed today
+
+### 12.6 Streak Tracking
+- **Automatic streak calculation** based on frequency
+- Daily routines: consecutive days
+- Weekly routines: consecutive weeks
+- Monthly routines: consecutive months
+- Streak breaks if period is skipped
+- Visual streak indicator (fire icon + count)
+- Encourages consistency and habit formation
+
+### 12.7 Group Management
+- **User-defined groups** for organization
+- Examples: Morning, Evening, Work, Self-Care
+- Create new groups on-the-fly
+- Select from existing groups
+- Ungrouped routines in separate section
+- Group filtering in UI
+
+### 12.8 Reset Functionality
+- **Reset all steps** to uncompleted state
+- Useful for starting routine over
+- Does not affect completion history or streak
+- Instant visual feedback
+
+## 13. Configuration Details
 
 ### 12.1 Firebase Configuration
 - **Project ID**: your-project-id
@@ -467,7 +552,21 @@ GEMINI_API_KEY=<your_key>
 - [ ] Error handling
 - [ ] Loading states
 
-### 13.4 Security Tests
+### 13.4 Routine Tests
+- [ ] Create new routine with multiple steps
+- [ ] View routine list
+- [ ] Expand routine to view steps
+- [ ] Toggle individual step completion
+- [ ] Complete entire routine
+- [ ] Reset routine steps
+- [ ] Edit routine (title, description, steps)
+- [ ] Delete routine with confirmation
+- [ ] Streak tracking accuracy
+- [ ] Group filtering and organization
+- [ ] Search routines
+- [ ] Frequency-based completion restrictions
+
+### 13.5 Security Tests
 - [ ] RLS prevents cross-user access
 - [ ] Unauthenticated users redirected
 - [ ] API keys not exposed
@@ -476,7 +575,18 @@ GEMINI_API_KEY=<your_key>
 
 ## 14. API Reference
 
-### 14.1 Authentication APIs
+### 14.1 Routine APIs
+- `createRoutine(data)` - Create routine
+- `getRoutines()` - Fetch all routines
+- `getRoutineById(id)` - Fetch single routine
+- `updateRoutine(id, data)` - Update routine
+- `toggleRoutineStep(routineId, stepId)` - Toggle step completion
+- `completeRoutine(id)` - Mark routine complete for period
+- `resetRoutineSteps(id)` - Reset all steps
+- `deleteRoutine(id)` - Delete routine
+- `getRoutineGroups()` - Get list of user-defined groups
+
+### 14.2 Authentication APIs
 - `signUp(email, password, fullName?)` - Create account
 - `signIn(email, password)` - Login
 - `signOut()` - Logout
@@ -484,7 +594,7 @@ GEMINI_API_KEY=<your_key>
 - `updateProfile(fullName)` - Update profile
 - `authStateChanges` - Stream of auth state
 
-### 14.2 Journal APIs
+### 14.3 Journal APIs
 - `getEntries()` - Fetch all entries
 - `getEntryById(id)` - Fetch single entry
 - `createEntry(title, content)` - Create entry
@@ -493,7 +603,7 @@ GEMINI_API_KEY=<your_key>
 - `searchEntries(query)` - Search entries
 - `getEntriesStream()` - Real-time stream
 
-### 14.3 AI APIs
+### 14.4 AI APIs
 - `sendMessage(userMessage, journalEntries)` - Send chat message
 - `clearHistory()` - Clear conversation
 - `chatHistory` - Get message history
@@ -529,13 +639,25 @@ This application is built with the following technologies:
 
 ## Summary
 
-This feature set represents a complete, production-ready journaling application with AI-powered coaching capabilities. The architecture emphasizes:
+This feature set represents a complete, production-ready journaling and productivity application with AI-powered coaching capabilities. The architecture emphasizes:
 
-- **Security**: RLS, authentication, data isolation
-- **Performance**: Indexed queries, real-time sync, efficient operations
-- **User Experience**: Intuitive UI, feedback, error handling
+- **Security**: Authentication, data isolation, user-scoped data
+- **Performance**: Indexed queries, optimistic updates, efficient operations
+- **User Experience**: Intuitive UI, real-time feedback, comprehensive error handling
+- **Productivity**: Goals with milestones, multi-step routines with streak tracking
 - **Scalability**: Clean architecture, modular services, extensible design
 - **Web-native**: Server-side rendering, SEO-friendly, no installation required
-- **Intelligence**: Context-aware AI coaching with journal integration
+- **Intelligence**: Context-aware AI coaching with journal and goal integration
 - **Deployment**: Ready for serverless deployment on Google Cloud Run
+
+### Key Features Summary
+
+- **Journaling**: Create, edit, search, and manage journal entries with rich metadata
+- **Goals**: Set and track goals with milestones, progress updates, and calendar integration
+- **Routines**: Build multi-step daily/weekly/monthly routines with automatic streak tracking
+- **AI Coaching**: Conversational AI coach with context from your journals and goals
+- **Voice Coach**: Real-time voice conversations with personalized AI personalities
+- **Insights**: AI-generated weekly insights and reflections
+- **Themes**: Customizable UI themes with color schemes and typography
+- **Mobile-First**: Fully responsive design optimized for all devices
 

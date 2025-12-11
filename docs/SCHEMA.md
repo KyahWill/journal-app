@@ -7,20 +7,21 @@ This document describes the complete Firestore database schema for the applicati
 The application uses the following top-level Firestore collections:
 
 1. **goals** - User goals with milestones and progress tracking
-2. **journal-entries** - User journal entries
-3. **chat_sessions** - AI chat conversations
-4. **user_themes** - Custom UI themes
-5. **custom_categories** - User-defined goal categories
-6. **goal_journal_links** - Links between goals and journal entries
-7. **coach_personalities** - AI coach personality configurations (unified for text and voice)
-8. **embeddings** - Vector embeddings for RAG (Retrieval-Augmented Generation)
-9. **user_usage** - Rate limiting and usage tracking
+2. **routines** - Multi-step routines with recurrence tracking
+3. **journal-entries** - User journal entries
+4. **chat_sessions** - AI chat conversations
+5. **user_themes** - Custom UI themes
+6. **custom_categories** - User-defined goal categories
+7. **goal_journal_links** - Links between goals and journal entries
+8. **coach_personalities** - AI coach personality configurations (unified for text and voice)
+9. **embeddings** - Vector embeddings for RAG (Retrieval-Augmented Generation)
+10. **user_usage** - Rate limiting and usage tracking
 
 ---
 
 ## 1. goals
 
-Stores user goals with embedded milestones, progress tracking, and optional habit functionality.
+Stores user goals with embedded milestones and progress tracking.
 
 ### Fields
 
@@ -32,7 +33,7 @@ Stores user goals with embedded milestones, progress tracking, and optional habi
 | `description` | string | Goal description |
 | `category` | string | Category ID (default category name or custom category ID) |
 | `status` | string | Goal status: `not_started`, `in_progress`, `completed`, `abandoned` |
-| `target_date` | timestamp | Target completion date (far future for habits) |
+| `target_date` | timestamp | Target completion date |
 | `created_at` | timestamp | Creation timestamp |
 | `updated_at` | timestamp | Last update timestamp |
 | `completed_at` | timestamp \| null | Completion timestamp (null if not completed) |
@@ -40,10 +41,7 @@ Stores user goals with embedded milestones, progress tracking, and optional habi
 | `last_activity` | timestamp | Last activity timestamp (updates, milestones, progress) |
 | `progress_percentage` | number | Calculated progress (0-100) based on milestone completion |
 | `milestones` | array | Array of milestone objects (embedded) |
-| `is_habit` | boolean | Whether this goal is a recurring habit |
-| `habit_frequency` | string \| null | Habit frequency: `daily`, `weekly`, `monthly` (null if not a habit) |
-| `habit_streak` | number | Current streak count for habits |
-| `habit_completed_dates` | array\<string\> | Array of ISO date strings (YYYY-MM-DD) when habit was completed |
+| `calendar_event_id` | string \| undefined | Google Calendar event ID for syncing |
 
 ### Milestone Object Structure (Embedded)
 
@@ -79,7 +77,64 @@ Path: `goals/{goalId}/progress_updates`
 
 ---
 
-## 2. journal-entries
+## 2. routines
+
+Stores multi-step routines with recurrence tracking and streak management.
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Auto-generated document ID |
+| `user_id` | string | Firebase Auth user ID |
+| `title` | string | Routine name (e.g., "Morning Routine") |
+| `description` | string | Optional routine description |
+| `group` | string \| null | User-defined group/folder for organization |
+| `frequency` | string | Recurrence frequency: `daily`, `weekly`, `monthly` |
+| `steps` | array | Array of step objects (embedded) |
+| `completed_dates` | array\<string\> | ISO date strings (YYYY-MM-DD) when routine was fully completed |
+| `streak` | number | Current streak count based on frequency |
+| `last_completed_at` | timestamp \| null | Last completion timestamp |
+| `created_at` | timestamp | Creation timestamp |
+| `updated_at` | timestamp | Last update timestamp |
+
+### Step Object Structure (Embedded)
+
+```typescript
+{
+  id: string,              // Unique step ID (UUID)
+  title: string,           // Step title/description
+  completed: boolean,      // Current completion status
+  order: number            // Display order (0-indexed)
+}
+```
+
+### Indexes Required
+
+- `user_id` (ascending) + `created_at` (descending)
+- `user_id` (ascending) + `frequency` (ascending)
+
+### Business Logic Notes
+
+**Streak Calculation:**
+- **Daily**: Streak increments when routine is completed on consecutive days. Breaks if a day is skipped.
+- **Weekly**: Streak increments when routine is completed in consecutive weeks. Breaks if a week is skipped.
+- **Monthly**: Streak increments when routine is completed in consecutive months. Breaks if a month is skipped.
+
+**Completion Rules:**
+- A routine can only be marked as fully completed once per period (day/week/month)
+- Individual steps can be toggled independently
+- Completing a routine marks all steps as completed and adds the date to `completed_dates`
+- Resetting steps clears all step completions but does not affect completion history
+
+**Group Management:**
+- Groups are user-defined strings for organizing routines
+- No separate collection; groups are extracted dynamically from existing routines
+- Common groups: "Morning", "Evening", "Work", "Self-Care", etc.
+
+---
+
+## 3. journal-entries
 
 Stores user journal entries with optional mood and tags.
 
@@ -102,7 +157,7 @@ Stores user journal entries with optional mood and tags.
 
 ---
 
-## 3. chat_sessions
+## 4. chat_sessions
 
 Stores AI chat conversation sessions with message history.
 
@@ -134,7 +189,6 @@ Stores AI chat conversation sessions with message history.
 - `user_id` (ascending) + `updated_at` (descending)
 
 ---
-
 
 ## 5. user_themes
 
@@ -317,7 +371,7 @@ Stores vector embeddings for semantic search and RAG functionality.
 |-------|------|-------------|
 | `id` | string | Auto-generated document ID |
 | `user_id` | string | Firebase Auth user ID |
-| `content_type` | string | Content type: `journal`, `goal`, `milestone`, `progress_update` |
+| `content_type` | string | Content type: `journal`, `goal`, `routine`, `milestone`, `progress_update` |
 | `document_id` | string | Source document ID |
 | `embedding` | array\<number\> | Vector embedding (768 dimensions for text-embedding-004) |
 | `text_snippet` | string | First 500 characters of content |
@@ -359,6 +413,15 @@ Stores vector embeddings for semantic search and RAG functionality.
 {
   goal_id: string,
   created_at: string
+}
+```
+
+**Routine:**
+```typescript
+{
+  frequency: string,
+  group: string | null,
+  step_count: number
 }
 ```
 
@@ -432,10 +495,18 @@ Progress updates are stored in a subcollection:
 - Allows for efficient pagination
 - Keeps goal document size manageable
 
+### Routine → Steps (One-to-Many, Embedded)
+
+Steps are embedded directly in the routine document as an array:
+- Simplifies queries and reduces read operations
+- Maintains atomic updates
+- Steps are ordered by the `order` field
+- All step completions are tracked within the routine document
+
 ### User → Content (One-to-Many)
 
 All content is scoped to users via `user_id`:
-- Goals, journal entries, chat sessions, prompts, themes, categories
+- Goals, routines, journal entries, chat sessions, themes, categories
 - Ensures data isolation and privacy
 - Enables efficient user-specific queries
 
@@ -515,16 +586,17 @@ Batch operations are supported for:
 ### Recommended Backup Strategy
 
 1. **Daily Firestore Exports**: Use Firebase's automated export feature
-2. **Critical Collections**: Prioritize `goals`, `journal-entries`, `chat_sessions`
+2. **Critical Collections**: Prioritize `goals`, `routines`, `journal-entries`, `chat_sessions`
 3. **Embedding Regeneration**: Embeddings can be regenerated from source content
 4. **Usage Data**: Can be reset without data loss
 
 ### Data Retention
 
-- User content: Retained indefinitely until user deletion
+- User content: Retained indefinitely until user deletion (goals, routines, journal entries, etc.)
 - Usage tracking: Daily documents (can be archived after 30 days)
 - Embeddings: Automatically cleaned up when source content is deleted
 - Chat sessions: Retained indefinitely (consider implementing auto-cleanup)
+- Routine completion history: Retained for streak calculations and analytics
 
 ---
 
@@ -532,10 +604,12 @@ Batch operations are supported for:
 
 ### Potential Additions
 
-1. **Shared Goals**: Support for collaborative goals
-2. **Goal Templates**: Reusable goal templates
-3. **Achievements**: Gamification and milestone badges
+1. **Shared Goals & Routines**: Support for collaborative goals and routines
+2. **Goal & Routine Templates**: Reusable templates for common goals and routines
+3. **Achievements**: Gamification with milestone badges and routine streak rewards
 4. **Export History**: Track data exports for compliance
+5. **Routine Reminders**: Notification system for routine completion
+6. **Routine Analytics**: Track completion rates and patterns over time
 
 ### Scalability Considerations
 
