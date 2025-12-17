@@ -27,8 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Edit, Trash2, Star, Loader2, Palette, Mic, Bot, Volume2, Calendar, CheckCircle2, XCircle, Link2 } from 'lucide-react'
-import Link from 'next/link'
+import { Plus, Edit, Trash2, Star, Loader2, Mic, Bot, Volume2, Calendar, CheckCircle2, XCircle, Link2 } from 'lucide-react'
 
 const COACHING_STYLES: { value: CoachingStyle; label: string; description: string }[] = [
   { value: 'supportive', label: 'Supportive', description: 'Warm, encouraging, and nurturing approach' },
@@ -236,14 +235,6 @@ function SettingsContent() {
     <div className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl">
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold mb-4">Settings</h1>
-        <div className="flex gap-2">
-          <Link href="/app/settings/themes">
-            <Button variant="outline" size="sm">
-              <Palette className="h-4 w-4 mr-2" />
-              Themes
-            </Button>
-          </Link>
-        </div>
       </div>
 
       {/* Google Calendar Integration Section */}

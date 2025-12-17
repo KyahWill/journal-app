@@ -47,16 +47,6 @@ const {
 - Milestone and progress tracking
 - Connection status monitoring
 
-### ThemeContext
-**File**: `ThemeContext.tsx`  
-**Hook**: `useTheme()`
-
-Manages application theming and provides theme customization capabilities.
-
-```typescript
-const { theme, setTheme, themes } = useTheme()
-```
-
 ## Provider Hierarchy
 
 The providers are nested in the following order in `app/layout.tsx`:
@@ -64,14 +54,12 @@ The providers are nested in the following order in `app/layout.tsx`:
 ```
 AuthProvider
   └── GoalProvider
-      └── ThemeProvider
-          └── Application
+      └── Application
 ```
 
 This hierarchy ensures that:
 1. Authentication is available first
 2. Goal context can access auth state
-3. Theme context can access both auth and goal state
 
 ## Usage Guidelines
 

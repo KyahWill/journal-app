@@ -2,15 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useGoals } from '@/lib/contexts/goal-context'
-import { apiClient, CategoryWithType, CreateGoalData, HabitFrequency } from '@/lib/api/client'
+import { apiClient, CategoryWithType, CreateGoalData } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Check, ChevronRight, ChevronLeft, Calendar, Plus, X, Target, Loader2, Flame } from 'lucide-react'
 import { format, addDays } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -51,10 +49,6 @@ export function GoalCreationWizard({ onSuccess, onCancel }: GoalCreationWizardPr
   const [targetDate, setTargetDate] = useState('')
   const [milestones, setMilestones] = useState<{ id: string; title: string; due_date?: string }[]>([])
   const [newMilestone, setNewMilestone] = useState('')
-  
-  // Habit fields
-  const [isHabit, setIsHabit] = useState(false)
-  const [habitFrequency, setHabitFrequency] = useState<HabitFrequency>('daily')
 
   useEffect(() => {
     loadCategories()
@@ -72,8 +66,7 @@ export function GoalCreationWizard({ onSuccess, onCancel }: GoalCreationWizardPr
     }
   }
 
-  // Get the appropriate steps based on whether it's a habit or goal
-  const steps = isHabit ? HABIT_STEPS : GOAL_STEPS
+  const steps = GOAL_STEPS
 
   const handleNext = () => {
     const currentIndex = steps.findIndex(s => s.id === currentStep)
@@ -104,31 +97,16 @@ export function GoalCreationWizard({ onSuccess, onCancel }: GoalCreationWizardPr
     try {
       setIsSubmitting(true)
       
-      // For habits, use a far-future date (habits are ongoing)
-      const effectiveTargetDate = isHabit 
-        ? format(addDays(new Date(), 365 * 10), 'yyyy-MM-dd') // 10 years from now
-        : targetDate
+      const effectiveTargetDate = targetDate
 
       const goalData: CreateGoalData = {
         title,
         description,
         category,
         target_date: effectiveTargetDate,
-        is_habit: isHabit,
-        habit_frequency: isHabit ? habitFrequency : undefined,
       }
 
       const newGoal = await createGoal(goalData)
-
-      // Only add milestones for regular goals (not habits)
-      if (!isHabit && milestones.length > 0) {
-        for (const m of milestones) {
-           await addMilestone(newGoal.id, {
-             title: m.title,
-             due_date: m.due_date
-           })
-        }
-      }
 
       if (onSuccess) onSuccess()
     } catch (error) {
@@ -189,38 +167,6 @@ export function GoalCreationWizard({ onSuccess, onCancel }: GoalCreationWizardPr
                 className="h-24"
               />
             </div>
-
-            {/* Habit Toggle */}
-            <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-900">
-              <div className="flex items-center gap-3">
-                <Flame className="h-5 w-5 text-orange-500" />
-                <div>
-                  <Label htmlFor="is-habit" className="font-medium cursor-pointer">Make this a Habit</Label>
-                  <p className="text-xs text-muted-foreground">Track daily/weekly/monthly and build streaks</p>
-                </div>
-              </div>
-              <Switch
-                id="is-habit"
-                checked={isHabit}
-                onCheckedChange={setIsHabit}
-              />
-            </div>
-
-            {isHabit && (
-              <div className="space-y-2 pl-4 border-l-2 border-orange-300">
-                <Label>Frequency</Label>
-                <Select value={habitFrequency} onValueChange={(v) => setHabitFrequency(v as HabitFrequency)}>
-                  <SelectTrigger className="w-full max-w-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
         )}
 
@@ -329,30 +275,20 @@ export function GoalCreationWizard({ onSuccess, onCancel }: GoalCreationWizardPr
           <div className="space-y-6">
             <div className="bg-accent/30 p-6 rounded-lg border text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
-                {isHabit && <Flame className="h-6 w-6 text-orange-500" />}
                 <h3 className="text-2xl font-bold">{title}</h3>
               </div>
               <p className="text-muted-foreground">{description || 'No description provided.'}</p>
               <div className="flex flex-wrap justify-center gap-2 mt-4 text-sm">
-                {isHabit && (
-                  <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-3 py-1 rounded-full font-medium capitalize flex items-center gap-1">
-                    <Flame className="h-3 w-3" />
-                    {habitFrequency} Habit
-                  </span>
-                )}
                 <span className="bg-primary/10 text-primary px-3 py-1 rounded-full font-medium capitalize">
                   {categories.find(c => c.id === category)?.name || category}
                 </span>
-                {!isHabit && (
                   <span className="bg-secondary text-secondary-foreground px-3 py-1 rounded-full">
                     Target: {targetDate ? format(new Date(targetDate), 'MMM d, yyyy') : 'Not set'}
                   </span>
-                )}
               </div>
             </div>
 
             {/* Only show milestones section for regular goals */}
-            {!isHabit && (
               <div className="space-y-2">
                  <h4 className="font-semibold flex items-center gap-2">
                    <Target className="h-4 w-4" /> 
@@ -368,7 +304,6 @@ export function GoalCreationWizard({ onSuccess, onCancel }: GoalCreationWizardPr
                    <p className="text-sm text-muted-foreground italic">No milestones added.</p>
                  )}
               </div>
-            )}
           </div>
         )}
       </CardContent>

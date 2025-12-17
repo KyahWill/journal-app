@@ -411,32 +411,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 ```
 
-**ThemeContext** (`lib/contexts/ThemeContext.tsx`):
-```typescript
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
-
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [activeTheme, setActiveTheme] = useState<UserTheme | null>(null)
-  
-  const applyTheme = (theme: UserTheme) => {
-    // Set CSS variables
-    Object.entries(theme.colors).forEach(([key, value]) => {
-      document.documentElement.style.setProperty(`--${key}`, value)
-    })
-    
-    // Save to localStorage
-    localStorage.setItem('activeTheme', JSON.stringify(theme))
-    setActiveTheme(theme)
-  }
-  
-  return (
-    <ThemeContext.Provider value={{ activeTheme, applyTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  )
-}
-```
-
 ### Custom Hooks
 
 **useAuth**:

@@ -31,7 +31,6 @@ const COLLECTIONS_WITH_USER_ID = [
   'journal-entries',
   'chat_sessions',
   'user_prompts',
-  'user_themes',
   'custom_categories',
   'goal_journal_links',
   'coach_personalities',

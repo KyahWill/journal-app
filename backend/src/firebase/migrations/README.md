@@ -39,7 +39,6 @@ npx ts-node src/firebase/migrations/migrate-user-id.ts <OLD_UID> <NEW_UID>
 | `journal-entries` | Updates `user_id` field |
 | `chat_sessions` | Updates `user_id` field |
 | `user_prompts` | Updates `user_id` field |
-| `user_themes` | Updates `user_id` field |
 | `custom_categories` | Updates `user_id` field |
 | `goal_journal_links` | Updates `user_id` field |
 | `coach_personalities` | Updates `user_id` field |

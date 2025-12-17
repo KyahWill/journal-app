@@ -65,10 +65,10 @@ The Journal application is a full-stack web application for personal journaling 
 │  │  │  Module  │ │  Module  │ │  Module  │ │  Module  │ │ Module │  │   │
 │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └────────┘  │   │
 │  │                                                                  │   │
-│  │  ┌──────────┐ ┌───────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │   │
-│  │  │  Voice   │ │  Coach    │ │  Theme   │ │ Category │ │ Prompt │ │   │
-│  │  │  Coach   │ │Personality│ │  Module  │ │  Module  │ │ Module │ │   │
-│  │  └──────────┘ └───────────┘ └──────────┘ └──────────┘ └────────┘ │   │
+│  │  ┌──────────┐ ┌───────────┐ ┌──────────┐ ┌────────┐              │   │
+│  │  │  Voice   │ │  Coach    │ │ Category │ │ Prompt │              │   │
+│  │  │  Coach   │ │Personality│ │  Module  │ │ Module │              │   │
+│  │  └──────────┘ └───────────┘ └──────────┘ └────────┘              │   │
 │  │                                                                  │   │
 │  │  ┌──────────────────────────────────────────────────────────┐    │   │
 │  │  │              Core Services Layer                         │    │   │
@@ -169,7 +169,7 @@ The web application uses Next.js 14's App Router with a mix of server and client
 
 ```
 web/app/
-├── layout.tsx                 # Root layout with ThemeProvider
+├── layout.tsx                 # Root layout with AuthProvider
 ├── page.tsx                   # Landing page (public)
 │
 ├── api/                       # Server-side API routes
@@ -203,8 +203,7 @@ web/app/
 │   ├── ai-agent/page.tsx      # Voice AI coach
 │   │
 │   └── settings/              # User settings
-│       ├── page.tsx           # Settings home
-│       └── themes/page.tsx    # Theme customization
+│       └── page.tsx           # Settings home
 │
 └── middleware.ts              # Route protection
 ```
@@ -269,14 +268,12 @@ The application uses Server-Sent Events (SSE) for real-time AI response streamin
 
 **Context Providers**:
 - `AuthContext`: User authentication state
-- `ThemeContext`: Theme customization
 - `GoalContext`: Goal tracking state
 
 **Custom Hooks**:
 - `useAuth()`: Authentication operations
 - `useChat()`: AI coach interactions
 - `useGoalChat()`: Goal-specific AI coaching
-- `useThemes()`: Theme management
 - `useMilestoneCounts()`: Goal progress tracking
 
 ### Real-time Features
@@ -335,11 +332,6 @@ backend/src/
 │   ├── rag.service.ts
 │   ├── vector-store.service.ts
 │   └── rag.module.ts
-│
-├── theme/                     # Theme customization
-│   ├── theme.controller.ts
-│   ├── theme.service.ts
-│   └── theme.module.ts
 │
 ├── category/                  # Custom categories
 │   ├── category.controller.ts
@@ -865,18 +857,6 @@ firestore/
 │       ├── created_at: Timestamp
 │       └── updated_at: Timestamp
 │
-├── user_themes/                       # Custom themes
-│   └── {themeId}/
-│       ├── user_id: string
-│       ├── name: string
-│       ├── is_default: boolean
-│       ├── is_public: boolean
-│       ├── colors: ThemeColors
-│       ├── typography: ThemeTypography
-│       ├── spacing: ThemeSpacing
-│       ├── created_at: Timestamp
-│       └── updated_at: Timestamp
-│
 ├── custom_categories/                 # Goal categories
 │   └── {categoryId}/
 │       ├── user_id: string
@@ -939,8 +919,6 @@ User (Firebase Auth)
   │     └─► coach_personalities (many:1)
   │
   ├─► coach_personalities (1:many)
-  │
-  ├─► user_themes (1:many)
   │
   ├─► custom_categories (1:many)
   │
@@ -1116,12 +1094,6 @@ service cloud.firestore {
     // Voice sessions
     match /voice_sessions/{sessionId} {
       allow read, write: if isOwner(resource.data.user_id);
-    }
-    
-    // User themes
-    match /user_themes/{themeId} {
-      allow read: if isOwner(resource.data.user_id) || resource.data.is_public == true;
-      allow write: if isOwner(resource.data.user_id);
     }
     
     // Custom categories
@@ -1349,7 +1321,6 @@ For more detailed information on specific architectural components, see:
 - **[Goals](features/goals.md)** - Goal tracking system
 - **[Voice Coach](features/voice-coach.md)** - Voice AI coach
 - **[RAG System](features/rag-system.md)** - Semantic search and embeddings
-- **[Theming](features/theming.md)** - Custom theme system
 
 ### Setup and Deployment
 
