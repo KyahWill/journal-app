@@ -219,7 +219,10 @@ export class FirebaseService implements OnModuleInit {
     if (startAfter) {
       const startDoc = await this.firestore.collection(collectionPath).doc(startAfter).get()
       if (startDoc.exists) {
+        this.logger.log(`[getCollection] Starting after document: ${startAfter}`)
         query = query.startAfter(startDoc)
+      } else {
+        this.logger.warn(`[getCollection] startAfter document not found: ${startAfter}`)
       }
     }
 

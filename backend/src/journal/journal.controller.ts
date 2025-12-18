@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Logger,
 } from '@nestjs/common'
 import { JournalService } from './journal.service'
 import { CreateJournalDto, UpdateJournalDto } from '@/common/dto/journal.dto'
@@ -19,6 +20,8 @@ import { CurrentUser } from '@/common/decorators/user.decorator'
 @Controller('journal')
 @UseGuards(AuthGuard)
 export class JournalController {
+  private readonly logger = new Logger(JournalController.name)
+
   constructor(private readonly journalService: JournalService) {}
 
   @Post()
@@ -28,8 +31,16 @@ export class JournalController {
   }
 
   @Get()
-  async findAll(@CurrentUser() user: any) {
-    return this.journalService.findAll(user.uid)
+  async findAll(
+    @CurrentUser() user: any,
+    @Query('limit') limit?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    const parsedLimit = limit ? parseInt(limit, 10) : undefined
+    this.logger.log(`[findAll] Request - userId: ${user.uid}, limit: ${parsedLimit}, cursor: ${cursor || 'null'}`)
+    const result = await this.journalService.findAll(user.uid, parsedLimit, cursor)
+    this.logger.log(`[findAll] Response - entries: ${result.entries.length}, nextCursor: ${result.nextCursor || 'null'}`)
+    return result
   }
 
   @Get('recent')
@@ -44,8 +55,13 @@ export class JournalController {
   }
 
   @Get('grouped')
-  async findAllGroupedByDate(@CurrentUser() user: any) {
-    return this.journalService.findAllGroupedByDate(user.uid)
+  async findAllGroupedByDate(
+    @CurrentUser() user: any,
+    @Query('limit') limit?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    const parsedLimit = limit ? parseInt(limit, 10) : undefined
+    return this.journalService.findAllGroupedByDate(user.uid, parsedLimit, cursor)
   }
 
   @Get(':id')

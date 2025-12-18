@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Plus, Search, Trash2, Loader2, Calendar, List } from 'lucide-react'
+import { Plus, Search, Trash2, Loader2, Calendar, List, ChevronDown } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { JournalEntry } from '@/lib/api/client'
 
@@ -25,16 +25,17 @@ export default function JournalListPage() {
   const router = useRouter()
   const { isAuthenticated, loading: authLoading } = useAuth()
   const { 
-    entries = [], 
-    groupedEntries = {}, 
-    loading, 
+    entries, 
+    groupedEntries, 
+    loading,
+    loadingMore,
     error, 
+    hasMore,
+    nextCursor,
     deleteEntry, 
-    searchEntries, 
     fetchEntries,
-    fetchGroupedEntries 
   } = useJournal()
-  const [filteredEntries, setFilteredEntries] = useState<JournalEntry[]>([])
+  
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -42,9 +43,10 @@ export default function JournalListPage() {
   const [hasFetchedInitial, setHasFetchedInitial] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
 
-  // Track client-side mount to prevent hydration issues
+  // Track client-side mount
   useEffect(() => {
-    setIsMounted(true) }, [])
+    setIsMounted(true)
+  }, [])
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -53,42 +55,44 @@ export default function JournalListPage() {
     }
   }, [isAuthenticated, authLoading, router])
 
-  // Fetch initial data on mount
+  // Fetch initial data on mount (only once)
   useEffect(() => {
     if (isAuthenticated && !hasFetchedInitial) {
       setHasFetchedInitial(true)
-      if (viewMode === 'grouped') {
-        fetchGroupedEntries()
-      } else {
-        fetchEntries()
-      }
+      fetchEntries() // Initial load, no cursor
     }
-  }, [isAuthenticated, hasFetchedInitial])
+  }, [isAuthenticated, hasFetchedInitial, fetchEntries])
 
-  // Fetch data when view mode changes (after initial load)
-  useEffect(() => {
-    if (isAuthenticated && hasFetchedInitial) {
-      if (viewMode === 'grouped') {
-        fetchGroupedEntries()
-      } else {
-        fetchEntries()
-      }
+  // Handle load more button click
+  const handleLoadMore = () => {
+    if (nextCursor && !loadingMore) {
+      fetchEntries(nextCursor)
     }
-  }, [viewMode])
+  }
 
   // Filter entries based on search query
-  useEffect(() => {
-    if (searchQuery) {
-      const filtered = entries.filter(
+  const filteredEntries = searchQuery
+    ? entries.filter(
         (entry) =>
           entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           entry.content.toLowerCase().includes(searchQuery.toLowerCase())
       )
-      setFilteredEntries(filtered)
-    } else {
-      setFilteredEntries(entries)
-    }
-  }, [searchQuery, entries])
+    : entries
+
+  // Filter grouped entries based on search query
+  const filteredGroupedEntries = searchQuery
+    ? Object.keys(groupedEntries).reduce((acc, date) => {
+        const filtered = groupedEntries[date].filter(
+          (entry) =>
+            entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            entry.content.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        if (filtered.length > 0) {
+          acc[date] = filtered
+        }
+        return acc
+      }, {} as Record<string, JournalEntry[]>)
+    : groupedEntries
 
   async function handleDelete() {
     if (!deleteId) return
@@ -97,7 +101,6 @@ export default function JournalListPage() {
       setDeleting(true)
       await deleteEntry(deleteId)
       setDeleteId(null)
-      // No need to refetch - hook updates state optimistically
     } catch (err: any) {
       console.error('Failed to delete entry:', err)
     } finally {
@@ -133,33 +136,44 @@ export default function JournalListPage() {
     )
   }
 
+  // Pagination controls component
+  const PaginationControls = () => {
+    if (searchQuery) return null
+    if (!hasMore) return null
+
+    return (
+      <div className="flex justify-center py-4">
+        <Button
+          variant="outline"
+          onClick={handleLoadMore}
+          disabled={loadingMore}
+          className="w-full max-w-md"
+        >
+          {loadingMore ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Loading more...
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-4 w-4 mr-2" />
+              Load More Entries
+            </>
+          )}
+        </Button>
+      </div>
+    )
+  }
+
+  // Entry count display
+  const EntryCountDisplay = () => (
+    <div className="text-sm text-gray-500 text-center py-2">
+      Showing {entries.length} entries {hasMore && '(more available)'}
+    </div>
+  )
+
   // Render entries grouped by date
   const renderGroupedView = () => {
-    if (!groupedEntries || typeof groupedEntries !== 'object') {
-      return (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2">Loading entries...</span>
-        </div>
-      )
-    }
-
-    // Filter grouped entries based on search query
-    let filteredGroupedEntries = groupedEntries
-    if (searchQuery) {
-      filteredGroupedEntries = Object.keys(groupedEntries).reduce((acc, date) => {
-        const filteredEntriesForDate = groupedEntries[date].filter(
-          (entry) =>
-            entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            entry.content.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        if (filteredEntriesForDate.length > 0) {
-          acc[date] = filteredEntriesForDate
-        }
-        return acc
-      }, {} as Record<string, JournalEntry[]>)
-    }
-
     const dates = Object.keys(filteredGroupedEntries).sort((a, b) => b.localeCompare(a))
     
     if (dates.length === 0) {
@@ -230,6 +244,10 @@ export default function JournalListPage() {
             </div>
           </div>
         ))}
+        
+        {/* Pagination */}
+        <EntryCountDisplay />
+        <PaginationControls />
       </div>
     )
   }
@@ -259,39 +277,45 @@ export default function JournalListPage() {
     }
 
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredEntries.map((entry) => (
-          <Card key={entry.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <CardTitle className="line-clamp-1">{entry.title}</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDeleteId(entry.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              </div>
-              <CardDescription suppressHydrationWarning>
-                {isMounted ? formatDistanceToNow(new Date(entry.created_at), {
-                  addSuffix: true,
-                }) : ''}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 line-clamp-3">
-                {entry.content}
-              </p>
-              <Link href={`/app/journal/${entry.id}`}>
-                <Button variant="link" className="mt-4 px-0">
-                  Read more →
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredEntries.map((entry) => (
+            <Card key={entry.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <CardTitle className="line-clamp-1">{entry.title}</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDeleteId(entry.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
+                <CardDescription suppressHydrationWarning>
+                  {isMounted ? formatDistanceToNow(new Date(entry.created_at), {
+                    addSuffix: true,
+                  }) : ''}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 line-clamp-3">
+                  {entry.content}
+                </p>
+                <Link href={`/app/journal/${entry.id}`}>
+                  <Button variant="link" className="mt-4 px-0">
+                    Read more →
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        
+        {/* Pagination */}
+        <EntryCountDisplay />
+        <PaginationControls />
+      </>
     )
   }
 

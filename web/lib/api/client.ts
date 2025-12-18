@@ -38,6 +38,16 @@ export interface JournalEntry {
   updated_at: string | Date
 }
 
+export interface PaginatedJournalResponse {
+  entries: JournalEntry[]
+  nextCursor: string | null
+}
+
+export interface GroupedPaginatedJournalResponse {
+  groupedEntries: Record<string, JournalEntry[]>
+  nextCursor: string | null
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -437,8 +447,14 @@ class ApiClient {
   // Journal APIs
   // ============================================================================
 
-  async getJournalEntries(): Promise<JournalEntry[]> {
-    return this.request<JournalEntry[]>('/journal')
+  async getJournalEntries(limit?: number, cursor?: string): Promise<PaginatedJournalResponse> {
+    console.log('[API Client] getJournalEntries called with:', { limit, cursor })
+    const params = new URLSearchParams()
+    if (limit) params.append('limit', limit.toString())
+    if (cursor) params.append('cursor', cursor)
+    const queryString = params.toString()
+    console.log('[API Client] getJournalEntries - queryString:', queryString)
+    return this.request<PaginatedJournalResponse>(`/journal${queryString ? `?${queryString}` : ''}`)
   }
 
   async getJournalEntry(id: string): Promise<JournalEntry> {
@@ -486,8 +502,12 @@ class ApiClient {
     return this.request<JournalEntry[]>(`/journal/recent?limit=${limit}`)
   }
 
-  async getGroupedJournalEntries(): Promise<Record<string, JournalEntry[]>> {
-    return this.request<Record<string, JournalEntry[]>>('/journal/grouped')
+  async getGroupedJournalEntries(limit?: number, cursor?: string): Promise<GroupedPaginatedJournalResponse> {
+    const params = new URLSearchParams()
+    if (limit) params.append('limit', limit.toString())
+    if (cursor) params.append('cursor', cursor)
+    const queryString = params.toString()
+    return this.request<GroupedPaginatedJournalResponse>(`/journal/grouped${queryString ? `?${queryString}` : ''}`)
   }
 
   // ============================================================================

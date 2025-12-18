@@ -85,7 +85,7 @@ export class WeeklyInsightsMigrationService {
    */
   async getWeeksNeedingInsights(userId: string): Promise<WeekGroup[]> {
     // Get all journal entries for the user
-    const allEntries = await this.journalService.findAll(userId)
+    const allEntries = await this.journalService.findAllUnpaginated(userId)
 
     if (allEntries.length === 0) {
       return []
@@ -127,7 +127,7 @@ export class WeeklyInsightsMigrationService {
     weeksNeedingMigration: number
     currentWeekExcluded: boolean
   }> {
-    const allEntries = await this.journalService.findAll(userId)
+    const allEntries = await this.journalService.findAllUnpaginated(userId)
     const weeks = this.groupEntriesByWeek(allEntries)
     const existingInsights = await this.weeklyInsightsService.getAllInsights(userId, 1000)
     const weeksNeeding = await this.getWeeksNeedingInsights(userId)

@@ -1,45 +1,100 @@
 /**
  * Journal Hook
  * 
- * Manages journal entries with the backend API
+ * Manages journal entries with the backend API and supports pagination.
+ * Data is fetched once and can be displayed in different views (list or grouped).
  */
 
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import { apiClient, JournalEntry } from '@/lib/api/client'
 import { useAuth } from './useAuth'
 
+const DEFAULT_PAGE_SIZE = 10
+
 interface JournalState {
   entries: JournalEntry[]
-  groupedEntries: Record<string, JournalEntry[]>
   loading: boolean
+  loadingMore: boolean
   error: string | null
+  nextCursor: string | null
+  hasMore: boolean
 }
 
 export function useJournal() {
   const { isAuthenticated } = useAuth()
   const [state, setState] = useState<JournalState>({
     entries: [],
-    groupedEntries: {},
     loading: false,
+    loadingMore: false,
     error: null,
+    nextCursor: null,
+    hasMore: true,
   })
 
-  // Fetch all journal entries
-  const fetchEntries = useCallback(async () => {
+  // Compute grouped entries from the flat entries list
+  const groupedEntries = useMemo(() => {
+    const grouped: Record<string, JournalEntry[]> = {}
+    
+    state.entries.forEach((entry) => {
+      const dateKey = new Date(entry.created_at).toISOString().split('T')[0]
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = []
+      }
+      grouped[dateKey].push(entry)
+    })
+
+    // Sort entries within each date group by created_at (most recent first)
+    Object.keys(grouped).forEach((dateKey) => {
+      grouped[dateKey].sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+    })
+
+    return grouped
+  }, [state.entries])
+
+  // Fetch journal entries - can be initial or load more based on cursor param
+  const fetchEntries = useCallback(async (cursor?: string | null, pageSize: number = DEFAULT_PAGE_SIZE) => {
     if (!isAuthenticated) return
 
-    setState((prev) => ({ ...prev, loading: true, error: null }))
+    // Set appropriate loading state
+    if (cursor) {
+      setState((prev) => ({ ...prev, loadingMore: true, error: null }))
+    } else {
+      setState((prev) => ({ ...prev, loading: true, error: null }))
+    }
+
     try {
-      const entries = await apiClient.getJournalEntries()
-      setState((prev) => ({ ...prev, entries, loading: false, error: null }))
+      const response = await apiClient.getJournalEntries(pageSize, cursor || undefined)
+      
+      setState((prev) => {
+        // If cursor was provided, append entries; otherwise replace
+        const newEntries = cursor 
+          ? [...prev.entries, ...response.entries]
+          : response.entries
+        
+        return {
+          ...prev,
+          entries: newEntries,
+          nextCursor: response.nextCursor,
+          hasMore: response.nextCursor !== null,
+          loading: false,
+          loadingMore: false,
+          error: null,
+        }
+      })
+      
+      return response.nextCursor
     } catch (error: any) {
       setState((prev) => ({
         ...prev,
         loading: false,
+        loadingMore: false,
         error: error.message || 'Failed to fetch entries',
       }))
+      return null
     }
   }, [isAuthenticated])
 
@@ -54,26 +109,12 @@ export function useJournal() {
       setState((prev) => ({ ...prev, loading: true, error: null }))
       try {
         const newEntry = await apiClient.createJournalEntry(data)
-        setState((prev) => {
-          // Add to entries array
-          const updatedEntries = [newEntry, ...prev.entries]
-          
-          // Add to grouped entries
-          const dateKey = new Date(newEntry.created_at).toISOString().split('T')[0]
-          const updatedGroupedEntries = { ...prev.groupedEntries }
-          
-          if (!updatedGroupedEntries[dateKey]) {
-            updatedGroupedEntries[dateKey] = []
-          }
-          updatedGroupedEntries[dateKey] = [newEntry, ...updatedGroupedEntries[dateKey]]
-          
-          return {
-            entries: updatedEntries,
-            groupedEntries: updatedGroupedEntries,
-            loading: false,
-            error: null,
-          }
-        })
+        setState((prev) => ({
+          ...prev,
+          entries: [newEntry, ...prev.entries],
+          loading: false,
+          error: null,
+        }))
         return newEntry
       } catch (error: any) {
         setState((prev) => ({
@@ -101,27 +142,14 @@ export function useJournal() {
       setState((prev) => ({ ...prev, loading: true, error: null }))
       try {
         const updatedEntry = await apiClient.updateJournalEntry(id, data)
-        setState((prev) => {
-          // Update in entries array
-          const updatedEntries = prev.entries.map((entry) =>
+        setState((prev) => ({
+          ...prev,
+          entries: prev.entries.map((entry) =>
             entry.id === id ? updatedEntry : entry
-          )
-          
-          // Update in grouped entries
-          const updatedGroupedEntries = { ...prev.groupedEntries }
-          Object.keys(updatedGroupedEntries).forEach(date => {
-            updatedGroupedEntries[date] = updatedGroupedEntries[date].map(entry =>
-              entry.id === id ? updatedEntry : entry
-            )
-          })
-          
-          return {
-            entries: updatedEntries,
-            groupedEntries: updatedGroupedEntries,
-            loading: false,
-            error: null,
-          }
-        })
+          ),
+          loading: false,
+          error: null,
+        }))
         return updatedEntry
       } catch (error: any) {
         setState((prev) => ({
@@ -140,27 +168,12 @@ export function useJournal() {
     setState((prev) => ({ ...prev, loading: true, error: null }))
     try {
       await apiClient.deleteJournalEntry(id)
-      setState((prev) => {
-        // Remove from entries array
-        const updatedEntries = prev.entries.filter((entry) => entry.id !== id)
-        
-        // Remove from grouped entries
-        const updatedGroupedEntries = { ...prev.groupedEntries }
-        Object.keys(updatedGroupedEntries).forEach(date => {
-          updatedGroupedEntries[date] = updatedGroupedEntries[date].filter(entry => entry.id !== id)
-          // Remove date group if empty
-          if (updatedGroupedEntries[date].length === 0) {
-            delete updatedGroupedEntries[date]
-          }
-        })
-        
-        return {
-          entries: updatedEntries,
-          groupedEntries: updatedGroupedEntries,
-          loading: false,
-          error: null,
-        }
-      })
+      setState((prev) => ({
+        ...prev,
+        entries: prev.entries.filter((entry) => entry.id !== id),
+        loading: false,
+        error: null,
+      }))
     } catch (error: any) {
       setState((prev) => ({
         ...prev,
@@ -171,12 +184,19 @@ export function useJournal() {
     }
   }, [])
 
-  // Search entries
+  // Search entries (resets pagination, shows all matching results)
   const searchEntries = useCallback(async (query: string) => {
     setState((prev) => ({ ...prev, loading: true, error: null }))
     try {
       const results = await apiClient.searchJournalEntries(query)
-      setState((prev) => ({ ...prev, entries: results, loading: false, error: null }))
+      setState((prev) => ({
+        ...prev,
+        entries: results,
+        hasMore: false,
+        nextCursor: null,
+        loading: false,
+        error: null,
+      }))
       return results
     } catch (error: any) {
       setState((prev) => ({
@@ -197,30 +217,22 @@ export function useJournal() {
     }
   }, [])
 
-  // Fetch grouped entries
-  const fetchGroupedEntries = useCallback(async () => {
-    if (!isAuthenticated) return
-
-    setState((prev) => ({ ...prev, loading: true, error: null }))
-    try {
-      const groupedEntries = await apiClient.getGroupedJournalEntries()
-      setState((prev) => ({ ...prev, groupedEntries, loading: false, error: null }))
-    } catch (error: any) {
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: error.message || 'Failed to fetch grouped entries',
-      }))
-    }
-  }, [isAuthenticated])
-
   return {
+    // Data
     entries: state.entries,
-    groupedEntries: state.groupedEntries,
+    groupedEntries,
+    
+    // Loading states
     loading: state.loading,
+    loadingMore: state.loadingMore,
     error: state.error,
+    
+    // Pagination
+    hasMore: state.hasMore,
+    nextCursor: state.nextCursor,
+    
+    // Actions
     fetchEntries,
-    fetchGroupedEntries,
     createEntry,
     updateEntry,
     deleteEntry,
@@ -228,4 +240,3 @@ export function useJournal() {
     getEntry,
   }
 }
-

@@ -808,7 +808,7 @@ export class ChatService {
    * Get journal entries for a specific week (Saturday to Friday)
    */
   async getEntriesForWeek(userId: string, weekStart: Date, weekEnd: Date) {
-    const allEntries = await this.journalService.findAll(userId)
+    const allEntries = await this.journalService.findAllUnpaginated(userId)
     
     return allEntries.filter((entry) => {
       const entryDate = new Date(entry.created_at)

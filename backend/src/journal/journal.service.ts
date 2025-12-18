@@ -69,7 +69,66 @@ export class JournalService {
     }
   }
 
-  async findAll(userId: string): Promise<JournalEntry[]> {
+  async findAll(
+    userId: string,
+    limit?: number,
+    cursor?: string,
+  ): Promise<{ entries: JournalEntry[]; nextCursor: string | null }> {
+    try {
+      // Default page size
+      const pageLimit = limit || 10
+
+      this.logger.log(`[findAll] Fetching entries - pageLimit: ${pageLimit}, cursor: ${cursor || 'null'}`)
+
+      // Fetch one extra to determine if there are more entries
+      const entries = await this.firebaseService.getCollection(
+        this.collectionName,
+        [{ field: 'user_id', operator: '==', value: userId }],
+        'created_at',
+        'desc',
+        pageLimit + 1,
+        cursor,
+      )
+
+      this.logger.log(`[findAll] Firestore returned ${entries.length} entries (requested ${pageLimit + 1})`)
+
+      // Determine if there are more entries
+      const hasMore = entries.length > pageLimit
+      const entriesToReturn = hasMore ? entries.slice(0, pageLimit) : entries
+
+      this.logger.log(`[findAll] hasMore: ${hasMore}, returning ${entriesToReturn.length} entries`)
+
+      // Map entries to JournalEntry type
+      const mappedEntries = entriesToReturn.map((entry: any) => ({
+        id: entry.id,
+        user_id: entry.user_id,
+        title: entry.title,
+        content: entry.content,
+        mood: entry.mood,
+        tags: entry.tags || [],
+        created_at: entry.created_at?.toDate() || new Date(),
+        updated_at: entry.updated_at?.toDate() || new Date(),
+      }))
+
+      // Get the cursor for the next page (last entry's ID)
+      const nextCursor = hasMore ? mappedEntries[mappedEntries.length - 1].id : null
+
+      if (mappedEntries.length > 0) {
+        this.logger.log(`[findAll] First entry ID: ${mappedEntries[0].id}, Last entry ID: ${mappedEntries[mappedEntries.length - 1].id}`)
+      }
+      this.logger.log(`[findAll] nextCursor: ${nextCursor || 'null'}`)
+
+      return { entries: mappedEntries, nextCursor }
+    } catch (error) {
+      this.logger.error('Error fetching journal entries', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get all entries without pagination (for use by other services that need all entries)
+   */
+  async findAllUnpaginated(userId: string): Promise<JournalEntry[]> {
     try {
       const entries = await this.firebaseService.getCollection(
         this.collectionName,
@@ -89,7 +148,7 @@ export class JournalService {
         updated_at: entry.updated_at?.toDate() || new Date(),
       }))
     } catch (error) {
-      this.logger.error('Error fetching journal entries', error)
+      this.logger.error('Error fetching all journal entries', error)
       throw error
     }
   }
@@ -231,7 +290,7 @@ export class JournalService {
   async search(userId: string, searchTerm: string): Promise<JournalEntry[]> {
     try {
       // Get all user's entries (Firestore doesn't support text search natively)
-      const allEntries = await this.findAll(userId)
+      const allEntries = await this.findAllUnpaginated(userId)
 
       // Filter entries that match the search term
       const searchLower = searchTerm.toLowerCase()
@@ -251,8 +310,9 @@ export class JournalService {
 
   async getRecent(userId: string, limit: number = 10): Promise<JournalEntry[]> {
     try {
-      const entries = await this.findAll(userId)
-      return entries.slice(0, limit)
+      // Use pagination for efficiency - only fetch what we need
+      const result = await this.findAll(userId, limit)
+      return result.entries
     } catch (error) {
       this.logger.error('Error fetching recent journal entries', error)
       throw error
@@ -261,7 +321,7 @@ export class JournalService {
 
   async getEntriesFromPastDays(userId: string, days: number = 7): Promise<JournalEntry[]> {
     try {
-      const entries = await this.findAll(userId)
+      const entries = await this.findAllUnpaginated(userId)
       const cutoffDate = new Date()
       cutoffDate.setDate(cutoffDate.getDate() - days)
       
@@ -275,9 +335,14 @@ export class JournalService {
     }
   }
 
-  async findAllGroupedByDate(userId: string): Promise<Record<string, JournalEntry[]>> {
+  async findAllGroupedByDate(
+    userId: string,
+    limit?: number,
+    cursor?: string,
+  ): Promise<{ groupedEntries: Record<string, JournalEntry[]>; nextCursor: string | null }> {
     try {
-      const entries = await this.findAll(userId)
+      // Get paginated entries
+      const { entries, nextCursor } = await this.findAll(userId, limit, cursor)
 
       // Group entries by date (YYYY-MM-DD format)
       const grouped = entries.reduce((acc, entry) => {
@@ -297,7 +362,7 @@ export class JournalService {
         grouped[dateKey].sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
       })
 
-      return grouped
+      return { groupedEntries: grouped, nextCursor }
     } catch (error) {
       this.logger.error('Error fetching grouped journal entries', error)
       throw error
