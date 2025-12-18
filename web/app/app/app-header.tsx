@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { LogOut, Menu, X, Mic, Sparkles, ListChecks } from 'lucide-react'
+import { LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { useGoals } from '@/lib/contexts/goal-context'
@@ -59,7 +59,7 @@ export default function AppHeader() {
               <Link
                 href="/app/journal"
                 className={cn(
-                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors",
                   isActive('/app/journal')
                     ? "bg-gray-100 text-gray-900"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -70,7 +70,7 @@ export default function AppHeader() {
               <Link
                 href="/app/goals"
                 className={cn(
-                  "px-3 py-2 rounded-md text-sm font-medium relative transition-colors",
+                  "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors",
                   isActive('/app/goals')
                     ? "bg-gray-100 text-gray-900"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -89,19 +89,18 @@ export default function AppHeader() {
               <Link
                 href="/app/routines"
                 className={cn(
-                  "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5",
+                  "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors",
                   isActive('/app/routines')
                     ? "bg-gray-100 text-gray-900"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                 )}
               >
-                <ListChecks className="h-4 w-4" />
                 Routines
               </Link>
               <Link
                 href="/app/coach"
                 className={cn(
-                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors",
                   isActive('/app/coach')
                     ? "bg-gray-100 text-gray-900"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -112,33 +111,31 @@ export default function AppHeader() {
               <Link
                 href="/app/insights"
                 className={cn(
-                  "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5",
+                  "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors",
                   isActive('/app/insights')
                     ? "bg-gray-100 text-gray-900"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                 )}
               >
-                <Sparkles className="h-4 w-4" />
                 Insights
               </Link>
               {voiceCoachEnabled && (
                 <Link
                   href="/app/ai-agent"
                   className={cn(
-                    "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5",
+                    "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors",
                     isActive('/app/ai-agent')
                       ? "bg-gray-100 text-gray-900"
                       : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                   )}
                 >
-                  <Mic className="h-4 w-4" />
                   Voice Coach
                 </Link>
               )}
               <Link
                 href="/app/settings"
                 className={cn(
-                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors",
                   isActive('/app/settings')
                     ? "bg-gray-100 text-gray-900"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -183,7 +180,7 @@ export default function AppHeader() {
               <Link
                 href="/app/journal"
                 className={cn(
-                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors",
                   isActive('/app/journal')
                     ? "bg-gray-100 text-gray-900"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -195,7 +192,7 @@ export default function AppHeader() {
               <Link
                 href="/app/goals"
                 className={cn(
-                  "px-3 py-2 rounded-md text-sm font-medium flex items-center justify-between transition-colors",
+                  "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors",
                   isActive('/app/goals')
                     ? "bg-gray-100 text-gray-900"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -219,7 +216,6 @@ export default function AppHeader() {
                 )}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <ListChecks className="h-4 w-4" />
                 Routines
               </Link>
               <Link
@@ -244,7 +240,6 @@ export default function AppHeader() {
                 )}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <Sparkles className="h-4 w-4" />
                 Insights
               </Link>
               {voiceCoachEnabled && (
@@ -258,7 +253,6 @@ export default function AppHeader() {
                   )}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <Mic className="h-4 w-4" />
                   Voice Coach
                 </Link>
               )}
