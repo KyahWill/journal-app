@@ -20,7 +20,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, Brain, Volume2, VolumeX, Mic, Square, ChevronDown, ChevronUp, Target, TrendingUp, Menu } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, Brain, Volume2, VolumeX, Mic, Square, ChevronDown, ChevronUp, Target, TrendingUp, Menu, Trash2 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { useState } from 'react'
 import { CoachSessionsSidebar } from '@/components/coach-sessions-sidebar'
@@ -79,6 +89,7 @@ export default function CoachChatPage() {
   const [goalInsights, setGoalInsights] = useState<string | null>(null)
   const [selectedGoalForInsights, setSelectedGoalForInsights] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
   // Goal chat hook
@@ -226,6 +237,7 @@ export default function CoachChatPage() {
       // If we deleted the current session, clear the chat
       if (sessionIdToDelete === sessionId) {
         clearChat()
+        setDeleteConfirmOpen(false)
       }
     } catch (err) {
       console.error('Failed to delete session:', err)
@@ -357,6 +369,19 @@ export default function CoachChatPage() {
                 <span className="hidden sm:inline">Suggest Goals</span>
                 <span className="sm:hidden">Goals</span>
               </Button>
+              {sessionId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  disabled={loading}
+                  className="flex-1 sm:flex-none text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                >
+                  <Trash2 className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Delete Chat</span>
+                  <span className="sm:hidden">Delete</span>
+                </Button>
+              )}
               {messages.length > 0 && (
                 <Button
                   variant="outline"
@@ -882,6 +907,26 @@ export default function CoachChatPage() {
           )}
         </div>
       </div>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this chat session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this conversation and all its messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => sessionId && handleDeleteSession(sessionId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
