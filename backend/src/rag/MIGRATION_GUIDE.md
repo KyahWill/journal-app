@@ -4,7 +4,17 @@ This guide explains how to use the migration CLI to backfill embeddings for exis
 
 ## Overview
 
-The migration service generates vector embeddings for all existing user content (journal entries, goals, milestones, and progress updates) and stores them in the vector store. This enables semantic search and RAG-enhanced AI responses for historical data.
+The migration service generates vector embeddings for all existing user content and stores them in the vector store. This enables semantic search and RAG-enhanced AI responses for historical data.
+
+### Content Types Migrated
+
+| Content Type | Description | What's Embedded |
+|--------------|-------------|-----------------|
+| Journal Entries | User journal entries | Title + content |
+| Goals | User goals | Title + description |
+| Milestones | Goal milestones | Milestone title |
+| Progress Updates | Goal progress notes | Update content |
+| **Chat Messages** | AI Coach conversations | User message + AI response pairs |
 
 ## Prerequisites
 
@@ -21,17 +31,19 @@ The migration service generates vector embeddings for all existing user content 
 
 ## CLI Commands
 
+**Important:** Use `--` before arguments to pass them to the script (npm requirement).
+
 ### Migrate a Single User
 
 To migrate embeddings for a specific user:
 
 ```bash
-npm run cli migrate-embeddings --userId=<user-id>
+npm run cli -- migrate-embeddings --userId=<user-id>
 ```
 
 Example:
 ```bash
-npm run cli migrate-embeddings --userId=abc123xyz
+npm run cli -- migrate-embeddings --userId=abc123xyz
 ```
 
 ### Migrate All Users
@@ -39,7 +51,7 @@ npm run cli migrate-embeddings --userId=abc123xyz
 To migrate embeddings for all users in the database:
 
 ```bash
-npm run cli migrate-embeddings --all-users
+npm run cli -- migrate-embeddings --all-users
 ```
 
 **Warning:** This can take a long time depending on the amount of content. Use the dry-run mode first to estimate the time required.
@@ -49,13 +61,13 @@ npm run cli migrate-embeddings --all-users
 To estimate the migration scope without actually creating embeddings:
 
 ```bash
-npm run cli migrate-embeddings --userId=<user-id> --dry-run
+npm run cli -- migrate-embeddings --userId=<user-id> --dry-run
 ```
 
 Or for all users:
 
 ```bash
-npm run cli migrate-embeddings --all-users --dry-run
+npm run cli -- migrate-embeddings --all-users --dry-run
 ```
 
 The dry run will show:
@@ -71,6 +83,27 @@ The migration service processes content in the following order:
 2. **Goals** - Embeds title and description
 3. **Milestones** - Embeds milestone titles
 4. **Progress Updates** - Embeds update content
+5. **Chat Messages** - Embeds user/assistant message pairs from AI Coach sessions
+
+### Chat Message Processing
+
+Chat messages are processed as conversation pairs (user message + AI response). This preserves conversational context and enables the AI to reference past discussions.
+
+**Document ID Format:** `{session_id}_msg_{index}`
+
+**Text Format:**
+```
+User: {user's message}
+
+Coach: {AI's response}
+```
+
+### Text Truncation
+
+The embedding API has a 10,000 character limit. Long content is automatically truncated:
+- Truncates at sentence boundaries (`.`, `?`, `!`, or newline) when possible
+- Only truncates at a break point if it's within the last 20% of the text
+- Appends `[Content truncated...]` to indicate truncation
 
 ### Batch Processing
 
@@ -88,7 +121,8 @@ The migration service provides real-time progress updates:
 [INFO] Found 10 goals to migrate
 [INFO] Found 25 milestones to migrate
 [INFO] Found 15 progress updates to migrate
-[INFO] Migration progress: 25/100 items (25.00%) - Est. time remaining: 2m 30s
+[INFO] Found 34 chat message pairs to migrate from 20 sessions
+[INFO] Migration progress: 25/134 items (18.66%) - Est. time remaining: 3m 45s
 ...
 [INFO] Migration complete
 ```
@@ -106,14 +140,29 @@ After migration completes, you'll see a summary:
 ```
 Migration Result:
   User ID: abc123xyz
-  Total processed: 100
-  Successful: 98
+  Total processed: 134
+  Successful: 132
   Failed: 2
   Duration: 5m 23s
   Errors:
-    - journal doc123: Text length exceeds maximum
-    - goal doc456: API rate limit exceeded
+    - journal doc123: metadata.mood is undefined
+    - chat_message session_msg_0: Text length exceeds maximum
+
+Stats:
+  journals: 50 processed, 1 failed
+  goals: 10 processed, 0 failed
+  milestones: 25 processed, 0 failed
+  progressUpdates: 15 processed, 0 failed
+  chatMessages: 34 processed, 1 failed
 ```
+
+### Common Errors
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `metadata.mood is undefined` | Journal entry has no mood set | Fixed in latest version - metadata fields are now optional |
+| `metadata.personality_id is undefined` | Chat session has no personality | Fixed in latest version - metadata fields are now optional |
+| `Text length exceeds maximum` | Content > 10,000 chars | Fixed in latest version - text is now auto-truncated |
 
 ## Best Practices
 
@@ -141,12 +190,12 @@ For large databases, consider migrating users in batches:
 
 ```bash
 # Migrate user 1
-npm run cli migrate-embeddings --userId=user1
+npm run cli -- migrate-embeddings --userId=user1
 
 # Wait and monitor
 
 # Migrate user 2
-npm run cli migrate-embeddings --userId=user2
+npm run cli -- migrate-embeddings --userId=user2
 ```
 
 ### 5. Handle Failures
@@ -251,12 +300,12 @@ Complete migration workflow for a production system:
 
 ```bash
 # 1. Dry run to estimate scope
-npm run cli migrate-embeddings --all-users --dry-run
+npm run cli -- migrate-embeddings --all-users --dry-run
 
 # 2. Review the estimates and plan accordingly
 
 # 3. Run migration with logging
-npm run cli migrate-embeddings --all-users > migration.log 2>&1
+npm run cli -- migrate-embeddings --all-users > migration.log 2>&1
 
 # 4. Monitor progress in another terminal
 tail -f migration.log
@@ -271,7 +320,20 @@ grep "ERROR" migration.log
 # 7. Verify in Firestore
 # - Check embeddings collection
 # - Verify document counts
+# - Check for chat_message content types
 ```
+
+## New Content After Migration
+
+After the initial migration, new content is automatically embedded:
+
+- **Journal entries**: Embedded when created/updated
+- **Goals**: Embedded when created/updated
+- **Milestones**: Embedded when created/updated
+- **Progress updates**: Embedded when created
+- **Chat messages**: Embedded after each AI Coach conversation (async, non-blocking)
+
+No additional migration is needed for new content.
 
 ## Support
 

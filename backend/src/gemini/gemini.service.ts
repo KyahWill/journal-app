@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai'
-import { JournalEntry, ChatMessage } from '@/common/types/journal.types'
+import { JournalEntry, ChatMessage, ChatSession } from '@/common/types/journal.types'
 
 @Injectable()
 export class GeminiService implements OnModuleInit {
@@ -134,6 +134,51 @@ export class GeminiService implements OnModuleInit {
         buffer.push(`Time Taken: ${goal.daysTaken} days`)
         buffer.push('---\n')
       }
+    }
+
+    return buffer.join('\n')
+  }
+
+  private formatChatContext(sessions: ChatSession[], maxMessages: number = 50): string {
+    if (!sessions || sessions.length === 0) {
+      return ''
+    }
+
+    const buffer: string[] = []
+    buffer.push("\n=== PREVIOUS COACHING CONVERSATIONS ===\n")
+    buffer.push("Below are excerpts from the user's previous coaching sessions. Use these to understand their ongoing journey and maintain continuity:\n")
+
+    let messageCount = 0
+
+    for (const session of sessions) {
+      if (messageCount >= maxMessages) break
+      if (!session.messages || session.messages.length === 0) continue
+
+      const sessionDate = new Date(session.updated_at).toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+      
+      buffer.push(`\n--- Session: ${session.title || 'Untitled'} (${sessionDate}) ---`)
+
+      for (const message of session.messages) {
+        if (messageCount >= maxMessages) break
+        
+        const role = message.role === 'user' ? 'User' : 'Coach'
+        // Truncate very long messages to avoid context overflow
+        const content = message.content.length > 500 
+          ? message.content.substring(0, 500) + '...'
+          : message.content
+        
+        buffer.push(`${role}: ${content}`)
+        messageCount++
+      }
+    }
+
+    if (messageCount > 0) {
+      buffer.push('\n--- End of Previous Conversations ---\n')
     }
 
     return buffer.join('\n')
@@ -294,14 +339,16 @@ Remember: You're here to support their personal and professional growth journey.
     }
   }
 
-  async generateInsights(journalEntries: JournalEntry[]): Promise<string> {
+  async generateInsights(journalEntries: JournalEntry[], chatSessions?: ChatSession[]): Promise<string> {
     try {
-      if (journalEntries.length === 0) {
-        return 'No journal entries available to generate insights.'
+      if (journalEntries.length === 0 && (!chatSessions || chatSessions.length === 0)) {
+        return 'No journal entries or coaching conversations available to generate insights.'
       }
 
       const journalContext = this.formatJournalContext(journalEntries)
-      const prompt = `Based on the following journal entries, provide key insights, patterns, and themes you observe. Focus on:
+      const chatContext = chatSessions ? this.formatChatContext(chatSessions) : ''
+      
+      const prompt = `Based on the following journal entries${chatSessions?.length ? ' and coaching conversations' : ''}, provide key insights, patterns, and themes you observe. Focus on:
 1. Emotional patterns and trends
 2. Recurring challenges or concerns
 3. Areas of growth and progress
@@ -309,8 +356,9 @@ Remember: You're here to support their personal and professional growth journey.
 5. Actionable recommendations
 
 ${journalContext}
+${chatContext}
 
-Please provide a thoughtful analysis in 3-5 paragraphs.`
+Please provide a thoughtful analysis in 3-5 paragraphs. When relevant, reference specific themes from both journal entries and coaching conversations to show continuity in the user's journey.`
 
       const result = await this.model.generateContent(prompt)
       const response = result.response
@@ -321,15 +369,17 @@ Please provide a thoughtful analysis in 3-5 paragraphs.`
     }
   }
 
-  async *generateInsightsStream(journalEntries: JournalEntry[]): AsyncGenerator<string, void, unknown> {
+  async *generateInsightsStream(journalEntries: JournalEntry[], chatSessions?: ChatSession[]): AsyncGenerator<string, void, unknown> {
     try {
-      if (journalEntries.length === 0) {
-        yield 'No journal entries available to generate insights.'
+      if (journalEntries.length === 0 && (!chatSessions || chatSessions.length === 0)) {
+        yield 'No journal entries or coaching conversations available to generate insights.'
         return
       }
 
       const journalContext = this.formatJournalContext(journalEntries)
-      const prompt = `Based on the following journal entries, provide key insights, patterns, and themes you observe. Focus on:
+      const chatContext = chatSessions ? this.formatChatContext(chatSessions) : ''
+      
+      const prompt = `Based on the following journal entries${chatSessions?.length ? ' and coaching conversations' : ''}, provide key insights, patterns, and themes you observe. Focus on:
 1. Emotional patterns and trends
 2. Recurring challenges or concerns
 3. Areas of growth and progress
@@ -337,8 +387,9 @@ Please provide a thoughtful analysis in 3-5 paragraphs.`
 5. Actionable recommendations
 
 ${journalContext}
+${chatContext}
 
-Please provide a thoughtful analysis in 3-5 paragraphs.`
+Please provide a thoughtful analysis in 3-5 paragraphs. When relevant, reference specific themes from both journal entries and coaching conversations to show continuity in the user's journey.`
 
       const result = await this.model.generateContentStream(prompt)
 
@@ -417,23 +468,26 @@ Do not provide an analysis of the prompt, only the modified prompt.`
     }
   }
 
-  async generateGoalSuggestions(journalEntries: JournalEntry[]): Promise<any[]> {
+  async generateGoalSuggestions(journalEntries: JournalEntry[], chatSessions?: ChatSession[]): Promise<any[]> {
     try {
-      if (journalEntries.length === 0) {
+      if (journalEntries.length === 0 && (!chatSessions || chatSessions.length === 0)) {
         return []
       }
 
       const journalContext = this.formatJournalContext(journalEntries)
-      const prompt = `Based on the following journal entries, analyze patterns, themes, and aspirations to suggest 3-5 specific, actionable goals the user might want to pursue.
+      const chatContext = chatSessions ? this.formatChatContext(chatSessions) : ''
+      
+      const prompt = `Based on the following journal entries${chatSessions?.length ? ' and coaching conversations' : ''}, analyze patterns, themes, and aspirations to suggest 3-5 specific, actionable goals the user might want to pursue.
 
 ${journalContext}
+${chatContext}
 
 For each goal suggestion, provide:
 1. A clear, specific title (3-10 words)
 2. A category (one of: career, health, personal, financial, relationships, learning, other)
-3. A brief description explaining why this goal is relevant based on their journal entries (2-3 sentences)
+3. A brief description explaining why this goal is relevant based on their journal entries${chatSessions?.length ? ' and conversations' : ''} (2-3 sentences)
 4. 2-4 suggested milestones to achieve this goal
-5. A reasoning section that references specific journal entries or patterns
+5. A reasoning section that references specific journal entries${chatSessions?.length ? ', conversations,' : ''} or patterns
 
 Format your response as a JSON array with this structure:
 [

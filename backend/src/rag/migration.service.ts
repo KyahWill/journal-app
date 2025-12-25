@@ -14,6 +14,7 @@ interface MigrationStats {
   goals: { total: number; processed: number; failed: number };
   milestones: { total: number; processed: number; failed: number };
   progressUpdates: { total: number; processed: number; failed: number };
+  chatMessages: { total: number; processed: number; failed: number };
 }
 
 /**
@@ -22,7 +23,7 @@ interface MigrationStats {
 export interface MigrationProgressCallback {
   (progress: {
     userId: string;
-    phase: 'journals' | 'goals' | 'milestones' | 'progress_updates';
+    phase: 'journals' | 'goals' | 'milestones' | 'progress_updates' | 'chat_messages';
     processed: number;
     total: number;
     percentage: number;
@@ -39,6 +40,7 @@ export class MigrationService {
   private readonly config = ragConfig();
   private readonly BATCH_SIZE = 10; // Process 10 items at a time
   private readonly DELAY_BETWEEN_BATCHES = 2000; // 2 seconds delay between batches
+  private readonly MAX_TEXT_LENGTH = 10000; // Max text length for embeddings
 
   constructor(
     private firebaseService: FirebaseService,
@@ -71,6 +73,7 @@ export class MigrationService {
       goals: { total: 0, processed: 0, failed: 0 },
       milestones: { total: 0, processed: 0, failed: 0 },
       progressUpdates: { total: 0, processed: 0, failed: 0 },
+      chatMessages: { total: 0, processed: 0, failed: 0 },
     };
 
     this.logger.log(`Starting content migration for user ${userId}`);
@@ -140,6 +143,21 @@ export class MigrationService {
         );
       });
 
+      // Migrate chat sessions
+      await this.migrateChatSessions(userId, result, stats, (processed, total) => {
+        processedItems = stats.journals.total + stats.goals.total + stats.milestones.total + stats.progressUpdates.total + processed;
+        this.reportProgress(
+          userId,
+          'chat_messages',
+          processed,
+          total,
+          processedItems,
+          totalItems,
+          startTime,
+          progressCallback,
+        );
+      });
+
       result.duration = Date.now() - startTime;
 
       this.logger.log({
@@ -170,7 +188,7 @@ export class MigrationService {
    */
   private reportProgress(
     userId: string,
-    phase: 'journals' | 'goals' | 'milestones' | 'progress_updates',
+    phase: 'journals' | 'goals' | 'milestones' | 'progress_updates' | 'chat_messages',
     phaseProcessed: number,
     phaseTotal: number,
     totalProcessed: number,
@@ -492,6 +510,90 @@ export class MigrationService {
   }
 
   /**
+   * Migrate chat sessions for a user
+   * Each message pair (user + assistant) is embedded together to preserve context
+   * @param userId - User ID
+   * @param result - Migration result to update
+   * @param stats - Migration statistics to update
+   * @param onProgress - Progress callback
+   */
+  private async migrateChatSessions(
+    userId: string,
+    result: MigrationResult,
+    stats: MigrationStats,
+    onProgress?: (processed: number, total: number) => void,
+  ): Promise<void> {
+    this.logger.log(`Migrating chat sessions for user ${userId}`);
+
+    try {
+      // Fetch all chat sessions for the user
+      const sessions = await this.firebaseService.getCollection(
+        'chat_sessions',
+        [{ field: 'user_id', operator: '==', value: userId }],
+      );
+
+      // Extract message pairs from all sessions
+      const messagePairs: any[] = [];
+      for (const session of sessions) {
+        const messages = session.messages || [];
+        // Process messages in pairs (user message + assistant response)
+        for (let i = 0; i < messages.length - 1; i += 2) {
+          const userMsg = messages[i];
+          const assistantMsg = messages[i + 1];
+          
+          // Only process complete pairs (user + assistant)
+          if (userMsg?.role === 'user' && assistantMsg?.role === 'assistant') {
+            messagePairs.push({
+              id: `${session.id}_msg_${i}`,
+              session_id: session.id,
+              session_title: session.title,
+              user_content: userMsg.content,
+              assistant_content: assistantMsg.content,
+              timestamp: userMsg.timestamp || assistantMsg.timestamp,
+              personality_id: session.personality_id,
+            });
+          }
+        }
+      }
+
+      stats.chatMessages.total = messagePairs.length;
+      this.logger.log(`Found ${messagePairs.length} chat message pairs to migrate from ${sessions.length} sessions`);
+
+      // Process in batches
+      for (let i = 0; i < messagePairs.length; i += this.BATCH_SIZE) {
+        const batch = messagePairs.slice(i, Math.min(i + this.BATCH_SIZE, messagePairs.length));
+        
+        await this.processBatch(batch, userId, 'chat_message', result, stats.chatMessages);
+
+        // Report progress
+        if (onProgress) {
+          onProgress(stats.chatMessages.processed, stats.chatMessages.total);
+        }
+
+        // Add delay between batches to respect rate limits
+        if (i + this.BATCH_SIZE < messagePairs.length) {
+          await this.sleep(this.DELAY_BETWEEN_BATCHES);
+        }
+      }
+
+      this.logger.log({
+        action: 'chat_sessions_migrated',
+        userId,
+        total: stats.chatMessages.total,
+        processed: stats.chatMessages.processed,
+        failed: stats.chatMessages.failed,
+        sessionsProcessed: sessions.length,
+      });
+    } catch (error) {
+      this.logger.error('Failed to migrate chat sessions', {
+        error: error.message,
+        userId,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Process a batch of documents
    * @param batch - Batch of documents to process
    * @param userId - User ID
@@ -502,7 +604,7 @@ export class MigrationService {
   private async processBatch(
     batch: any[],
     userId: string,
-    contentType: 'journal' | 'goal' | 'milestone' | 'progress_update',
+    contentType: 'journal' | 'goal' | 'milestone' | 'progress_update' | 'chat_message',
     result: MigrationResult,
     typeStats: { total: number; processed: number; failed: number },
   ): Promise<void> {
@@ -574,21 +676,23 @@ export class MigrationService {
    */
   private extractContentData(
     item: any,
-    contentType: 'journal' | 'goal' | 'milestone' | 'progress_update',
+    contentType: 'journal' | 'goal' | 'milestone' | 'progress_update' | 'chat_message',
   ): { text: string; metadata: Record<string, any> } {
     switch (contentType) {
       case 'journal':
+        // Filter out undefined values to avoid Firestore errors
+        const journalMetadata: Record<string, any> = {};
+        if (item.mood) journalMetadata.mood = item.mood;
+        if (item.tags && item.tags.length > 0) journalMetadata.tags = item.tags;
+        
         return {
-          text: `${item.title || ''}\n\n${item.content || ''}`,
-          metadata: {
-            mood: item.mood,
-            tags: item.tags || [],
-          },
+          text: this.truncateText(`${item.title || ''}\n\n${item.content || ''}`),
+          metadata: journalMetadata,
         };
 
       case 'goal':
         return {
-          text: `${item.title || ''}\n\n${item.description || ''}`,
+          text: this.truncateText(`${item.title || ''}\n\n${item.description || ''}`),
           metadata: {
             category: item.category,
             status: item.status,
@@ -598,7 +702,7 @@ export class MigrationService {
 
       case 'milestone':
         return {
-          text: item.title || '',
+          text: this.truncateText(item.title || ''),
           metadata: {
             goal_id: item.goal_id,
             due_date: item.due_date?.toDate?.()?.toISOString() || null,
@@ -609,16 +713,62 @@ export class MigrationService {
 
       case 'progress_update':
         return {
-          text: item.content || '',
+          text: this.truncateText(item.content || ''),
           metadata: {
             goal_id: item.goal_id,
             created_at: item.created_at?.toDate?.()?.toISOString() || null,
           },
         };
 
+      case 'chat_message':
+        // Format as a conversation exchange for better semantic search
+        // Filter out undefined values to avoid Firestore errors
+        const chatMetadata: Record<string, any> = {
+          session_id: item.session_id,
+          timestamp: item.timestamp?.toDate?.()?.toISOString() || item.timestamp || null,
+        };
+        if (item.session_title) chatMetadata.session_title = item.session_title;
+        if (item.personality_id) chatMetadata.personality_id = item.personality_id;
+        
+        return {
+          text: this.truncateText(`User: ${item.user_content || ''}\n\nCoach: ${item.assistant_content || ''}`),
+          metadata: chatMetadata,
+        };
+
       default:
         return { text: '', metadata: {} };
     }
+  }
+
+  /**
+   * Truncate text to maximum allowed length for embeddings
+   * Tries to truncate at a sentence boundary for better semantic coherence
+   * @param text - Text to truncate
+   * @returns Truncated text
+   */
+  private truncateText(text: string): string {
+    if (text.length <= this.MAX_TEXT_LENGTH) {
+      return text;
+    }
+
+    // Truncate and try to end at a sentence boundary
+    let truncated = text.substring(0, this.MAX_TEXT_LENGTH);
+    
+    // Find the last sentence-ending punctuation
+    const lastPeriod = truncated.lastIndexOf('.');
+    const lastQuestion = truncated.lastIndexOf('?');
+    const lastExclamation = truncated.lastIndexOf('!');
+    const lastNewline = truncated.lastIndexOf('\n');
+    
+    const lastBreak = Math.max(lastPeriod, lastQuestion, lastExclamation, lastNewline);
+    
+    // Only use the break point if it's in the last 20% of the text
+    if (lastBreak > this.MAX_TEXT_LENGTH * 0.8) {
+      truncated = truncated.substring(0, lastBreak + 1);
+    }
+
+    this.logger.debug(`Truncated text from ${text.length} to ${truncated.length} characters`);
+    return truncated + '\n\n[Content truncated...]';
   }
 
   /**
@@ -645,8 +795,12 @@ export class MigrationService {
       const goals = await this.firebaseService.getCollection('goals', []);
       const goalUserIds = new Set(goals.map((g: any) => g.user_id));
 
+      // Get unique user IDs from chat sessions
+      const chatSessions = await this.firebaseService.getCollection('chat_sessions', []);
+      const chatUserIds = new Set(chatSessions.map((c: any) => c.user_id));
+
       // Combine and deduplicate
-      const allUserIds = Array.from(new Set([...journalUserIds, ...goalUserIds]));
+      const allUserIds = Array.from(new Set([...journalUserIds, ...goalUserIds, ...chatUserIds]));
 
       this.logger.log(`Found ${allUserIds.length} unique users`);
       return allUserIds;
@@ -691,6 +845,17 @@ export class MigrationService {
         const progressRef = firestore.collection(`goals/${goal.id}/progress_updates`);
         const progressSnapshot = await progressRef.get();
         total += progressSnapshot.size;
+      }
+
+      // Count chat message pairs
+      const sessions = await this.firebaseService.getCollection(
+        'chat_sessions',
+        [{ field: 'user_id', operator: '==', value: userId }],
+      );
+      for (const session of sessions) {
+        const messages = session.messages || [];
+        // Count complete message pairs (user + assistant)
+        total += Math.floor(messages.length / 2);
       }
 
       this.logger.log(`Estimated ${total} items to migrate for user ${userId}`);

@@ -16,7 +16,7 @@ The embeddings collection stores vector representations of user content with the
 {
   id: string                        // Auto-generated document ID
   user_id: string                   // User who owns this embedding
-  content_type: string              // Type: 'journal', 'goal', 'milestone', 'progress_update'
+  content_type: string              // Type: 'journal', 'goal', 'milestone', 'progress_update', 'chat_message'
   document_id: string               // ID of the source document
   embedding: number[]               // Vector embedding (768 dimensions)
   text_snippet: string              // First 500 characters of original text
@@ -24,6 +24,29 @@ The embeddings collection stores vector representations of user content with the
   created_at: Timestamp             // When embedding was created
   updated_at: Timestamp             // When embedding was last updated
 }
+```
+
+### Content Type: `chat_message`
+
+Chat messages are stored as conversation pairs (user question + AI response) to preserve context. The document ID format is `{session_id}_msg_{index}`.
+
+**Metadata Structure:**
+```typescript
+{
+  session_id: string               // ID of the chat session
+  session_title: string            // Title of the chat session (if set)
+  personality_id: string           // Coach personality used for the response
+  user_message_id: string          // ID of the user message
+  assistant_message_id: string     // ID of the assistant response
+  timestamp: string                // ISO timestamp of the conversation
+}
+```
+
+**Text Format:**
+```
+User: {user's message content}
+
+Coach: {AI assistant's response}
 ```
 
 ## Required Indexes
@@ -41,6 +64,7 @@ The embeddings collection stores vector representations of user content with the
 - Retrieve all journal embeddings for a user, sorted by date
 - Fetch goal embeddings for semantic search
 - Filter embeddings by specific content types during RAG retrieval
+- Search past chat conversations for relevant context
 
 **Example Query:**
 ```typescript

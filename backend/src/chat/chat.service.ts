@@ -145,6 +145,16 @@ export class ChatService {
         await this.updateSession(session.id, userId, session.messages, sessionPersonalityId)
       }
 
+      // Embed the message pair for RAG (async, non-blocking)
+      this.embedChatMessagePair(
+        userId,
+        session.id,
+        session.title,
+        userMessage,
+        assistantMessage,
+        sessionPersonalityId,
+      )
+
       this.logger.log(`Message sent in session: ${session.id} for user: ${userId}`)
 
       return {
@@ -295,6 +305,16 @@ export class ChatService {
         await this.updateSession(session.id, userId, session.messages, sessionPersonalityId)
       }
 
+      // Embed the message pair for RAG (async, non-blocking)
+      this.embedChatMessagePair(
+        userId,
+        session.id,
+        session.title,
+        userMessage,
+        assistantMessage,
+        sessionPersonalityId,
+      )
+
       // Send completion
       yield {
         type: 'done',
@@ -434,6 +454,43 @@ export class ChatService {
     }
   }
 
+  /**
+   * Get recent chat sessions formatted for AI context
+   * Returns the most recent sessions sorted by updated_at
+   */
+  async getChatContextForAI(userId: string, maxSessions: number = 10): Promise<ChatSession[]> {
+    try {
+      const sessions = await this.firebaseService.getCollection(
+        this.collectionName,
+        [{ field: 'user_id', operator: '==', value: userId }],
+        'updated_at',
+        'desc',
+      )
+
+      // Return the most recent sessions with messages
+      const sessionsWithMessages = sessions
+        .filter((session: any) => session.messages && session.messages.length > 0)
+        .slice(0, maxSessions)
+        .map((session: any) => ({
+          id: session.id,
+          user_id: session.user_id,
+          title: session.title,
+          messages: session.messages || [],
+          personality_id: session.personality_id || session.prompt_id,
+          created_at: session.created_at?.toDate() || new Date(),
+          updated_at: session.updated_at?.toDate() || new Date(),
+        }))
+
+      this.logger.log(`Retrieved ${sessionsWithMessages.length} chat sessions for AI context for user: ${userId}`)
+      
+      return sessionsWithMessages
+    } catch (error) {
+      this.logger.error('Error fetching chat sessions for AI context', error)
+      // Return empty array to allow insights to continue with just journal entries
+      return []
+    }
+  }
+
   async generateInsights(userId: string) {
     try {
       // Check rate limit
@@ -450,17 +507,24 @@ export class ChatService {
         )
       }
 
-      const journalEntries = await this.journalService.getRecent(userId, 30)
+      // Fetch journal entries and chat sessions in parallel
+      const [journalEntries, chatSessions] = await Promise.all([
+        this.journalService.getRecent(userId, 30),
+        this.getChatContextForAI(userId, 10),
+      ])
 
-      if (journalEntries.length === 0) {
+      if (journalEntries.length === 0 && chatSessions.length === 0) {
         return {
-          insights: 'No journal entries available to generate insights. Start writing to get personalized insights!',
+          insights: 'No journal entries or coaching conversations available to generate insights. Start writing or chatting to get personalized insights!',
         }
       }
 
-      const insights = await this.geminiService.generateInsights(journalEntries)
+      const insights = await this.geminiService.generateInsights(journalEntries, chatSessions)
 
-      this.logger.log(`Insights generated for user: ${userId}`)
+      this.logger.log(`Insights generated for user: ${userId}`, {
+        journalEntryCount: journalEntries.length,
+        chatSessionCount: chatSessions.length,
+      })
 
       return { insights }
     } catch (error) {
@@ -498,15 +562,19 @@ export class ChatService {
         usageInfo,
       }
 
-      this.logger.debug(`[Insights Stream] Fetching recent journal entries for user: ${userId}`)
-      const journalEntries = await this.journalService.getRecent(userId, 30)
-      this.logger.log(`[Insights Stream] Retrieved ${journalEntries.length} journal entries for user: ${userId}`)
+      // Fetch journal entries and chat sessions in parallel
+      this.logger.debug(`[Insights Stream] Fetching recent journal entries and chat sessions for user: ${userId}`)
+      const [journalEntries, chatSessions] = await Promise.all([
+        this.journalService.getRecent(userId, 30),
+        this.getChatContextForAI(userId, 10),
+      ])
+      this.logger.log(`[Insights Stream] Retrieved ${journalEntries.length} journal entries and ${chatSessions.length} chat sessions for user: ${userId}`)
 
-      if (journalEntries.length === 0) {
-        this.logger.warn(`[Insights Stream] No journal entries found for user: ${userId}`)
+      if (journalEntries.length === 0 && chatSessions.length === 0) {
+        this.logger.warn(`[Insights Stream] No journal entries or chat sessions found for user: ${userId}`)
         yield {
           type: 'chunk',
-          content: 'No journal entries available to generate insights. Start writing to get personalized insights!',
+          content: 'No journal entries or coaching conversations available to generate insights. Start writing or chatting to get personalized insights!',
         }
         yield {
           type: 'done',
@@ -517,7 +585,7 @@ export class ChatService {
       this.logger.debug(`[Insights Stream] Starting streaming response from Gemini for user: ${userId}`)
       let chunkCount = 0
       
-      for await (const chunk of this.geminiService.generateInsightsStream(journalEntries)) {
+      for await (const chunk of this.geminiService.generateInsightsStream(journalEntries, chatSessions)) {
         chunkCount++
         yield {
           type: 'chunk',
@@ -528,6 +596,7 @@ export class ChatService {
       this.logger.log(`[Insights Stream] Successfully completed streaming insights for user: ${userId}`, {
         chunkCount,
         entryCount: journalEntries.length,
+        chatSessionCount: chatSessions.length,
       })
 
       // Send completion event
@@ -613,18 +682,25 @@ export class ChatService {
         )
       }
 
-      const journalEntries = await this.journalService.getRecent(userId, 30)
+      // Fetch journal entries and chat sessions in parallel
+      const [journalEntries, chatSessions] = await Promise.all([
+        this.journalService.getRecent(userId, 30),
+        this.getChatContextForAI(userId, 10),
+      ])
 
-      if (journalEntries.length === 0) {
+      if (journalEntries.length === 0 && chatSessions.length === 0) {
         return {
           suggestions: [],
-          message: 'No journal entries available to generate goal suggestions. Start writing to get personalized goal suggestions!',
+          message: 'No journal entries or coaching conversations available to generate goal suggestions. Start writing or chatting to get personalized goal suggestions!',
         }
       }
 
-      const suggestions = await this.geminiService.generateGoalSuggestions(journalEntries)
+      const suggestions = await this.geminiService.generateGoalSuggestions(journalEntries, chatSessions)
 
-      this.logger.log(`Goal suggestions generated for user: ${userId}`)
+      this.logger.log(`Goal suggestions generated for user: ${userId}`, {
+        journalEntryCount: journalEntries.length,
+        chatSessionCount: chatSessions.length,
+      })
 
       return { suggestions, usageInfo }
     } catch (error) {
@@ -1140,6 +1216,93 @@ export class ChatService {
         recentCompletions: [],
       }
     }
+  }
+
+  /**
+   * Embed a chat message pair (user + assistant) for RAG retrieval
+   * This runs asynchronously and does not block the chat response
+   * @param userId - User ID
+   * @param sessionId - Chat session ID
+   * @param sessionTitle - Optional session title
+   * @param userMessage - The user's message
+   * @param assistantMessage - The AI's response
+   * @param personalityId - Optional personality ID used for the response
+   */
+  private readonly MAX_EMBEDDING_TEXT_LENGTH = 10000
+
+  private embedChatMessagePair(
+    userId: string,
+    sessionId: string,
+    sessionTitle: string | undefined,
+    userMessage: ChatMessage,
+    assistantMessage: ChatMessage,
+    personalityId?: string,
+  ): void {
+    // Generate a unique document ID for this message pair
+    const messageIndex = Math.floor((new Date().getTime()) / 1000)
+    const documentId = `${sessionId}_msg_${messageIndex}`
+
+    // Format the conversation as text for embedding
+    let text = `User: ${userMessage.content}\n\nCoach: ${assistantMessage.content}`
+
+    // Truncate if text exceeds maximum length
+    if (text.length > this.MAX_EMBEDDING_TEXT_LENGTH) {
+      text = this.truncateTextForEmbedding(text)
+    }
+
+    // Build metadata, filtering out undefined values to avoid Firestore errors
+    const metadata: Record<string, any> = {
+      session_id: sessionId,
+      user_message_id: userMessage.id,
+      assistant_message_id: assistantMessage.id,
+      timestamp: userMessage.timestamp?.toISOString() || new Date().toISOString(),
+    }
+    if (sessionTitle) metadata.session_title = sessionTitle
+    if (personalityId) metadata.personality_id = personalityId
+
+    // Queue the embedding (async, non-blocking)
+    this.ragService.embedContent(
+      {
+        userId,
+        contentType: 'chat_message',
+        documentId,
+        text,
+        metadata,
+      },
+      true, // async = true, queue for background processing
+    ).catch((error) => {
+      // Log but don't throw - embedding failures should not affect chat
+      this.logger.error('Failed to embed chat message pair', {
+        error: error.message,
+        userId,
+        sessionId,
+        documentId,
+      })
+    })
+  }
+
+  /**
+   * Truncate text to maximum allowed length for embeddings
+   * Tries to truncate at a sentence boundary for better semantic coherence
+   */
+  private truncateTextForEmbedding(text: string): string {
+    let truncated = text.substring(0, this.MAX_EMBEDDING_TEXT_LENGTH)
+    
+    // Find the last sentence-ending punctuation
+    const lastPeriod = truncated.lastIndexOf('.')
+    const lastQuestion = truncated.lastIndexOf('?')
+    const lastExclamation = truncated.lastIndexOf('!')
+    const lastNewline = truncated.lastIndexOf('\n')
+    
+    const lastBreak = Math.max(lastPeriod, lastQuestion, lastExclamation, lastNewline)
+    
+    // Only use the break point if it's in the last 20% of the text
+    if (lastBreak > this.MAX_EMBEDDING_TEXT_LENGTH * 0.8) {
+      truncated = truncated.substring(0, lastBreak + 1)
+    }
+
+    this.logger.debug(`Truncated chat message from ${text.length} to ${truncated.length} characters for embedding`)
+    return truncated + '\n\n[Content truncated...]'
   }
 }
 

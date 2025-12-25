@@ -2,12 +2,68 @@
 
 This module implements Retrieval-Augmented Generation (RAG) capabilities for the backend server, enabling semantic search and context retrieval for AI coaching features.
 
+## Supported Content Types
+
+The RAG system embeds and retrieves the following content types:
+
+| Content Type | Description | Source |
+|--------------|-------------|--------|
+| `journal` | Journal entries | Journal entries collection |
+| `goal` | User goals | Goals collection |
+| `milestone` | Goal milestones | Goals subcollection |
+| `progress_update` | Goal progress updates | Goals subcollection |
+| `chat_message` | AI Coach conversations | Chat sessions collection |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         User Message                                 │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                         ChatService                                  │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │ 1. Retrieve RAG context (semantic search)                    │   │
+│  │ 2. Build prompt with journal, goals, and RAG context         │   │
+│  │ 3. Send to Gemini for response                               │   │
+│  │ 4. Embed conversation pair (async, non-blocking)             │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │
+                    ┌─────────────┴─────────────┐
+                    ▼                           ▼
+┌───────────────────────────────┐  ┌───────────────────────────────────┐
+│        RagService             │  │        EmbeddingService           │
+│  - Orchestrates RAG workflow  │  │  - Generates vector embeddings    │
+│  - Formats context for AI     │  │  - Uses Gemini text-embedding-004 │
+│  - Manages job queue          │  │  - Max 10,000 chars per text      │
+└───────────────────┬───────────┘  └───────────────────────────────────┘
+                    │
+                    ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                      VectorStoreService                               │
+│  - Stores embeddings in Firestore                                     │
+│  - Performs cosine similarity search                                  │
+│  - Caches results for performance                                     │
+└───────────────────────────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                      Firestore (embeddings collection)                │
+│  - user_id, content_type, document_id, embedding[], text_snippet      │
+└───────────────────────────────────────────────────────────────────────┘
+```
+
 ## Directory Structure
 
 ```
 rag/
 ├── config/
 │   └── rag.config.ts          # Configuration loader for RAG settings
+├── exceptions/
+│   └── rate-limit.exception.ts # Rate limit exception class
 ├── interfaces/
 │   ├── embedding.interface.ts  # Embedding generation types
 │   ├── vector-store.interface.ts # Vector storage types
@@ -16,6 +72,9 @@ rag/
 ├── embedding.service.ts        # Embedding generation service
 ├── vector-store.service.ts     # Vector storage and search service
 ├── rag.service.ts              # Main RAG orchestration service
+├── migration.service.ts        # Migration/backfill service
+├── metrics.service.ts          # Metrics tracking service
+├── rag.controller.ts           # Health check endpoints
 ├── rag.module.ts               # NestJS module definition
 └── README.md                   # This file
 ```
@@ -132,12 +191,60 @@ RAG_ENABLED=false
 
 ### EmbeddingService
 Generates vector embeddings using Google's Gemini embedding API.
+- Uses `text-embedding-004` model (768 dimensions)
+- Maximum text length: 10,000 characters
+- Automatic retry with exponential backoff
 
 ### VectorStoreService
 Manages storage and retrieval of embeddings in Firestore, including semantic search.
+- Cosine similarity search
+- User-scoped queries for data isolation
+- In-memory caching with configurable TTL
 
 ### RagService
 High-level orchestration service that coordinates embedding generation, storage, and context retrieval.
+- Async job queue for non-blocking embedding
+- Context formatting for AI prompts
+- Automatic retry for failed embeddings
+
+### MigrationService
+Handles backfilling embeddings for existing content.
+- Batch processing with rate limiting
+- Progress tracking and reporting
+- Support for all content types including chat messages
+
+## Chat Message Embedding
+
+When users chat with the AI Coach, each conversation exchange (user message + AI response) is automatically embedded for future retrieval. This allows the AI to reference past conversations.
+
+### How It Works
+
+1. User sends a message to AI Coach
+2. AI generates response
+3. Message pair is queued for async embedding
+4. Text is formatted as: `User: {message}\n\nCoach: {response}`
+5. If text exceeds 10,000 chars, it's truncated at a sentence boundary
+6. Embedding is stored with session metadata
+
+### Metadata Stored
+
+```typescript
+{
+  session_id: string,        // Chat session ID
+  session_title?: string,    // Session title (if set)
+  personality_id?: string,   // Coach personality used
+  user_message_id: string,   // User message ID
+  assistant_message_id: string, // AI response ID
+  timestamp: string          // ISO timestamp
+}
+```
+
+### Text Truncation
+
+Long conversations are automatically truncated to fit the 10,000 character limit:
+- Truncates at sentence boundaries when possible
+- Preserves the beginning of the conversation (user's question)
+- Appends `[Content truncated...]` indicator
 
 ## Usage
 

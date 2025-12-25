@@ -806,6 +806,7 @@ export class RagService implements OnModuleDestroy {
       goal: 'Goals',
       milestone: 'Milestones',
       progress_update: 'Progress Updates',
+      chat_message: 'Past Conversations',
     };
 
     return labels[type] || type;

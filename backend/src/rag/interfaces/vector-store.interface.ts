@@ -3,7 +3,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 /**
  * Content types that can be embedded
  */
-export type ContentType = 'journal' | 'goal' | 'milestone' | 'progress_update';
+export type ContentType = 'journal' | 'goal' | 'milestone' | 'progress_update' | 'chat_message';
 
 /**
  * Data structure for storing an embedding
