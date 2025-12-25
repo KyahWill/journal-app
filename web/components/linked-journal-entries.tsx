@@ -75,10 +75,10 @@ export function LinkedJournalEntries({ goalId }: LinkedJournalEntriesProps) {
     setLoadingEntries(true)
     
     try {
-      const entries = await apiClient.getJournalEntries()
+      const response = await apiClient.getJournalEntries()
       // Filter out already linked entries
       const linkedIds = new Set(linkedEntries.map((e) => e.id))
-      const available = entries.filter((e) => !linkedIds.has(e.id))
+      const available = response.entries.filter((e) => !linkedIds.has(e.id))
       setAvailableEntries(available)
     } catch (err: any) {
       console.error('Failed to fetch journal entries:', err)

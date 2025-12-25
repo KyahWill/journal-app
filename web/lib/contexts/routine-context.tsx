@@ -74,9 +74,27 @@ export function RoutineProvider({ children }: { children: ReactNode }) {
       // Optimistic update
       setRoutineState((prev) => ({
         ...prev,
-        routines: prev.routines.map((r) =>
-          r.id === id ? { ...r, ...data, updated_at: new Date().toISOString() } : r
-        ),
+        routines: prev.routines.map((r) => {
+          if (r.id === id) {
+            // Handle steps transformation if included in update
+            const updatedSteps = data.steps
+              ? data.steps.map((s, idx) => ({
+                  id: `temp-${Date.now()}-${idx}`,
+                  title: s.title,
+                  order: s.order,
+                  completed: false,
+                }))
+              : r.steps
+
+            return {
+              ...r,
+              ...data,
+              steps: updatedSteps,
+              updated_at: new Date().toISOString(),
+            }
+          }
+          return r
+        }),
       }))
       
       try {
