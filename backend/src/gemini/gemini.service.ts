@@ -7,6 +7,7 @@ import { JournalEntry, ChatMessage } from '@/common/types/journal.types'
 export class GeminiService implements OnModuleInit {
   private genAI: GoogleGenerativeAI
   private model: GenerativeModel
+  private liteModel: GenerativeModel
   private readonly logger = new Logger(GeminiService.name)
 
   constructor(private configService: ConfigService) {}
@@ -21,6 +22,9 @@ export class GeminiService implements OnModuleInit {
 
       this.genAI = new GoogleGenerativeAI(apiKey)
       this.model = this.genAI.getGenerativeModel({
+        model: 'gemini-3-pro-preview',
+      })
+      this.liteModel = this.genAI.getGenerativeModel({
         model: 'gemini-2.5-flash-lite',
       })
 
@@ -374,9 +378,9 @@ Please provide a thoughtful analysis in 3-5 paragraphs.`
 
       ${journalContext}
 
-Provide exactly 5 questions, one per line, without numbering or bullets.`
+      Provide exactly 5 questions, one per line, without numbering or bullets.`
 
-      const result = await this.model.generateContent(prompt)
+      const result = await this.liteModel.generateContent(prompt)
       const response = result.response
       const text = response.text()
 
