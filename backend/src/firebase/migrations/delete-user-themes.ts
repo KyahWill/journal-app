@@ -103,3 +103,4 @@ deleteUserThemesCollection()
     console.error('\n❌ Migration failed:', error.message)
     process.exit(1)
   })
+
