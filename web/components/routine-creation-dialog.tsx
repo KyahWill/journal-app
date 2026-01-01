@@ -140,12 +140,15 @@ export function RoutineCreationDialog({ children, defaultOpen = false }: Routine
             <Label htmlFor="group">Group</Label>
             {existingGroups.length > 0 ? (
               <div className="space-y-2">
-                <Select value={group} onValueChange={setGroup}>
+                <Select 
+                  value={group || '__none__'} 
+                  onValueChange={(v) => setGroup(v === '__none__' ? '' : v)}
+                >
                   <SelectTrigger id="group">
                     <SelectValue placeholder="Select or create new..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {existingGroups.map(g => (
                       <SelectItem key={g} value={g}>{g}</SelectItem>
                     ))}

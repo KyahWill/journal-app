@@ -9,7 +9,6 @@ import { useState } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { useGoals } from '@/lib/contexts/goal-context'
 import { cn } from '@/lib/utils'
-import { isFeatureEnabled } from '@/lib/config/features'
 
 export default function AppHeader() {
   const router = useRouter()
@@ -31,7 +30,6 @@ export default function AppHeader() {
   }
 
   const isActive = (path: string) => pathname === path || pathname?.startsWith(path + '/')
-  const voiceCoachEnabled = isFeatureEnabled('voiceCoach')
 
   async function handleSignOut() {
     try {
@@ -119,19 +117,6 @@ export default function AppHeader() {
               >
                 Insights
               </Link>
-              {voiceCoachEnabled && (
-                <Link
-                  href="/app/ai-agent"
-                  className={cn(
-                    "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors",
-                    isActive('/app/ai-agent')
-                      ? "bg-gray-100 text-gray-900"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  )}
-                >
-                  Voice Coach
-                </Link>
-              )}
               <Link
                 href="/app/settings"
                 className={cn(
@@ -242,20 +227,6 @@ export default function AppHeader() {
               >
                 Insights
               </Link>
-              {voiceCoachEnabled && (
-                <Link
-                  href="/app/ai-agent"
-                  className={cn(
-                    "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5",
-                    isActive('/app/ai-agent')
-                      ? "bg-gray-100 text-gray-900"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  )}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Voice Coach
-                </Link>
-              )}
               <Link
                 href="/app/settings"
                 className={cn(

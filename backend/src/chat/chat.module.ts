@@ -6,7 +6,6 @@ import { WeeklyInsightsMigrationService } from './weekly-insights-migration.serv
 import { FirebaseModule } from '@/firebase/firebase.module'
 import { GeminiModule } from '@/gemini/gemini.module'
 import { JournalModule } from '@/journal/journal.module'
-import { CoachPersonalityModule } from '@/coach-personality/coach-personality.module'
 import { GoalModule } from '@/goal/goal.module'
 import { RagModule } from '@/rag/rag.module'
 
@@ -15,7 +14,6 @@ import { RagModule } from '@/rag/rag.module'
     FirebaseModule,
     GeminiModule,
     JournalModule,
-    CoachPersonalityModule,
     forwardRef(() => GoalModule),
     RagModule,
   ],

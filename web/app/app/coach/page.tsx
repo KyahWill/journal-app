@@ -2,10 +2,7 @@
 
 import { useRef, useEffect } from 'react'
 import { useChat, useChatSessions } from '@/lib/hooks/useChat'
-import { useCoachPersonalities } from '@/lib/hooks/useCoachPersonalities'
 import { useAuthReady } from '@/lib/hooks/useAuthReady'
-import { useTextToSpeech } from '@/lib/hooks/useTextToSpeech'
-import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
 import { useGoalChat, GoalSuggestion } from '@/lib/hooks/useGoalChat'
 import { useGoals } from '@/lib/contexts/goal-context'
 import { Button } from '@/components/ui/button'
@@ -13,13 +10,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,8 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, Brain, Volume2, VolumeX, Mic, Square, ChevronDown, ChevronUp, Target, TrendingUp, Menu, Trash2 } from 'lucide-react'
-import { Label } from '@/components/ui/label'
+import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, ChevronDown, ChevronUp, Target, TrendingUp, Menu, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { CoachSessionsSidebar } from '@/components/coach-sessions-sidebar'
 import { ChatSession } from '@/lib/api/client'
@@ -66,13 +55,6 @@ export default function CoachChatPage() {
     updateSessionTitle,
   } = useChatSessions()
   
-  const {
-    personalities,
-    loading: personalitiesLoading,
-    fetchPersonalities,
-    getDefaultPersonality,
-  } = useCoachPersonalities()
-  
   const [input, setInput] = useState('')
   const [showInsights, setShowInsights] = useState(false)
   const [insights, setInsights] = useState<string | null>(null)
@@ -80,8 +62,6 @@ export default function CoachChatPage() {
   const [loadingJournalInsights, setLoadingJournalInsights] = useState(false)
   const [loadingPrompts, setLoadingPrompts] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
-  const [selectedPersonalityId, setSelectedPersonalityId] = useState<string | null>(null)
-  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null)
   const [showMobileSuggestions, setShowMobileSuggestions] = useState(false)
   const [showGoalSuggestions, setShowGoalSuggestions] = useState(false)
   const [goalSuggestions, setGoalSuggestions] = useState<GoalSuggestion[]>([])
@@ -97,20 +77,6 @@ export default function CoachChatPage() {
   
   // Goals context
   const { goals } = useGoals()
-  
-  // Text-to-speech hook
-  const { play: playAudio, stop: stopAudio, isLoading: isTTSLoading, isPlaying } = useTextToSpeech()
-  
-  // Speech-to-text hook
-  const { 
-    startRecording, 
-    stopRecording, 
-    transcription, 
-    isRecording, 
-    isProcessing, 
-    error: sttError,
-    clearTranscription 
-  } = useSpeechToText()
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'instant' })
@@ -120,15 +86,7 @@ export default function CoachChatPage() {
     scrollToBottom()
   }, [messages])
 
-  // Handle transcription result
-  useEffect(() => {
-    if (transcription) {
-      setInput((prev) => (prev ? `${prev} ${transcription}` : transcription))
-      clearTranscription()
-    }
-  }, [transcription, clearTranscription])
-
-  // Load suggested prompts, sessions, and coach personalities on mount
+  // Load suggested prompts and sessions on mount
   useEffect(() => {
     // Don't make API calls until auth is ready
     if (!isAuthReady) return
@@ -136,21 +94,7 @@ export default function CoachChatPage() {
     setIsMounted(true)
     loadPrompts()
     fetchSessions()
-    loadCoachPersonalities()
   }, [isAuthReady])
-
-  async function loadCoachPersonalities() {
-    try {
-      await fetchPersonalities()
-      // Load and set default personality
-      const defaultPersonality = await getDefaultPersonality()
-      if (defaultPersonality) {
-        setSelectedPersonalityId(defaultPersonality.id)
-      }
-    } catch (err) {
-      console.error('Failed to load coach personalities:', err)
-    }
-  }
 
   async function loadPrompts() {
     try {
@@ -171,7 +115,7 @@ export default function CoachChatPage() {
     setInput('')
 
     try {
-      await sendMessage(message, selectedPersonalityId || undefined)
+      await sendMessage(message)
     } catch (err) {
       console.error('Failed to send message:', err)
     }
@@ -227,8 +171,6 @@ export default function CoachChatPage() {
     clearChat()
     setInsights(null)
     setShowInsights(false)
-    stopAudio()
-    setPlayingMessageId(null)
   }
 
   async function handleDeleteSession(sessionIdToDelete: string) {
@@ -249,29 +191,6 @@ export default function CoachChatPage() {
       await updateSessionTitle(sessionId, title)
     } catch (err) {
       console.error('Failed to rename session:', err)
-    }
-  }
-
-  // Handle text-to-speech for a message
-  function handlePlayMessage(messageId: string, content: string) {
-    if (playingMessageId === messageId && isPlaying) {
-      // Stop if already playing this message
-      stopAudio()
-      setPlayingMessageId(null)
-    } else {
-      // Play the message
-      stopAudio() // Stop any current playback
-      setPlayingMessageId(messageId)
-      playAudio(content)
-    }
-  }
-
-  // Handle microphone recording
-  async function handleMicrophoneToggle() {
-    if (isRecording) {
-      await stopRecording()
-    } else {
-      await startRecording()
     }
   }
 
@@ -397,38 +316,6 @@ export default function CoachChatPage() {
               )}
             </div>
           </div>
-
-          {/* Coach Personality Selector */}
-          {isMounted && personalities.length > 0 && (
-            <Card className="mb-6">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Brain className="h-5 w-5 text-purple-600 flex-shrink-0" />
-                  <div className="flex-1">
-                    <Label htmlFor="personality-select" className="text-sm font-medium mb-2 block">
-                      AI Coach Personality
-                    </Label>
-                    <Select
-                      value={selectedPersonalityId || undefined}
-                      onValueChange={setSelectedPersonalityId}
-                    >
-                      <SelectTrigger id="personality-select" className="w-full">
-                        <SelectValue placeholder="Select a coach personality..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {personalities.map((personality) => (
-                          <SelectItem key={personality.id} value={personality.id}>
-                            {personality.name}
-                            {personality.isDefault && ' (Default)'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Insights Panel */}
           {showInsights && insights && (
@@ -691,23 +578,6 @@ export default function CoachChatPage() {
                           >
                             {message.role === 'user' ? 'You' : 'Coach'}
                           </Badge>
-                          {message.role === 'assistant' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handlePlayMessage(message.id || index.toString(), message.content)}
-                              disabled={isTTSLoading && playingMessageId === (message.id || index.toString())}
-                              className="h-6 w-6 p-0"
-                            >
-                              {isTTSLoading && playingMessageId === (message.id || index.toString()) ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : playingMessageId === (message.id || index.toString()) && isPlaying ? (
-                                <VolumeX className="h-3 w-3" />
-                              ) : (
-                                <Volume2 className="h-3 w-3" />
-                              )}
-                            </Button>
-                          )}
                         </div>
                         {message.role === 'user' ? (
                           <p className="whitespace-pre-wrap">{message.content}</p>
@@ -772,40 +642,20 @@ export default function CoachChatPage() {
             </CardContent>
 
             <div className="border-t p-3 sm:p-4">
-              {sttError && (
-                <Alert variant="destructive" className="mb-2">
-                  <AlertDescription>{sttError}</AlertDescription>
-                </Alert>
-              )}
               <div className="flex gap-2">
                 <Textarea
                   placeholder="Type your message..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  disabled={loading || isRecording || isProcessing}
+                  disabled={loading}
                   rows={3}
                   className="resize-none text-sm sm:text-base"
                 />
                 <div className="flex flex-col gap-2">
                   <Button
-                    onClick={handleMicrophoneToggle}
-                    disabled={loading || isProcessing}
-                    size="sm"
-                    variant={isRecording ? 'destructive' : 'outline'}
-                    className={`${isRecording ? 'animate-pulse' : ''} h-auto py-2 sm:py-3`}
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : isRecording ? (
-                      <Square className="h-4 w-4" />
-                    ) : (
-                      <Mic className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Button
                     onClick={handleSend}
-                    disabled={loading || !input.trim() || isRecording || isProcessing}
+                    disabled={loading || !input.trim()}
                     size="sm"
                     className="h-auto py-2 sm:py-3"
                   >

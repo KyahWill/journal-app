@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useJournal } from '@/lib/hooks/useJournal'
-import { useSpeechToText } from '@/lib/hooks/useSpeechToText'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -11,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Edit2, Save, X, Loader2, Mic, Square } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, Loader2 } from 'lucide-react'
 import { JournalEntry, apiClient } from '@/lib/api/client'
 import { format } from 'date-fns'
 import { GoalSelector } from '@/components/goal-selector'
@@ -33,37 +32,10 @@ export default function EntryDetailPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [recordingField, setRecordingField] = useState<'title' | 'content' | 'mood' | null>(null)
-  
-  // Speech-to-text hook
-  const { 
-    startRecording, 
-    stopRecording, 
-    transcription, 
-    isRecording, 
-    isProcessing, 
-    error: sttError,
-    clearTranscription 
-  } = useSpeechToText()
 
   useEffect(() => {
     fetchEntry()
   }, [id])
-
-  // Handle transcription result
-  useEffect(() => {
-    if (transcription && recordingField && isEditing) {
-      if (recordingField === 'title') {
-        setTitle((prev) => (prev ? `${prev} ${transcription}` : transcription))
-      } else if (recordingField === 'content') {
-        setContent((prev) => (prev ? `${prev} ${transcription}` : transcription))
-      } else if (recordingField === 'mood') {
-        setMood((prev) => (prev ? `${prev} ${transcription}` : transcription))
-      }
-      clearTranscription()
-      setRecordingField(null)
-    }
-  }, [transcription, recordingField, isEditing, clearTranscription])
 
   async function fetchEntry() {
     try {
@@ -130,16 +102,6 @@ export default function EntryDetailPage() {
       setLinkedGoalIds(originalLinkedGoalIds)
     }
     setIsEditing(false)
-    setRecordingField(null)
-  }
-
-  async function handleMicrophoneToggle(field: 'title' | 'content' | 'mood') {
-    if (isRecording && recordingField === field) {
-      await stopRecording()
-    } else if (!isRecording) {
-      setRecordingField(field)
-      await startRecording()
-    }
   }
 
   if (loading) {
@@ -187,31 +149,13 @@ export default function EntryDetailPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div className="flex-1 w-full">
               {isEditing ? (
-                <div className="flex gap-2 mb-2">
-                  <Input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Title"
-                    className="text-lg sm:text-2xl font-bold flex-1"
-                    disabled={saving || isRecording || isProcessing}
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => handleMicrophoneToggle('title')}
-                    disabled={saving || isProcessing || (isRecording && recordingField !== 'title')}
-                    variant={isRecording && recordingField === 'title' ? 'destructive' : 'outline'}
-                    className={isRecording && recordingField === 'title' ? 'animate-pulse' : ''}
-                    size="icon"
-                  >
-                    {isProcessing && recordingField === 'title' ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : isRecording && recordingField === 'title' ? (
-                      <Square className="h-4 w-4" />
-                    ) : (
-                      <Mic className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Title"
+                  className="text-lg sm:text-2xl font-bold mb-2"
+                  disabled={saving}
+                />
               ) : (
                 <CardTitle className="text-xl sm:text-2xl mb-2">{entry.title}</CardTitle>
               )}
@@ -284,84 +228,33 @@ export default function EntryDetailPage() {
             </Alert>
           )}
 
-          {sttError && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertDescription>{sttError}</AlertDescription>
-            </Alert>
-          )}
-
           {isEditing ? (
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="content">Content</Label>
-                  <Button
-                    type="button"
-                    onClick={() => handleMicrophoneToggle('content')}
-                    disabled={saving || isProcessing || (isRecording && recordingField !== 'content')}
-                    variant={isRecording && recordingField === 'content' ? 'destructive' : 'outline'}
-                    size="sm"
-                    className={isRecording && recordingField === 'content' ? 'animate-pulse' : ''}
-                  >
-                    {isProcessing && recordingField === 'content' ? (
-                      <>
-                        <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
-                        <span className="hidden sm:inline">Processing...</span>
-                      </>
-                    ) : isRecording && recordingField === 'content' ? (
-                      <>
-                        <Square className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Stop Recording</span>
-                      </>
-                    ) : (
-                      <>
-                        <Mic className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Record</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <Label htmlFor="content">Content</Label>
                 <Textarea
                   id="content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  disabled={saving || isRecording || isProcessing}
+                  disabled={saving}
                   rows={12}
                   className="resize-none text-sm sm:text-base"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="mood">Mood</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="mood"
-                    value={mood}
-                    onChange={(e) => setMood(e.target.value)}
-                    disabled={saving || isRecording || isProcessing}
-                    placeholder="How are you feeling?"
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => handleMicrophoneToggle('mood')}
-                    disabled={saving || isProcessing || (isRecording && recordingField !== 'mood')}
-                    variant={isRecording && recordingField === 'mood' ? 'destructive' : 'outline'}
-                    className={isRecording && recordingField === 'mood' ? 'animate-pulse' : ''}
-                  >
-                    {isProcessing && recordingField === 'mood' ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : isRecording && recordingField === 'mood' ? (
-                      <Square className="h-4 w-4" />
-                    ) : (
-                      <Mic className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
+                <Input
+                  id="mood"
+                  value={mood}
+                  onChange={(e) => setMood(e.target.value)}
+                  disabled={saving}
+                  placeholder="How are you feeling?"
+                />
               </div>
               <GoalSelector
                 selectedGoalIds={linkedGoalIds}
                 onGoalsChange={setLinkedGoalIds}
-                disabled={saving || isRecording || isProcessing}
+                disabled={saving}
               />
             </div>
           ) : (

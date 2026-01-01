@@ -66,56 +66,6 @@ export interface ChatSession {
 }
 
 // ============================================================================
-// Coach Personality Types
-// ============================================================================
-
-export type CoachingStyle = 'supportive' | 'direct' | 'motivational' | 'analytical' | 'empathetic'
-
-export interface CoachPersonality {
-  id: string
-  userId: string
-  name: string
-  description: string
-  style: CoachingStyle
-  systemPrompt: string
-  voiceId?: string
-  voiceStability?: number
-  voiceSimilarityBoost?: number
-  firstMessage?: string
-  language?: string
-  isDefault: boolean
-  elevenLabsAgentId?: string
-  createdAt: string | Date
-  updatedAt: string | Date
-}
-
-export interface CreateCoachPersonalityData {
-  name: string
-  description: string
-  style: CoachingStyle
-  systemPrompt: string
-  voiceId?: string
-  voiceStability?: number
-  voiceSimilarityBoost?: number
-  firstMessage?: string
-  language?: string
-  isDefault?: boolean
-}
-
-export interface UpdateCoachPersonalityData {
-  name?: string
-  description?: string
-  style?: CoachingStyle
-  systemPrompt?: string
-  voiceId?: string
-  voiceStability?: number
-  voiceSimilarityBoost?: number
-  firstMessage?: string
-  language?: string
-  isDefault?: boolean
-}
-
-// ============================================================================
 // Category Types
 // ============================================================================
 
@@ -232,6 +182,56 @@ export interface UpdateGoalData {
 export interface GoalFilters {
   category?: string
   status?: string
+}
+
+// ============================================================================
+// Coach Personality Types
+// ============================================================================
+
+export type CoachingStyle = 'supportive' | 'direct' | 'motivational' | 'analytical' | 'empathetic'
+
+export interface CoachPersonality {
+  id: string
+  user_id: string
+  name: string
+  description: string
+  style: CoachingStyle
+  systemPrompt: string
+  firstMessage?: string
+  voiceId?: string
+  voiceStability?: number
+  voiceSimilarityBoost?: number
+  language?: string
+  isDefault: boolean
+  elevenLabsAgentId?: string
+  created_at: string | Date
+  updated_at: string | Date
+}
+
+export interface CreateCoachPersonalityData {
+  name: string
+  description: string
+  style: CoachingStyle
+  systemPrompt: string
+  firstMessage?: string
+  voiceId?: string
+  voiceStability?: number
+  voiceSimilarityBoost?: number
+  language?: string
+  isDefault?: boolean
+}
+
+export interface UpdateCoachPersonalityData {
+  name?: string
+  description?: string
+  style?: CoachingStyle
+  systemPrompt?: string
+  firstMessage?: string
+  voiceId?: string
+  voiceStability?: number
+  voiceSimilarityBoost?: number
+  language?: string
+  isDefault?: boolean
 }
 
 // ============================================================================
@@ -961,168 +961,6 @@ class ApiClient {
   }
 
   // ============================================================================
-  // Coach Personality APIs (Unified Coach System)
-  // ============================================================================
-
-  async getCoachPersonalities(): Promise<CoachPersonality[]> {
-    return this.request<CoachPersonality[]>('/coach-personalities')
-  }
-
-  async getCoachPersonality(id: string): Promise<CoachPersonality> {
-    return this.request<CoachPersonality>(`/coach-personalities/${id}`)
-  }
-
-  async getDefaultCoachPersonality(): Promise<CoachPersonality | null> {
-    return this.request<CoachPersonality | null>('/coach-personalities/default')
-  }
-
-  async createCoachPersonality(data: CreateCoachPersonalityData): Promise<CoachPersonality> {
-    return this.request<CoachPersonality>('/coach-personalities', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-  }
-
-  async updateCoachPersonality(
-    id: string,
-    data: UpdateCoachPersonalityData
-  ): Promise<CoachPersonality> {
-    return this.request<CoachPersonality>(`/coach-personalities/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
-  }
-
-  async deleteCoachPersonality(id: string): Promise<void> {
-    await this.request(`/coach-personalities/${id}`, {
-      method: 'DELETE',
-    })
-  }
-
-  async initializeCoachPersonalities(): Promise<CoachPersonality[]> {
-    return this.request<CoachPersonality[]>('/coach-personalities/initialize', {
-      method: 'POST',
-    })
-  }
-
-  async generateCoachPersonalityAgent(id: string): Promise<CoachPersonality> {
-    return this.request<CoachPersonality>(`/coach-personalities/${id}/generate-agent`, {
-      method: 'POST',
-    })
-  }
-
-  // ============================================================================
-  // ElevenLabs APIs (Text-to-Speech & Speech-to-Text)
-  // ============================================================================
-
-  async textToSpeech(text: string, voiceId?: string): Promise<Blob> {
-    const url = `${this.baseUrl}/elevenlabs/text-to-speech`
-    
-    // Get fresh Firebase ID token
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    }
-
-    if (this.getToken) {
-      try {
-        const token = await this.getToken()
-        if (token) {
-          (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
-        }
-      } catch (error) {
-        console.error('Failed to get Firebase token:', error)
-      }
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ text, voiceId }),
-      credentials: 'include',
-    })
-
-    if (!response.ok) {
-      // Try to get error message from response
-      let errorMessage = `Failed to convert text to speech (HTTP ${response.status})`
-      let usageInfo: UsageInfo | undefined
-
-      try {
-        const contentType = response.headers.get('content-type')
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await response.json()
-          errorMessage = errorData.message || errorData.error || errorMessage
-          usageInfo = errorData.usageInfo
-        } else {
-          const errorText = await response.text()
-          if (errorText) {
-            errorMessage = errorText
-          }
-        }
-      } catch (e) {
-        // Ignore parsing errors, use default message
-      }
-      
-      const error = new Error(errorMessage) as ApiError
-      error.statusCode = response.status
-      error.usageInfo = usageInfo
-      throw error
-    }
-
-    // Verify we got audio content
-    const contentType = response.headers.get('content-type')
-    if (!contentType || !contentType.includes('audio')) {
-      console.error('Invalid content type:', contentType)
-      throw new Error('Server did not return audio data. Got: ' + contentType)
-    }
-
-    const blob = await response.blob()
-    
-    // Verify blob size
-    if (blob.size === 0) {
-      throw new Error('Received empty audio data')
-    }
-
-    return blob
-  }
-
-  async speechToText(audioBlob: Blob): Promise<string> {
-    const url = `${this.baseUrl}/elevenlabs/speech-to-text`
-    
-    // Get fresh Firebase ID token
-    const headers: HeadersInit = {}
-
-    if (this.getToken) {
-      try {
-        const token = await this.getToken()
-        if (token) {
-          (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
-        }
-      } catch (error) {
-        console.error('Failed to get Firebase token:', error)
-      }
-    }
-
-    // Create FormData to upload audio file
-    const formData = new FormData()
-    formData.append('audio', audioBlob, 'recording.webm')
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: formData,
-      credentials: 'include',
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || 'Failed to convert speech to text')
-    }
-
-    const data = await response.json()
-    return data.text
-  }
-
-  // ============================================================================
   // Category APIs
   // ============================================================================
 
@@ -1368,55 +1206,40 @@ class ApiClient {
   }
 
   // ============================================================================
-  // Voice Conversation APIs
+  // Coach Personality APIs
   // ============================================================================
 
-  async getVoiceCoachSignedUrl(personalityId?: string): Promise<{ signedUrl: string }> {
-    const params = personalityId ? `?personalityId=${encodeURIComponent(personalityId)}` : ''
-    return this.request<{ signedUrl: string }>(`/voice-coach/signed-url${params}`)
+  async getCoachPersonalities(): Promise<CoachPersonality[]> {
+    return this.request<CoachPersonality[]>('/chat/personalities')
   }
 
-  async saveVoiceCoachConversation(data: {
-    conversationId: string
-    transcript: Array<{
-      role: string
-      content: string
-      timestamp: string
-      audioUrl?: string
-    }>
-    duration: number
-    startedAt: string
-    endedAt: string
-  }): Promise<{ success: boolean; message: string }> {
-    return this.request('/voice-coach/conversation', {
+  async getCoachPersonality(id: string): Promise<CoachPersonality> {
+    return this.request<CoachPersonality>(`/chat/personalities/${id}`)
+  }
+
+  async createCoachPersonality(data: CreateCoachPersonalityData): Promise<CoachPersonality> {
+    return this.request<CoachPersonality>('/chat/personalities', {
       method: 'POST',
       body: JSON.stringify(data),
     })
   }
 
-  async getVoiceConversationHistory(params?: {
-    limit?: number
-    search?: string
-    startDate?: string
-    endDate?: string
-    sortBy?: 'newest' | 'oldest' | 'longest' | 'shortest'
-  }): Promise<{ conversations: any[] }> {
-    const queryParams = new URLSearchParams()
-    if (params?.limit) queryParams.append('limit', params.limit.toString())
-    if (params?.search) queryParams.append('search', params.search)
-    if (params?.startDate) queryParams.append('startDate', params.startDate)
-    if (params?.endDate) queryParams.append('endDate', params.endDate)
-    if (params?.sortBy) queryParams.append('sortBy', params.sortBy)
-    
-    const queryString = queryParams.toString()
-    return this.request<{ conversations: any[] }>(
-      `/voice-coach/history${queryString ? `?${queryString}` : ''}`
-    )
+  async updateCoachPersonality(id: string, data: UpdateCoachPersonalityData): Promise<CoachPersonality> {
+    return this.request<CoachPersonality>(`/chat/personalities/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
   }
 
-  async deleteVoiceConversation(conversationId: string): Promise<{ success: boolean; message: string }> {
-    return this.request(`/voice-coach/conversation/${conversationId}`, {
+  async deleteCoachPersonality(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/chat/personalities/${id}`, {
       method: 'DELETE',
+    })
+  }
+
+  async setDefaultCoachPersonality(id: string): Promise<CoachPersonality> {
+    return this.request<CoachPersonality>(`/chat/personalities/${id}/default`, {
+      method: 'PATCH',
     })
   }
 

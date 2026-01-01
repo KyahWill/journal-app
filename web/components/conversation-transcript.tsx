@@ -5,8 +5,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Download, MessageSquare } from 'lucide-react'
-import { ConversationMessage } from '@/app/app/ai-agent/page'
 import { format } from 'date-fns'
+
+export interface ConversationMessage {
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: Date
+}
 
 interface ConversationTranscriptProps {
   messages: ConversationMessage[]
