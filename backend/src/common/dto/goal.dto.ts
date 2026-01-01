@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsEnum, IsDateString, MinLength, MaxLength } from 'class-validator'
+import { IsString, IsOptional, IsEnum, IsDateString, MinLength, MaxLength, IsArray, ValidateNested,} from 'class-validator'
 import { GoalCategory, GoalStatus } from '@/common/types/goal.types'
+import { Type } from 'class-transformer'
 
 export class CreateGoalDto {
   @IsString()
@@ -19,6 +20,12 @@ export class CreateGoalDto {
 
   @IsDateString()
   target_date: string
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateMilestoneDto)
+  milestones?: CreateMilestoneDto[]
 }
 
 export class UpdateGoalDto {

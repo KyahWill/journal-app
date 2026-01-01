@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useGoals } from '@/lib/contexts/goal-context'
-import { apiClient, CategoryWithType, CreateGoalData } from '@/lib/api/client'
+import { apiClient, CategoryWithType, CreateGoalData, CreateMilestoneData } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -99,10 +99,17 @@ export function GoalCreationWizard({ onSuccess, onCancel }: GoalCreationWizardPr
       
       const effectiveTargetDate = targetDate
 
+      const milestonesData = milestones?.length > 0 ? milestones.map(m => (
+        {  
+          title: m.title, 
+          due_date: m.due_date || null,  
+        } as CreateMilestoneData)) : []
+
       const goalData: CreateGoalData = {
         title,
         description,
         category,
+        milestones: milestonesData,
         target_date: effectiveTargetDate,
       }
 

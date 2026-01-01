@@ -13,6 +13,7 @@ import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWi
 import { RagService } from '@/rag/rag.service'
 import { CategoryService } from '@/category/category.service'
 import { GoogleCalendarService } from '@/google-calendar/google-calendar.service'
+import { firestore } from 'firebase-admin'
 
 @Injectable()
 export class GoalService {
@@ -42,6 +43,8 @@ export class GoalService {
         throw new BadRequestException('Target date must be today or in the future')
       }
 
+      console.log('createGoalDto.milestones', createGoalDto.milestones)
+
       const now = new Date()
       const data: any = {
         user_id: userId,
@@ -53,7 +56,6 @@ export class GoalService {
         status_changed_at: now,
         last_activity: now,
         progress_percentage: 0,
-        milestones: [],
       }
       if (await this.categoryService.isDefaultCategory(createGoalDto.category)) {
         data.category = createGoalDto.category
@@ -67,6 +69,7 @@ export class GoalService {
         }
       }
 
+
       this.logger.log(`Creating goal for user: ${userId}`)
       const result = await this.firebaseService.addDocument(this.goalsCollection, data)
 
@@ -74,6 +77,11 @@ export class GoalService {
       this.clearUserCache(userId)
 
       this.logger.log(`Goal created: ${result.id} for user: ${userId}`)
+
+      // Create milestones
+      createGoalDto.milestones?.forEach(milestone => {
+        this.addMilestone(userId, result.id, milestone)
+      })
 
       // Generate embedding for the goal (async, non-blocking)
       this.ragService.embedContent({

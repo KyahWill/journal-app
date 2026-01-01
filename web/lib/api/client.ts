@@ -212,8 +212,14 @@ export interface WeeklyInsight {
 export interface CreateGoalData {
   title: string
   description?: string
+  milestones?: CreateMilestoneData[]
   category: string | CustomCategory 
   target_date: string
+}
+
+export interface CreateMilestoneData {
+  title: string
+  due_date?: string
 }
 
 export interface UpdateGoalData {
