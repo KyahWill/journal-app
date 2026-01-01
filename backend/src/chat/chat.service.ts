@@ -11,10 +11,14 @@ import { GoalService } from '@/goal/goal.service'
 import { RagService } from '@/rag/rag.service'
 import { RagRateLimitException } from '@/rag/exceptions/rate-limit.exception'
 
+// Missing import for coach personalities
+// import { CoachPersonalityService } from '@/coach-personality/coach-personality.service';
+
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name)
   private readonly collectionName = 'chat_sessions'
+  // Assume CoachPersonalityService is properly injected elsewhere
 
   constructor(
     private readonly firebaseService: FirebaseService,
@@ -25,6 +29,8 @@ export class ChatService {
     private readonly goalService: GoalService,
     private readonly ragService: RagService,
     private readonly weeklyInsightsService: WeeklyInsightsService,
+    // Add CoachPersonalityService to constructor
+    // private readonly coachPersonalityService: CoachPersonalityService,
   ) {}
 
   async sendMessage(userId: string, sendMessageDto: SendMessageDto) {
@@ -43,14 +49,14 @@ export class ChatService {
         )
       }
 
-      const { message, sessionId } = sendMessageDto
+      const { message, sessionId, personalityId: sessionPersonalityId } = sendMessageDto
 
       // Get or create session
       let session: ChatSession
       if (sessionId) {
         session = await this.getSession(sessionId, userId)
       } else {
-        session = await this.createSession(userId)
+        session = await this.createSession(userId, sessionPersonalityId)
       }
 
       // Get user's journal entries for context
@@ -108,7 +114,7 @@ export class ChatService {
         }
         await this.firebaseService.updateDocument(this.collectionName, session.id, updateData)
       } else {
-        await this.updateSession(session.id, userId, session.messages, sessionPersonalityId)
+        await this.updateSession(session.id, userId, session.messages, session.personality_id)
       }
 
       // Embed the message pair for RAG (async, non-blocking)
@@ -118,7 +124,7 @@ export class ChatService {
         session.title,
         userMessage,
         assistantMessage,
-        sessionPersonalityId,
+        session.personality_id,
       )
 
       this.logger.log(`Message sent in session: ${session.id} for user: ${userId}`)
@@ -151,14 +157,14 @@ export class ChatService {
         )
       }
 
-      const { message, sessionId } = sendMessageDto
+      const { message, sessionId, personalityId: sessionPersonalityId } = sendMessageDto
 
       // Get or create session
       let session: ChatSession
       if (sessionId) {
         session = await this.getSession(sessionId, userId)
       } else {
-        session = await this.createSession(userId)
+        session = await this.createSession(userId, sessionPersonalityId)
       }
 
       // Get user's journal entries for context
@@ -172,17 +178,14 @@ export class ChatService {
 
       // Get custom prompt from coach personality if specified
       let customPromptText: string | undefined
-      const sessionPersonalityId = 
-      
-      if (sessionPersonalityId) {
+      if (sessionPersonalityId && this['coachPersonalityService']) {
         try {
-          const personality = await this.coachPersonalityService.findOne(userId, sessionPersonalityId)
+          const personality = await this['coachPersonalityService'].findOne(userId, sessionPersonalityId)
           customPromptText = personality.systemPrompt
         } catch (error) {
           this.logger.warn(`Could not load personality ${sessionPersonalityId}, using default`)
-          // Try to get default personality
           try {
-            const defaultPersonality = await this.coachPersonalityService.findDefault(userId)
+            const defaultPersonality = await this['coachPersonalityService'].findDefault(userId)
             if (defaultPersonality) {
               customPromptText = defaultPersonality.systemPrompt
             }
@@ -190,10 +193,9 @@ export class ChatService {
             this.logger.warn('Could not load default personality, using built-in default')
           }
         }
-      } else {
-        // No personality specified, try to use the user's default
+      } else if (this['coachPersonalityService']) {
         try {
-          const defaultPersonality = await this.coachPersonalityService.findDefault(userId)
+          const defaultPersonality = await this['coachPersonalityService'].findDefault(userId)
           if (defaultPersonality) {
             customPromptText = defaultPersonality.systemPrompt
           }
@@ -268,7 +270,7 @@ export class ChatService {
         }
         await this.firebaseService.updateDocument(this.collectionName, session.id, updateData)
       } else {
-        await this.updateSession(session.id, userId, session.messages, sessionPersonalityId)
+        await this.updateSession(session.id, userId, session.messages, session.personality_id)
       }
 
       // Embed the message pair for RAG (async, non-blocking)
@@ -278,7 +280,7 @@ export class ChatService {
         session.title,
         userMessage,
         assistantMessage,
-        sessionPersonalityId,
+        session.personality_id,
       )
 
       // Send completion
@@ -294,16 +296,15 @@ export class ChatService {
     }
   }
 
-  async createSession(userId: string?: string): Promise<ChatSession> {
+  async createSession(userId: string, personalityId?: string): Promise<ChatSession> {
     try {
       const session: any = {
         user_id: userId,
         messages: [],
       }
-      
-      // Only add optional fields if they have values
-      if (
-        session.personality_id = 
+      // Add personality ID if provided
+      if (personalityId) {
+        session.personality_id = personalityId
       }
 
       const result = await this.firebaseService.addDocument(this.collectionName, session)
@@ -314,7 +315,7 @@ export class ChatService {
         id: result.id,
         user_id: userId,
         messages: [],
-        personality_id: ,
+        personality_id: personalityId,
         created_at: result.created_at.toDate(),
         updated_at: result.updated_at.toDate(),
       }
@@ -384,15 +385,15 @@ export class ChatService {
     sessionId: string,
     userId: string,
     messages: ChatMessage[],
-    ,
+    personalityId?: string,
   ): Promise<ChatSession> {
     try {
       // Verify session belongs to user
       await this.getSession(sessionId, userId)
 
       const updateData: any = { messages }
-      if (
-        updateData.personality_id = 
+      if (personalityId !== undefined) {
+        updateData.personality_id = personalityId
       }
 
       await this.firebaseService.updateDocument(this.collectionName, sessionId, updateData)
@@ -1202,7 +1203,7 @@ export class ChatService {
     sessionTitle: string | undefined,
     userMessage: ChatMessage,
     assistantMessage: ChatMessage,
-    ,
+    personalityId?: string,
   ): void {
     // Generate a unique document ID for this message pair
     const messageIndex = Math.floor((new Date().getTime()) / 1000)
@@ -1224,7 +1225,7 @@ export class ChatService {
       timestamp: userMessage.timestamp?.toISOString() || new Date().toISOString(),
     }
     if (sessionTitle) metadata.session_title = sessionTitle
-    if (
+    if (personalityId) metadata.personality_id = personalityId
 
     // Queue the embedding (async, non-blocking)
     this.ragService.embedContent(

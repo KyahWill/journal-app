@@ -8,6 +8,10 @@ export class SendMessageDto {
   @IsOptional()
   @IsString()
   sessionId?: string
+
+  @IsOptional()
+  @IsString()
+  personalityId?: string
 }
 
 export class ChatHistoryDto {
@@ -24,4 +28,3 @@ export class UpdateSessionTitleDto {
   @MinLength(1)
   title: string
 }
-
