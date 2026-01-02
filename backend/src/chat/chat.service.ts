@@ -3,6 +3,7 @@ import { FirebaseService } from '@/firebase/firebase.service'
 import { GeminiService } from '@/gemini/gemini.service'
 import { JournalService } from '@/journal/journal.service'
 import { WeeklyInsightsService } from './weekly-insights.service'
+import { CoachPersonalityService } from './coach-personality.service'
 import { SendMessageDto } from '@/common/dto/chat.dto'
 import { ChatSession, ChatMessage, WeeklyInsight } from '@/common/types/journal.types'
 import { v4 as uuidv4 } from 'uuid'
@@ -11,14 +12,10 @@ import { GoalService } from '@/goal/goal.service'
 import { RagService } from '@/rag/rag.service'
 import { RagRateLimitException } from '@/rag/exceptions/rate-limit.exception'
 
-// Missing import for coach personalities
-// import { CoachPersonalityService } from '@/coach-personality/coach-personality.service';
-
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name)
   private readonly collectionName = 'chat_sessions'
-  // Assume CoachPersonalityService is properly injected elsewhere
 
   constructor(
     private readonly firebaseService: FirebaseService,
@@ -29,8 +26,7 @@ export class ChatService {
     private readonly goalService: GoalService,
     private readonly ragService: RagService,
     private readonly weeklyInsightsService: WeeklyInsightsService,
-    // Add CoachPersonalityService to constructor
-    // private readonly coachPersonalityService: CoachPersonalityService,
+    private readonly coachPersonalityService: CoachPersonalityService,
   ) {}
 
   async sendMessage(userId: string, sendMessageDto: SendMessageDto) {
@@ -178,14 +174,14 @@ export class ChatService {
 
       // Get custom prompt from coach personality if specified
       let customPromptText: string | undefined
-      if (sessionPersonalityId && this['coachPersonalityService']) {
+      if (sessionPersonalityId && this.coachPersonalityService) {
         try {
-          const personality = await this['coachPersonalityService'].findOne(userId, sessionPersonalityId)
+          const personality = await this.coachPersonalityService.findOne(userId, sessionPersonalityId)
           customPromptText = personality.systemPrompt
         } catch (error) {
           this.logger.warn(`Could not load personality ${sessionPersonalityId}, using default`)
           try {
-            const defaultPersonality = await this['coachPersonalityService'].findDefault(userId)
+            const defaultPersonality = await this.coachPersonalityService.findDefault(userId)
             if (defaultPersonality) {
               customPromptText = defaultPersonality.systemPrompt
             }
@@ -193,9 +189,9 @@ export class ChatService {
             this.logger.warn('Could not load default personality, using built-in default')
           }
         }
-      } else if (this['coachPersonalityService']) {
+      } else if (this.coachPersonalityService) {
         try {
-          const defaultPersonality = await this['coachPersonalityService'].findDefault(userId)
+          const defaultPersonality = await this.coachPersonalityService.findDefault(userId)
           if (defaultPersonality) {
             customPromptText = defaultPersonality.systemPrompt
           }

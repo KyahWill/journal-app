@@ -4,6 +4,7 @@ import {
   Post,
   Delete,
   Patch,
+  Put,
   Body,
   Param,
   UseGuards,
@@ -17,14 +18,19 @@ import {
 import { Response } from 'express'
 import { Observable } from 'rxjs'
 import { ChatService } from './chat.service'
+import { CoachPersonalityService } from './coach-personality.service'
 import { SendMessageDto, UpdateSessionTitleDto } from '@/common/dto/chat.dto'
+import { CreateCoachPersonalityDto, UpdateCoachPersonalityDto } from '@/common/dto/coach-personality.dto'
 import { AuthGuard } from '@/common/guards/auth.guard'
 import { CurrentUser } from '@/common/decorators/user.decorator'
 
 @Controller('chat')
 @UseGuards(AuthGuard)
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly coachPersonalityService: CoachPersonalityService,
+  ) {}
 
   @Post('message')
   @HttpCode(HttpStatus.OK)
@@ -223,6 +229,51 @@ export class ChatController {
   @HttpCode(HttpStatus.OK)
   async deleteWeeklyInsight(@CurrentUser() user: any, @Param('id') id: string) {
     return this.chatService.deleteWeeklyInsight(user.uid, id)
+  }
+
+  // ============================================================================
+  // Coach Personality APIs
+  // ============================================================================
+
+  @Get('personalities')
+  async getCoachPersonalities(@CurrentUser() user: any) {
+    return this.coachPersonalityService.findAll(user.uid)
+  }
+
+  @Get('personalities/:id')
+  async getCoachPersonality(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.coachPersonalityService.findOne(user.uid, id)
+  }
+
+  @Post('personalities')
+  @HttpCode(HttpStatus.CREATED)
+  async createCoachPersonality(
+    @CurrentUser() user: any,
+    @Body() dto: CreateCoachPersonalityDto,
+  ) {
+    return this.coachPersonalityService.create(user.uid, dto)
+  }
+
+  @Put('personalities/:id')
+  @HttpCode(HttpStatus.OK)
+  async updateCoachPersonality(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateCoachPersonalityDto,
+  ) {
+    return this.coachPersonalityService.update(user.uid, id, dto)
+  }
+
+  @Patch('personalities/:id/default')
+  @HttpCode(HttpStatus.OK)
+  async setDefaultCoachPersonality(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.coachPersonalityService.setDefault(user.uid, id)
+  }
+
+  @Delete('personalities/:id')
+  @HttpCode(HttpStatus.OK)
+  async deleteCoachPersonality(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.coachPersonalityService.delete(user.uid, id)
   }
 }
 

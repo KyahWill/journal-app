@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common'
 import { ChatController } from './chat.controller'
 import { ChatService } from './chat.service'
+import { CoachPersonalityService } from './coach-personality.service'
 import { WeeklyInsightsService } from './weekly-insights.service'
 import { WeeklyInsightsMigrationService } from './weekly-insights-migration.service'
 import { FirebaseModule } from '@/firebase/firebase.module'
@@ -18,8 +19,18 @@ import { RagModule } from '@/rag/rag.module'
     RagModule,
   ],
   controllers: [ChatController],
-  providers: [ChatService, WeeklyInsightsService, WeeklyInsightsMigrationService],
-  exports: [ChatService, WeeklyInsightsService, WeeklyInsightsMigrationService],
+  providers: [
+    ChatService,
+    CoachPersonalityService,
+    WeeklyInsightsService,
+    WeeklyInsightsMigrationService,
+  ],
+  exports: [
+    ChatService,
+    CoachPersonalityService,
+    WeeklyInsightsService,
+    WeeklyInsightsMigrationService,
+  ],
 })
 export class ChatModule {}
 
