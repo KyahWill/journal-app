@@ -23,6 +23,7 @@ import {
 import { Send, RefreshCw, Loader2, Sparkles, Lightbulb, ChevronDown, ChevronUp, Target, TrendingUp, Menu, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { CoachSessionsSidebar } from '@/components/coach-sessions-sidebar'
+import { PersonalitySelector } from '@/components/personality-selector'
 import { ChatSession } from '@/lib/api/client'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -70,6 +71,7 @@ export default function CoachChatPage() {
   const [selectedGoalForInsights, setSelectedGoalForInsights] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [selectedPersonalityId, setSelectedPersonalityId] = useState<string | undefined>(undefined)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
   // Goal chat hook
@@ -115,7 +117,7 @@ export default function CoachChatPage() {
     setInput('')
 
     try {
-      await sendMessage(message)
+      await sendMessage(message, selectedPersonalityId)
     } catch (err) {
       console.error('Failed to send message:', err)
     }
@@ -155,6 +157,7 @@ export default function CoachChatPage() {
     clearChat()
     setInsights(null)
     setShowInsights(false)
+    // Keep the selected personality when clearing chat
   }
 
   async function handleSessionSelect(session: ChatSession) {
@@ -171,6 +174,7 @@ export default function CoachChatPage() {
     clearChat()
     setInsights(null)
     setShowInsights(false)
+    // Keep the selected personality for new sessions
   }
 
   async function handleDeleteSession(sessionIdToDelete: string) {
@@ -315,6 +319,15 @@ export default function CoachChatPage() {
                 </Button>
               )}
             </div>
+          </div>
+
+          {/* Personality Selector */}
+          <div className="mb-6">
+            <PersonalitySelector
+              selectedPersonalityId={selectedPersonalityId}
+              onPersonalityChange={setSelectedPersonalityId}
+              disabled={loading}
+            />
           </div>
 
           {/* Insights Panel */}
