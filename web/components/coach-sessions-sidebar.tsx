@@ -155,7 +155,7 @@ export function CoachSessionsSidebar({
       
       {/* Sidebar */}
       <div className={cn(
-        'w-64 lg:w-72 border-r bg-gray-50 flex flex-col h-full',
+        'w-96 border-r bg-gray-50 flex flex-col h-full',
         'fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto',
         'transform transition-transform duration-300 ease-in-out',
         open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
