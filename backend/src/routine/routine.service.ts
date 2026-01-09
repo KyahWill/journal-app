@@ -1,9 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger, BadRequestException } from '@nestjs/common'
 import { FirebaseService } from '@/firebase/firebase.service'
+import { EncryptionService } from '@/common/services/encryption.service'
 import { CreateRoutineDto, UpdateRoutineDto } from '@/common/dto/routine.dto'
 import { Routine, RoutineStep, RoutineFrequency } from '@/common/types/routine.types'
 import { format, isToday, isThisWeek, startOfWeek, startOfMonth, isThisMonth, subDays, subWeeks, subMonths, differenceInDays, differenceInWeeks, differenceInMonths } from 'date-fns'
 import { v4 as uuidv4 } from 'uuid'
+
+// Fields to encrypt in routines
+const ENCRYPTED_FIELDS = ['title', 'description']
+const ENCRYPTED_STEP_FIELDS = ['title']
 
 @Injectable()
 export class RoutineService {
@@ -12,7 +17,46 @@ export class RoutineService {
 
   constructor(
     private readonly firebaseService: FirebaseService,
+    private readonly encryptionService: EncryptionService,
   ) {}
+
+  /**
+   * Encrypt routine fields
+   */
+  private encryptRoutine(routine: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return routine
+    }
+    const encrypted = this.encryptionService.encryptFields(routine, ENCRYPTED_FIELDS, encryptionKey)
+    
+    // Encrypt step titles
+    if (encrypted.steps && Array.isArray(encrypted.steps)) {
+      encrypted.steps = encrypted.steps.map((step: any) =>
+        this.encryptionService.encryptFields(step, ENCRYPTED_STEP_FIELDS, encryptionKey)
+      )
+    }
+    
+    return encrypted
+  }
+
+  /**
+   * Decrypt routine fields
+   */
+  private decryptRoutine(routine: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return routine
+    }
+    const decrypted = this.encryptionService.decryptFields(routine, ENCRYPTED_FIELDS, encryptionKey)
+    
+    // Decrypt step titles
+    if (decrypted.steps && Array.isArray(decrypted.steps)) {
+      decrypted.steps = decrypted.steps.map((step: any) =>
+        this.encryptionService.decryptFields(step, ENCRYPTED_STEP_FIELDS, encryptionKey)
+      )
+    }
+    
+    return decrypted
+  }
 
   async createRoutine(userId: string, createRoutineDto: CreateRoutineDto): Promise<Routine> {
     try {

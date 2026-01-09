@@ -8,9 +8,13 @@ import { SendMessageDto } from '@/common/dto/chat.dto'
 import { ChatSession, ChatMessage, WeeklyInsight } from '@/common/types/journal.types'
 import { v4 as uuidv4 } from 'uuid'
 import { RateLimitService } from '@/common/services/rate-limit.service'
+import { EncryptionService } from '@/common/services/encryption.service'
 import { GoalService } from '@/goal/goal.service'
 import { RagService } from '@/rag/rag.service'
 import { RagRateLimitException } from '@/rag/exceptions/rate-limit.exception'
+
+// Fields to encrypt in chat sessions
+const ENCRYPTED_FIELDS = ['title']
 
 @Injectable()
 export class ChatService {
@@ -27,9 +31,50 @@ export class ChatService {
     private readonly ragService: RagService,
     private readonly weeklyInsightsService: WeeklyInsightsService,
     private readonly coachPersonalityService: CoachPersonalityService,
+    private readonly encryptionService: EncryptionService,
   ) {}
 
-  async sendMessage(userId: string, sendMessageDto: SendMessageDto) {
+  /**
+   * Encrypt chat messages (content field)
+   */
+  private encryptMessages(messages: ChatMessage[], encryptionKey?: Buffer): ChatMessage[] {
+    if (!encryptionKey || !this.encryptionService.isEnabled() || !messages) {
+      return messages
+    }
+    return this.encryptionService.encryptMessages(messages, 'content', encryptionKey)
+  }
+
+  /**
+   * Decrypt chat messages (content field)
+   */
+  private decryptMessages(messages: ChatMessage[], encryptionKey?: Buffer): ChatMessage[] {
+    if (!encryptionKey || !this.encryptionService.isEnabled() || !messages) {
+      return messages
+    }
+    return this.encryptionService.decryptMessages(messages, 'content', encryptionKey)
+  }
+
+  /**
+   * Encrypt chat session fields
+   */
+  private encryptSession(session: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return session
+    }
+    return this.encryptionService.encryptFields(session, ENCRYPTED_FIELDS, encryptionKey)
+  }
+
+  /**
+   * Decrypt chat session fields
+   */
+  private decryptSession(session: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return session
+    }
+    return this.encryptionService.decryptFields(session, ENCRYPTED_FIELDS, encryptionKey)
+  }
+
+  async sendMessage(userId: string, sendMessageDto: SendMessageDto, encryptionKey?: Buffer) {
     try {
       // Check rate limit first
       const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'chat')
@@ -50,13 +95,13 @@ export class ChatService {
       // Get or create session
       let session: ChatSession
       if (sessionId) {
-        session = await this.getSession(sessionId, userId)
+        session = await this.getSession(sessionId, userId, encryptionKey)
       } else {
         session = await this.createSession(userId, sessionPersonalityId)
       }
 
-      // Get user's journal entries for context
-      const journalEntries = await this.journalService.getRecent(userId, 20)
+      // Get user's journal entries for context (decrypted)
+      const journalEntries = await this.journalService.getRecent(userId, 20, encryptionKey)
 
       // Build goal context for AI
       const goalContext = await this.buildGoalContext(userId)
@@ -129,19 +174,22 @@ export class ChatService {
       // Auto-generate title from first user message if not set
       if (!session.title && session.messages.length === 2) {
         session.title = this.generateTitle(message)
+        // Encrypt messages and title before storing
+        const encryptedMessages = this.encryptMessages(session.messages, encryptionKey)
         const updateData: any = {
-          messages: session.messages,
-          title: session.title,
+          messages: encryptedMessages,
+          title: encryptionKey ? this.encryptionService.encrypt(session.title, encryptionKey) : session.title,
         }
         if (sessionPersonalityId) {
           updateData.personality_id = sessionPersonalityId
         }
         await this.firebaseService.updateDocument(this.collectionName, session.id, updateData)
       } else {
-        await this.updateSession(session.id, userId, session.messages, session.personality_id)
+        await this.updateSession(session.id, userId, session.messages, session.personality_id, encryptionKey)
       }
 
       // Embed the message pair for RAG (async, non-blocking)
+      // Use plaintext messages for RAG embedding
       this.embedChatMessagePair(
         userId,
         session.id,
@@ -165,7 +213,7 @@ export class ChatService {
     }
   }
 
-  async *sendMessageStream(userId: string, sendMessageDto: SendMessageDto): AsyncGenerator<any, void, unknown> {
+  async *sendMessageStream(userId: string, sendMessageDto: SendMessageDto, encryptionKey?: Buffer): AsyncGenerator<any, void, unknown> {
     try {
       // Check rate limit first
       const usageInfo = await this.rateLimitService.checkAndIncrement(userId, 'chat')
@@ -186,13 +234,13 @@ export class ChatService {
       // Get or create session
       let session: ChatSession
       if (sessionId) {
-        session = await this.getSession(sessionId, userId)
+        session = await this.getSession(sessionId, userId, encryptionKey)
       } else {
         session = await this.createSession(userId, sessionPersonalityId)
       }
 
-      // Get user's journal entries for context
-      const journalEntries = await this.journalService.getRecent(userId, 20)
+      // Get user's journal entries for context (decrypted)
+      const journalEntries = await this.journalService.getRecent(userId, 20, encryptionKey)
 
       // Build goal context for AI
       const goalContext = await this.buildGoalContext(userId)
@@ -285,19 +333,24 @@ export class ChatService {
       // Auto-generate title from first user message if not set
       if (!session.title && session.messages.length === 2) {
         session.title = this.generateTitle(message)
+        // Encrypt messages and title before storing
+        const encryptedMessages = this.encryptMessages(session.messages, encryptionKey)
         const updateData: any = {
-          messages: session.messages,
-          title: session.title,
+          messages: encryptedMessages,
+          title: encryptionKey && this.encryptionService.isEnabled()
+            ? this.encryptionService.encrypt(session.title, encryptionKey)
+            : session.title,
         }
         if (sessionPersonalityId) {
           updateData.personality_id = sessionPersonalityId
         }
         await this.firebaseService.updateDocument(this.collectionName, session.id, updateData)
       } else {
-        await this.updateSession(session.id, userId, session.messages, session.personality_id)
+        await this.updateSession(session.id, userId, session.messages, session.personality_id, encryptionKey)
       }
 
       // Embed the message pair for RAG (async, non-blocking)
+      // Use plaintext messages for RAG embedding
       this.embedChatMessagePair(
         userId,
         session.id,
@@ -349,7 +402,7 @@ export class ChatService {
     }
   }
 
-  async getSession(sessionId: string, userId: string): Promise<ChatSession> {
+  async getSession(sessionId: string, userId: string, encryptionKey?: Buffer): Promise<ChatSession> {
     try {
       const session = await this.firebaseService.getDocument(this.collectionName, sessionId)
 
@@ -361,11 +414,16 @@ export class ChatService {
         throw new NotFoundException('You do not have access to this chat session')
       }
 
+      // Decrypt session fields
+      const decrypted = this.decryptSession(session, encryptionKey)
+      // Decrypt messages
+      const decryptedMessages = this.decryptMessages(session.messages || [], encryptionKey)
+
       return {
         id: session.id,
         user_id: session.user_id,
-        title: session.title,
-        messages: session.messages || [],
+        title: decrypted.title,
+        messages: decryptedMessages,
         // Support legacy data that may have prompt_id instead of personality_id
         personality_id: session.personality_id || session.prompt_id,
         created_at: session.created_at?.toDate() || new Date(),
@@ -380,7 +438,7 @@ export class ChatService {
     }
   }
 
-  async getAllSessions(userId: string): Promise<ChatSession[]> {
+  async getAllSessions(userId: string, encryptionKey?: Buffer): Promise<ChatSession[]> {
     try {
       const sessions = await this.firebaseService.getCollection(
         this.collectionName,
@@ -389,16 +447,23 @@ export class ChatService {
         'desc',
       )
 
-      return sessions.map((session: any) => ({
-        id: session.id,
-        user_id: session.user_id,
-        title: session.title,
-        messages: session.messages || [],
-        // Support legacy data that may have prompt_id instead of personality_id
-        personality_id: session.personality_id || session.prompt_id,
-        created_at: session.created_at?.toDate() || new Date(),
-        updated_at: session.updated_at?.toDate() || new Date(),
-      }))
+      return sessions.map((session: any) => {
+        // Decrypt session fields
+        const decrypted = this.decryptSession(session, encryptionKey)
+        // Decrypt messages
+        const decryptedMessages = this.decryptMessages(session.messages || [], encryptionKey)
+
+        return {
+          id: session.id,
+          user_id: session.user_id,
+          title: decrypted.title,
+          messages: decryptedMessages,
+          // Support legacy data that may have prompt_id instead of personality_id
+          personality_id: session.personality_id || session.prompt_id,
+          created_at: session.created_at?.toDate() || new Date(),
+          updated_at: session.updated_at?.toDate() || new Date(),
+        }
+      })
     } catch (error) {
       this.logger.error('Error fetching chat sessions', error)
       throw error
@@ -410,19 +475,22 @@ export class ChatService {
     userId: string,
     messages: ChatMessage[],
     personalityId?: string,
+    encryptionKey?: Buffer,
   ): Promise<ChatSession> {
     try {
       // Verify session belongs to user
-      await this.getSession(sessionId, userId)
+      await this.getSession(sessionId, userId, encryptionKey)
 
-      const updateData: any = { messages }
+      // Encrypt messages before storing
+      const encryptedMessages = this.encryptMessages(messages, encryptionKey)
+      const updateData: any = { messages: encryptedMessages }
       if (personalityId !== undefined) {
         updateData.personality_id = personalityId
       }
 
       await this.firebaseService.updateDocument(this.collectionName, sessionId, updateData)
 
-      return this.getSession(sessionId, userId)
+      return this.getSession(sessionId, userId, encryptionKey)
     } catch (error) {
       this.logger.error('Error updating chat session', error)
       throw error
@@ -431,7 +499,7 @@ export class ChatService {
 
   async deleteSession(sessionId: string, userId: string) {
     try {
-      // Verify session belongs to user
+      // Verify session belongs to user (no need for encryption key for delete)
       await this.getSession(sessionId, userId)
 
       await this.firebaseService.deleteDocument(this.collectionName, sessionId)
@@ -630,13 +698,18 @@ export class ChatService {
     }
   }
 
-  async updateSessionTitle(sessionId: string, userId: string, title: string) {
+  async updateSessionTitle(sessionId: string, userId: string, title: string, encryptionKey?: Buffer) {
     try {
       // Verify session belongs to user
-      await this.getSession(sessionId, userId)
+      await this.getSession(sessionId, userId, encryptionKey)
+
+      // Encrypt title before storing
+      const encryptedTitle = encryptionKey && this.encryptionService.isEnabled()
+        ? this.encryptionService.encrypt(title, encryptionKey)
+        : title
 
       await this.firebaseService.updateDocument(this.collectionName, sessionId, {
-        title,
+        title: encryptedTitle,
       })
 
       this.logger.log(`Chat session title updated: ${sessionId} for user: ${userId}`)

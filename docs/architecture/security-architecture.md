@@ -15,10 +15,11 @@
 2. [Authentication System](#authentication-system)
 3. [Session Management](#session-management)
 4. [Authorization](#authorization)
-5. [Security Layers](#security-layers)
-6. [Firestore Security Rules](#firestore-security-rules)
-7. [Rate Limiting](#rate-limiting)
-8. [Best Practices](#best-practices)
+5. [Data Encryption](#data-encryption)
+6. [Security Layers](#security-layers)
+7. [Firestore Security Rules](#firestore-security-rules)
+8. [Rate Limiting](#rate-limiting)
+9. [Best Practices](#best-practices)
 
 ---
 
@@ -402,6 +403,56 @@ async adminEndpoint() {
 
 ---
 
+## Data Encryption
+
+The Journal application implements **encryption at rest** for all sensitive user data using AES-256-GCM with deterministic key derivation. This ensures that even if the database is compromised, user data remains protected.
+
+### Encryption Overview
+
+```
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  SERVER_MASTER_  │     │   User Factors   │     │   HKDF-SHA256    │
+│     SECRET       │ ──▶ │  (uid, created,  │ ──▶ │                  │
+│   (256 bits)     │     │   authProvider)  │     │                  │
+└──────────────────┘     └──────────────────┘     └────────┬─────────┘
+                                                           │
+                                                           ▼
+                                                  ┌──────────────────┐
+                                                  │  User-Specific   │
+                                                  │   Encryption Key │
+                                                  │    (256 bits)    │
+                                                  └──────────────────┘
+```
+
+### What Gets Encrypted
+
+| Data Type | Encrypted Fields |
+|-----------|-----------------|
+| Journal Entries | title, content |
+| Chat Sessions | title, messages content |
+| Goals | title, description, milestone titles |
+| Routines | title, description, step titles |
+| Custom Categories | name |
+
+### Key Features
+
+1. **Deterministic Key Derivation**: User keys are derived from a master secret + user factors (userId, createdAt, authProvider) using HKDF-SHA256
+2. **No Stored Keys**: User encryption keys are never stored in the database
+3. **Transparent Encryption**: Services automatically encrypt/decrypt data
+4. **Key Caching**: Derived keys are cached in memory with TTL for performance
+5. **Key Rotation Support**: CLI tools for rotating the master secret and re-encrypting data
+
+### Environment Variables
+
+```bash
+ENCRYPTION_ENABLED=true
+SERVER_MASTER_SECRET=<64-character-hex-string>  # Generate: openssl rand -hex 32
+```
+
+> **📖 Full Details**: See the [Encryption Guide](encryption-guide.md) for complete documentation.
+
+---
+
 ## Security Layers
 
 ### Defense in Depth
@@ -685,6 +736,7 @@ export class RateLimitService {
 
 ## Related Documentation
 
+- **[Encryption Guide](encryption-guide.md)** - Complete encryption documentation
 - **[Architecture Overview](../ARCHITECTURE.md)** - Complete architecture
 - **[Web Architecture](web-architecture.md)** - Frontend details
 - **[Backend Architecture](backend-architecture.md)** - Backend details
@@ -692,5 +744,5 @@ export class RateLimitService {
 
 ---
 
-**Last Updated**: November 2024  
+**Last Updated**: January 2026  
 **Status**: Current

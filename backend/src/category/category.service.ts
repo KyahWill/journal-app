@@ -1,7 +1,11 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger, BadRequestException } from '@nestjs/common'
 import { FirebaseService } from '@/firebase/firebase.service'
+import { EncryptionService } from '@/common/services/encryption.service'
 import { CreateCategoryDto, UpdateCategoryDto } from '@/common/dto/category.dto'
 import { CustomCategory, DefaultGoalCategory, CategoryWithType } from '@/common/types/category.types'
+
+// Fields to encrypt in categories
+const ENCRYPTED_FIELDS = ['name']
 
 @Injectable()
 export class CategoryService {
@@ -19,7 +23,30 @@ export class CategoryService {
     'other',
   ]
 
-  constructor(private readonly firebaseService: FirebaseService) {}
+  constructor(
+    private readonly firebaseService: FirebaseService,
+    private readonly encryptionService: EncryptionService,
+  ) {}
+
+  /**
+   * Encrypt category fields
+   */
+  private encryptCategory(category: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return category
+    }
+    return this.encryptionService.encryptFields(category, ENCRYPTED_FIELDS, encryptionKey)
+  }
+
+  /**
+   * Decrypt category fields
+   */
+  private decryptCategory(category: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return category
+    }
+    return this.encryptionService.decryptFields(category, ENCRYPTED_FIELDS, encryptionKey)
+  }
 
   async createCategory(userId: string, createCategoryDto: CreateCategoryDto): Promise<CustomCategory> {
     try {

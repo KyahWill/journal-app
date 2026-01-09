@@ -1,8 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common'
 import { FirebaseService } from '@/firebase/firebase.service'
 import { RagService } from '@/rag/rag.service'
+import { EncryptionService } from '@/common/services/encryption.service'
 import { CreateJournalDto, UpdateJournalDto } from '@/common/dto/journal.dto'
 import { JournalEntry, JournalEntryWithGoals } from '@/common/types/journal.types'
+
+// Fields to encrypt in journal entries
+const ENCRYPTED_FIELDS = ['title', 'content']
+const ENCRYPTED_ARRAY_FIELDS = ['tags']
 
 @Injectable()
 export class JournalService {
@@ -13,9 +18,40 @@ export class JournalService {
   constructor(
     private readonly firebaseService: FirebaseService,
     private readonly ragService: RagService,
+    private readonly encryptionService: EncryptionService,
   ) {}
 
-  async create(userId: string, createJournalDto: CreateJournalDto): Promise<JournalEntry> {
+  /**
+   * Encrypt journal entry fields for storage
+   */
+  private encryptEntry(data: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return data
+    }
+
+    let encrypted = this.encryptionService.encryptFields(data, ENCRYPTED_FIELDS, encryptionKey)
+    encrypted = this.encryptionService.encryptFields(encrypted, ENCRYPTED_ARRAY_FIELDS, encryptionKey)
+    return encrypted
+  }
+
+  /**
+   * Decrypt journal entry fields for reading
+   */
+  private decryptEntry(data: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return data
+    }
+
+    let decrypted = this.encryptionService.decryptFields(data, ENCRYPTED_FIELDS, encryptionKey)
+    decrypted = this.encryptionService.decryptFields(decrypted, ENCRYPTED_ARRAY_FIELDS, encryptionKey)
+    return decrypted
+  }
+
+  async create(
+    userId: string,
+    createJournalDto: CreateJournalDto,
+    encryptionKey?: Buffer,
+  ): Promise<JournalEntry> {
     try {
       const data: any = {
         user_id: userId,
@@ -30,12 +66,16 @@ export class JournalService {
         data.mood = createJournalDto.mood
       }
 
+      // Encrypt sensitive fields before storing
+      const encryptedData = this.encryptEntry(data, encryptionKey)
+
       this.logger.log(`Creating journal entry for user:`)
-      const result = await this.firebaseService.addDocument(this.collectionName, data)
+      const result = await this.firebaseService.addDocument(this.collectionName, encryptedData)
 
       this.logger.log(`Journal entry created: ${result.id} for user: ${userId}`)
 
       // Generate embedding for the journal entry (non-blocking)
+      // Use PLAINTEXT for embedding - RAG needs to search content
       const embeddingText = `${createJournalDto.title}\n\n${createJournalDto.content}`
       const metadata: Record<string, any> = {
         tags: createJournalDto.tags || [],
@@ -57,6 +97,7 @@ export class JournalService {
           this.logger.error(`Failed to embed journal entry ${result.id}`, err)
         })
 
+      // Return the decrypted data (original plaintext)
       return {
         id: result.id,
         ...data,
@@ -73,6 +114,7 @@ export class JournalService {
     userId: string,
     limit?: number,
     cursor?: string,
+    encryptionKey?: Buffer,
   ): Promise<{ entries: JournalEntry[]; nextCursor: string | null }> {
     try {
       // Default page size
@@ -98,17 +140,20 @@ export class JournalService {
 
       this.logger.log(`[findAll] hasMore: ${hasMore}, returning ${entriesToReturn.length} entries`)
 
-      // Map entries to JournalEntry type
-      const mappedEntries = entriesToReturn.map((entry: any) => ({
-        id: entry.id,
-        user_id: entry.user_id,
-        title: entry.title,
-        content: entry.content,
-        mood: entry.mood,
-        tags: entry.tags || [],
-        created_at: entry.created_at?.toDate() || new Date(),
-        updated_at: entry.updated_at?.toDate() || new Date(),
-      }))
+      // Map entries to JournalEntry type and decrypt
+      const mappedEntries = entriesToReturn.map((entry: any) => {
+        const decrypted = this.decryptEntry(entry, encryptionKey)
+        return {
+          id: entry.id,
+          user_id: entry.user_id,
+          title: decrypted.title,
+          content: decrypted.content,
+          mood: entry.mood,
+          tags: decrypted.tags || [],
+          created_at: entry.created_at?.toDate() || new Date(),
+          updated_at: entry.updated_at?.toDate() || new Date(),
+        }
+      })
 
       // Get the cursor for the next page (last entry's ID)
       const nextCursor = hasMore ? mappedEntries[mappedEntries.length - 1].id : null
@@ -128,7 +173,7 @@ export class JournalService {
   /**
    * Get all entries without pagination (for use by other services that need all entries)
    */
-  async findAllUnpaginated(userId: string): Promise<JournalEntry[]> {
+  async findAllUnpaginated(userId: string, encryptionKey?: Buffer): Promise<JournalEntry[]> {
     try {
       const entries = await this.firebaseService.getCollection(
         this.collectionName,
@@ -137,23 +182,26 @@ export class JournalService {
         'desc',
       )
 
-      return entries.map((entry: any) => ({
-        id: entry.id,
-        user_id: entry.user_id,
-        title: entry.title,
-        content: entry.content,
-        mood: entry.mood,
-        tags: entry.tags || [],
-        created_at: entry.created_at?.toDate() || new Date(),
-        updated_at: entry.updated_at?.toDate() || new Date(),
-      }))
+      return entries.map((entry: any) => {
+        const decrypted = this.decryptEntry(entry, encryptionKey)
+        return {
+          id: entry.id,
+          user_id: entry.user_id,
+          title: decrypted.title,
+          content: decrypted.content,
+          mood: entry.mood,
+          tags: decrypted.tags || [],
+          created_at: entry.created_at?.toDate() || new Date(),
+          updated_at: entry.updated_at?.toDate() || new Date(),
+        }
+      })
     } catch (error) {
       this.logger.error('Error fetching all journal entries', error)
       throw error
     }
   }
 
-  async findOne(id: string, userId: string): Promise<JournalEntryWithGoals> {
+  async findOne(id: string, userId: string, encryptionKey?: Buffer): Promise<JournalEntryWithGoals> {
     try {
       const entry = await this.firebaseService.getDocument(this.collectionName, id)
 
@@ -166,16 +214,19 @@ export class JournalService {
         throw new ForbiddenException('You do not have access to this journal entry')
       }
 
+      // Decrypt entry
+      const decrypted = this.decryptEntry(entry, encryptionKey)
+
       // Fetch linked goals
       const linkedGoalIds = await this.getLinkedGoals(userId, id)
 
       return {
         id: entry.id,
         user_id: entry.user_id,
-        title: entry.title,
-        content: entry.content,
+        title: decrypted.title,
+        content: decrypted.content,
         mood: entry.mood,
-        tags: entry.tags || [],
+        tags: decrypted.tags || [],
         created_at: entry.created_at?.toDate() || new Date(),
         updated_at: entry.updated_at?.toDate() || new Date(),
         linked_goal_ids: linkedGoalIds,
@@ -189,10 +240,15 @@ export class JournalService {
     }
   }
 
-  async update(id: string, userId: string, updateJournalDto: UpdateJournalDto): Promise<JournalEntry> {
+  async update(
+    id: string,
+    userId: string,
+    updateJournalDto: UpdateJournalDto,
+    encryptionKey?: Buffer,
+  ): Promise<JournalEntry> {
     try {
       // First check if the entry exists and belongs to the user
-      const existingEntry = await this.findOne(id, userId)
+      const existingEntry = await this.findOne(id, userId, encryptionKey)
 
       const updateData: any = {}
 
@@ -212,11 +268,14 @@ export class JournalService {
         updateData.tags = updateJournalDto.tags
       }
 
-      await this.firebaseService.updateDocument(this.collectionName, id, updateData)
+      // Encrypt the update data before storing
+      const encryptedUpdateData = this.encryptEntry(updateData, encryptionKey)
+
+      await this.firebaseService.updateDocument(this.collectionName, id, encryptedUpdateData)
 
       this.logger.log(`Journal entry updated: ${id} for user: ${userId}`)
 
-      // Update embedding if title or content changed
+      // Update embedding if title or content changed (use plaintext)
       if (updateJournalDto.title !== undefined || updateJournalDto.content !== undefined) {
         const updatedTitle = updateJournalDto.title ?? existingEntry.title
         const updatedContent = updateJournalDto.content ?? existingEntry.content
@@ -249,7 +308,7 @@ export class JournalService {
       }
 
       // Return the updated entry
-      return this.findOne(id, userId)
+      return this.findOne(id, userId, encryptionKey)
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error
@@ -259,10 +318,14 @@ export class JournalService {
     }
   }
 
-  async remove(id: string, userId: string): Promise<{ success: boolean; message: string }> {
+  async remove(
+    id: string,
+    userId: string,
+    encryptionKey?: Buffer,
+  ): Promise<{ success: boolean; message: string }> {
     try {
       // First check if the entry exists and belongs to the user
-      await this.findOne(id, userId)
+      await this.findOne(id, userId, encryptionKey)
 
       // Delete embeddings before deleting the document
       try {
@@ -287,12 +350,13 @@ export class JournalService {
     }
   }
 
-  async search(userId: string, searchTerm: string): Promise<JournalEntry[]> {
+  async search(userId: string, searchTerm: string, encryptionKey?: Buffer): Promise<JournalEntry[]> {
     try {
       // Get all user's entries (Firestore doesn't support text search natively)
-      const allEntries = await this.findAllUnpaginated(userId)
+      // Entries are decrypted by findAllUnpaginated
+      const allEntries = await this.findAllUnpaginated(userId, encryptionKey)
 
-      // Filter entries that match the search term
+      // Filter entries that match the search term (now searching decrypted content)
       const searchLower = searchTerm.toLowerCase()
       const filteredEntries = allEntries.filter(
         (entry) =>
@@ -308,10 +372,10 @@ export class JournalService {
     }
   }
 
-  async getRecent(userId: string, limit: number = 10): Promise<JournalEntry[]> {
+  async getRecent(userId: string, limit: number = 10, encryptionKey?: Buffer): Promise<JournalEntry[]> {
     try {
       // Use pagination for efficiency - only fetch what we need
-      const result = await this.findAll(userId, limit)
+      const result = await this.findAll(userId, limit, undefined, encryptionKey)
       return result.entries
     } catch (error) {
       this.logger.error('Error fetching recent journal entries', error)
@@ -319,9 +383,9 @@ export class JournalService {
     }
   }
 
-  async getEntriesFromPastDays(userId: string, days: number = 7): Promise<JournalEntry[]> {
+  async getEntriesFromPastDays(userId: string, days: number = 7, encryptionKey?: Buffer): Promise<JournalEntry[]> {
     try {
-      const entries = await this.findAllUnpaginated(userId)
+      const entries = await this.findAllUnpaginated(userId, encryptionKey)
       const cutoffDate = new Date()
       cutoffDate.setDate(cutoffDate.getDate() - days)
       
@@ -339,10 +403,11 @@ export class JournalService {
     userId: string,
     limit?: number,
     cursor?: string,
+    encryptionKey?: Buffer,
   ): Promise<{ groupedEntries: Record<string, JournalEntry[]>; nextCursor: string | null }> {
     try {
-      // Get paginated entries
-      const { entries, nextCursor } = await this.findAll(userId, limit, cursor)
+      // Get paginated entries (decrypted)
+      const { entries, nextCursor } = await this.findAll(userId, limit, cursor, encryptionKey)
 
       // Group entries by date (YYYY-MM-DD format)
       const grouped = entries.reduce((acc, entry) => {

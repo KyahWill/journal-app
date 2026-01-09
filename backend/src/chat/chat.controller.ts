@@ -14,15 +14,17 @@ import {
   MessageEvent,
   Res,
   Header,
+  Req,
 } from '@nestjs/common'
-import { Response } from 'express'
+import { Response, Request } from 'express'
 import { Observable } from 'rxjs'
 import { ChatService } from './chat.service'
 import { CoachPersonalityService } from './coach-personality.service'
 import { SendMessageDto, UpdateSessionTitleDto } from '@/common/dto/chat.dto'
 import { CreateCoachPersonalityDto, UpdateCoachPersonalityDto } from '@/common/dto/coach-personality.dto'
 import { AuthGuard } from '@/common/guards/auth.guard'
-import { CurrentUser } from '@/common/decorators/user.decorator'
+import { CurrentUser, EncryptionKey } from '@/common/decorators/user.decorator'
+import { RequestWithEncryption } from '@/common/types/encryption.types'
 
 @Controller('chat')
 @UseGuards(AuthGuard)
@@ -34,8 +36,12 @@ export class ChatController {
 
   @Post('message')
   @HttpCode(HttpStatus.OK)
-  async sendMessage(@CurrentUser() user: any, @Body() sendMessageDto: SendMessageDto) {
-    return this.chatService.sendMessage(user.uid, sendMessageDto)
+  async sendMessage(
+    @CurrentUser() user: any,
+    @Body() sendMessageDto: SendMessageDto,
+    @EncryptionKey() encryptionKey?: Buffer,
+  ) {
+    return this.chatService.sendMessage(user.uid, sendMessageDto, encryptionKey)
   }
 
   @Post('message/stream')
@@ -47,7 +53,11 @@ export class ChatController {
     @CurrentUser() user: any,
     @Body() sendMessageDto: SendMessageDto,
     @Res() res: Response,
+    @Req() req: Request,
   ): Promise<void> {
+    // Get encryption key from request
+    const encryptionKey = (req as RequestWithEncryption).encryptionKey
+    
     // Set SSE headers explicitly
     res.setHeader('Content-Type', 'text/event-stream')
     res.setHeader('Cache-Control', 'no-cache')
@@ -56,7 +66,7 @@ export class ChatController {
     res.flushHeaders()
     
     try {
-      for await (const data of this.chatService.sendMessageStream(user.uid, sendMessageDto)) {
+      for await (const data of this.chatService.sendMessageStream(user.uid, sendMessageDto, encryptionKey)) {
         const sseData = `data: ${JSON.stringify(data)}\n\n`
         res.write(sseData)
       }
@@ -75,13 +85,20 @@ export class ChatController {
   }
 
   @Get('sessions')
-  async getAllSessions(@CurrentUser() user: any) {
-    return this.chatService.getAllSessions(user.uid)
+  async getAllSessions(
+    @CurrentUser() user: any,
+    @EncryptionKey() encryptionKey?: Buffer,
+  ) {
+    return this.chatService.getAllSessions(user.uid, encryptionKey)
   }
 
   @Get('session/:id')
-  async getSession(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.chatService.getSession(id, user.uid)
+  async getSession(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @EncryptionKey() encryptionKey?: Buffer,
+  ) {
+    return this.chatService.getSession(id, user.uid, encryptionKey)
   }
 
   @Delete('session/:id')
@@ -96,8 +113,9 @@ export class ChatController {
     @CurrentUser() user: any,
     @Param('id') id: string,
     @Body() updateSessionTitleDto: UpdateSessionTitleDto,
+    @EncryptionKey() encryptionKey?: Buffer,
   ) {
-    return this.chatService.updateSessionTitle(id, user.uid, updateSessionTitleDto.title)
+    return this.chatService.updateSessionTitle(id, user.uid, updateSessionTitleDto.title, encryptionKey)
   }
 
   @Get('insights')

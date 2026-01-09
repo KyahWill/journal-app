@@ -13,7 +13,13 @@ import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWi
 import { RagService } from '@/rag/rag.service'
 import { CategoryService } from '@/category/category.service'
 import { GoogleCalendarService } from '@/google-calendar/google-calendar.service'
+import { EncryptionService } from '@/common/services/encryption.service'
 import { firestore } from 'firebase-admin'
+
+// Fields to encrypt in goals
+const ENCRYPTED_GOAL_FIELDS = ['title', 'description']
+const ENCRYPTED_MILESTONE_FIELDS = ['title', 'description']
+const ENCRYPTED_PROGRESS_FIELDS = ['content']
 
 @Injectable()
 export class GoalService {
@@ -30,10 +36,71 @@ export class GoalService {
     private readonly ragService: RagService,
     private readonly categoryService: CategoryService,
     private readonly googleCalendarService: GoogleCalendarService,
+    private readonly encryptionService: EncryptionService,
   ) {}
 
+  /**
+   * Encrypt goal fields
+   */
+  private encryptGoal(goal: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return goal
+    }
+    return this.encryptionService.encryptFields(goal, ENCRYPTED_GOAL_FIELDS, encryptionKey)
+  }
 
-  async createGoal(userId: string, createGoalDto: CreateGoalDto): Promise<Goal> {
+  /**
+   * Decrypt goal fields
+   */
+  private decryptGoal(goal: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return goal
+    }
+    return this.encryptionService.decryptFields(goal, ENCRYPTED_GOAL_FIELDS, encryptionKey)
+  }
+
+  /**
+   * Encrypt milestone fields
+   */
+  private encryptMilestone(milestone: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return milestone
+    }
+    return this.encryptionService.encryptFields(milestone, ENCRYPTED_MILESTONE_FIELDS, encryptionKey)
+  }
+
+  /**
+   * Decrypt milestone fields
+   */
+  private decryptMilestone(milestone: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return milestone
+    }
+    return this.encryptionService.decryptFields(milestone, ENCRYPTED_MILESTONE_FIELDS, encryptionKey)
+  }
+
+  /**
+   * Encrypt progress update fields
+   */
+  private encryptProgress(progress: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return progress
+    }
+    return this.encryptionService.encryptFields(progress, ENCRYPTED_PROGRESS_FIELDS, encryptionKey)
+  }
+
+  /**
+   * Decrypt progress update fields
+   */
+  private decryptProgress(progress: any, encryptionKey?: Buffer): any {
+    if (!encryptionKey || !this.encryptionService.isEnabled()) {
+      return progress
+    }
+    return this.encryptionService.decryptFields(progress, ENCRYPTED_PROGRESS_FIELDS, encryptionKey)
+  }
+
+
+  async createGoal(userId: string, createGoalDto: CreateGoalDto, encryptionKey?: Buffer): Promise<Goal> {
     try {
       // Validate target date is today or in the future
       const targetDate = new Date(createGoalDto.target_date)
@@ -69,9 +136,11 @@ export class GoalService {
         }
       }
 
+      // Encrypt sensitive fields before storing
+      const encryptedData = this.encryptGoal(data, encryptionKey)
 
       this.logger.log(`Creating goal for user: ${userId}`)
-      const result = await this.firebaseService.addDocument(this.goalsCollection, data)
+      const result = await this.firebaseService.addDocument(this.goalsCollection, encryptedData)
 
       // Clear cache after creating goal
       this.clearUserCache(userId)
@@ -80,10 +149,11 @@ export class GoalService {
 
       // Create milestones
       createGoalDto.milestones?.forEach(milestone => {
-        this.addMilestone(userId, result.id, milestone)
+        this.addMilestone(userId, result.id, milestone, encryptionKey)
       })
 
       // Generate embedding for the goal (async, non-blocking)
+      // Use PLAINTEXT for embedding - RAG needs searchable content
       this.ragService.embedContent({
         userId,
         contentType: 'goal',
@@ -132,7 +202,7 @@ export class GoalService {
   }
   
   // Batch create multiple goals
-  async batchCreateGoals(userId: string, goalsData: CreateGoalDto[]): Promise<Goal[]> {
+  async batchCreateGoals(userId: string, goalsData: CreateGoalDto[], encryptionKey?: Buffer): Promise<Goal[]> {
     try {
       const firestore = this.firebaseService.getFirestore()
       const batch = firestore.batch()
@@ -149,7 +219,7 @@ export class GoalService {
         }
 
         const goalRef = firestore.collection(this.goalsCollection).doc()
-        const data = {
+        let data: any = {
           user_id: userId,
           title: goalDto.title,
           description: goalDto.description || '',
@@ -165,11 +235,26 @@ export class GoalService {
           updated_at: now,
         }
 
+        // Encrypt data before saving
+        data = this.encryptGoal(data, encryptionKey)
+
         batch.set(goalRef, data)
         
         createdGoals.push({
           id: goalRef.id,
-          ...data,
+          user_id: userId,
+          title: goalDto.title,
+          description: goalDto.description || '',
+          category: goalDto.category,
+          status: 'not_started' as GoalStatus,
+          target_date: targetDate,
+          completed_at: null,
+          status_changed_at: now,
+          last_activity: now,
+          progress_percentage: 0,
+          milestones: [],
+          created_at: now,
+          updated_at: now,
         } as Goal)
       }
 
@@ -215,7 +300,8 @@ export class GoalService {
   // Batch update multiple goals
   async batchUpdateGoals(
     userId: string, 
-    updates: Array<{ goalId: string; data: UpdateGoalDto }>
+    updates: Array<{ goalId: string; data: UpdateGoalDto }>,
+    encryptionKey?: Buffer
   ): Promise<Goal[]> {
     try {
       const firestore = this.firebaseService.getFirestore()
@@ -224,13 +310,13 @@ export class GoalService {
 
       // Verify ownership of all goals first
       for (const update of updates) {
-        await this.getGoalById(userId, update.goalId)
+        await this.getGoalById(userId, update.goalId, encryptionKey)
       }
 
       // Perform batch update
       for (const update of updates) {
         const goalRef = firestore.collection(this.goalsCollection).doc(update.goalId)
-        const updateData: any = { ...update.data }
+        let updateData: any = { ...update.data }
         
         if (updateData.target_date) {
           const targetDate = new Date(updateData.target_date)
@@ -243,6 +329,10 @@ export class GoalService {
         }
         
         updateData.updated_at = new Date()
+        
+        // Encrypt data before saving
+        updateData = this.encryptGoal(updateData, encryptionKey)
+        
         batch.update(goalRef, updateData)
       }
 
@@ -253,7 +343,7 @@ export class GoalService {
 
       // Fetch updated goals
       for (const update of updates) {
-        const goal = await this.getGoalById(userId, update.goalId)
+        const goal = await this.getGoalById(userId, update.goalId, encryptionKey)
         updatedGoals.push(goal)
       }
 
@@ -272,7 +362,8 @@ export class GoalService {
     userId: string, 
     filters?: { category?: string; status?: string },
     limit?: number,
-    startAfter?: string
+    startAfter?: string,
+    encryptionKey?: Buffer
   ): Promise<{ goals: Goal[]; nextCursor: string | null }> {
     try {
       const conditions: any[] = [{ field: 'user_id', operator: '==', value: userId }]
@@ -305,6 +396,8 @@ export class GoalService {
 
       const mappedGoals = await Promise.all(
         goalsToReturn.map(async (goal: any) => {
+          // Decrypt goal fields
+          const decrypted = this.decryptGoal(goal, encryptionKey)
 
           const goalCategory = this.categoryService.isDefaultCategory(goal.category)?
             goal.category:
@@ -313,8 +406,8 @@ export class GoalService {
           return {
             id: goal.id,
             user_id: goal.user_id,
-            title: goal.title,
-            description: goal.description,
+            title: decrypted.title,
+            description: decrypted.description,
             category: goalCategory,
             status: goal.status,
             target_date: goal.target_date?.toDate() || new Date(),
@@ -324,7 +417,7 @@ export class GoalService {
             status_changed_at: goal.status_changed_at?.toDate() || new Date(),
             last_activity: goal.last_activity?.toDate() || new Date(),
             progress_percentage: goal.progress_percentage || 0,
-            milestones: this.mapMilestones(goal.milestones || []),
+            milestones: this.mapMilestones(goal.milestones || [], encryptionKey),
             is_habit: goal.is_habit || false,
             habit_frequency: goal.habit_frequency || null,
             habit_streak: goal.habit_streak || 0,
@@ -343,12 +436,12 @@ export class GoalService {
   }
   
   // Backward compatibility method without pagination
-  async getAllGoals(userId: string, filters?: { category?: string; status?: string }): Promise<Goal[]> {
-    const result = await this.getGoals(userId, filters, 1000) // Large limit for backward compatibility
+  async getAllGoals(userId: string, filters?: { category?: string; status?: string }, encryptionKey?: Buffer): Promise<Goal[]> {
+    const result = await this.getGoals(userId, filters, 1000, undefined, encryptionKey) // Large limit for backward compatibility
     return result.goals
   }
 
-  async getGoalById(userId: string, goalId: string): Promise<Goal> {
+  async getGoalById(userId: string, goalId: string, encryptionKey?: Buffer): Promise<Goal> {
     try {
       const goal = await this.firebaseService.getDocument(this.goalsCollection, goalId)
 
@@ -360,6 +453,9 @@ export class GoalService {
         throw new ForbiddenException('You do not have access to this goal')
       }
 
+      // Decrypt goal fields
+      const decrypted = this.decryptGoal(goal, encryptionKey)
+
       goal.category = this.categoryService.isDefaultCategory(goal.category)?
         goal.category:
         await this.categoryService.getCategoryById(userId, goal.category)
@@ -367,8 +463,8 @@ export class GoalService {
       return {
         id: goal.id,
         user_id: goal.user_id,
-        title: goal.title,
-        description: goal.description,
+        title: decrypted.title,
+        description: decrypted.description,
         category: goal.category,
         status: goal.status,
         target_date: goal.target_date?.toDate() || new Date(),
@@ -378,7 +474,7 @@ export class GoalService {
         status_changed_at: goal.status_changed_at?.toDate() || new Date(),
         last_activity: goal.last_activity?.toDate() || new Date(),
         progress_percentage: goal.progress_percentage || 0,
-        milestones: this.mapMilestones(goal.milestones || []),
+        milestones: this.mapMilestones(goal.milestones || [], encryptionKey),
         calendar_event_id: goal.calendar_event_id || undefined,
       }
     } catch (error) {
@@ -390,10 +486,10 @@ export class GoalService {
     }
   }
 
-  async updateGoal(userId: string, goalId: string, updateGoalDto: UpdateGoalDto): Promise<Goal> {
+  async updateGoal(userId: string, goalId: string, updateGoalDto: UpdateGoalDto, encryptionKey?: Buffer): Promise<Goal> {
     try {
       // Verify ownership
-      await this.getGoalById(userId, goalId)
+      await this.getGoalById(userId, goalId, encryptionKey)
 
       const updateData: any = {}
 
@@ -419,16 +515,19 @@ export class GoalService {
         updateData.target_date = targetDate
       }
 
-      await this.firebaseService.updateDocument(this.goalsCollection, goalId, updateData)
+      // Encrypt update data before storing
+      const encryptedUpdateData = this.encryptGoal(updateData, encryptionKey)
+
+      await this.firebaseService.updateDocument(this.goalsCollection, goalId, encryptedUpdateData)
 
       // Clear cache after update
       this.clearUserCache(userId)
 
       this.logger.log(`Goal updated: ${goalId} for user: ${userId}`)
 
-      // Update embedding if title or description changed
+      // Update embedding if title or description changed (use plaintext)
       if (updateGoalDto.title !== undefined || updateGoalDto.description !== undefined) {
-        const updatedGoal = await this.getGoalById(userId, goalId);
+        const updatedGoal = await this.getGoalById(userId, goalId, encryptionKey);
         this.ragService.embedContent({
           userId,
           contentType: 'goal',
@@ -603,10 +702,11 @@ export class GoalService {
     userId: string,
     goalId: string,
     updateStatusDto: UpdateGoalStatusDto,
+    encryptionKey?: Buffer,
   ): Promise<Goal> {
     try {
       // Verify ownership
-      await this.getGoalById(userId, goalId)
+      await this.getGoalById(userId, goalId, encryptionKey)
 
       const updateData: any = {
         status: updateStatusDto.status,
@@ -615,10 +715,10 @@ export class GoalService {
 
       // If marking as completed, set completed_at
       if (updateStatusDto.status === 'completed') {
-        const milestones = await this.getMilestones(userId,goalId)
+        const milestones = await this.getMilestones(userId, goalId, encryptionKey)
         milestones.map( async (milestone) => {
           if( !milestone.completed) {
-            await this.toggleMilestone(userId,goalId,milestone.id)
+            await this.toggleMilestone(userId, goalId, milestone.id, encryptionKey)
           }
         });
         updateData.completed_at = new Date()
@@ -634,7 +734,7 @@ export class GoalService {
 
       this.logger.log(`Goal status updated: ${goalId} to ${updateStatusDto.status} for user: ${userId}`)
 
-      return this.getGoalById(userId, goalId)
+      return this.getGoalById(userId, goalId, encryptionKey)
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error
@@ -644,9 +744,9 @@ export class GoalService {
     }
   }
 
-  async getOverdueGoals(userId: string): Promise<Goal[]> {
+  async getOverdueGoals(userId: string, encryptionKey?: Buffer): Promise<Goal[]> {
     try {
-      const result = await this.getAllGoals(userId)
+      const result = await this.getAllGoals(userId, undefined, encryptionKey)
       const now = new Date()
 
       return result.filter(
@@ -661,9 +761,9 @@ export class GoalService {
     }
   }
 
-  async getGoalsByCategory(userId: string, category: string): Promise<Goal[]> {
+  async getGoalsByCategory(userId: string, category: string, encryptionKey?: Buffer): Promise<Goal[]> {
     try {
-      const result = await this.getAllGoals(userId, { category })
+      const result = await this.getAllGoals(userId, { category }, encryptionKey)
       return result
     } catch (error) {
       this.logger.error('Error fetching goals by category', error)
@@ -780,16 +880,21 @@ export class GoalService {
   }
 
   // Helper method to map Firestore milestones to typed Milestone objects
-  private mapMilestones(milestones: any[]): Milestone[] {
-    return milestones.map((m: any) => ({
-      id: m.id,
-      title: m.title,
-      due_date: m.due_date?.toDate ? m.due_date.toDate() : m.due_date ? new Date(m.due_date) : null,
-      completed: m.completed || false,
-      completed_at: m.completed_at?.toDate ? m.completed_at.toDate() : m.completed_at ? new Date(m.completed_at) : null,
-      order: m.order || 0,
-      created_at: m.created_at?.toDate ? m.created_at.toDate() : m.created_at ? new Date(m.created_at) : new Date(),
-    }))
+  private mapMilestones(milestones: any[], encryptionKey?: Buffer): Milestone[] {
+    return milestones.map((m: any) => {
+      // Decrypt milestone fields
+      const decrypted = this.decryptMilestone(m, encryptionKey)
+      return {
+        id: m.id,
+        title: decrypted.title,
+        description: decrypted.description,
+        due_date: m.due_date?.toDate ? m.due_date.toDate() : m.due_date ? new Date(m.due_date) : null,
+        completed: m.completed || false,
+        completed_at: m.completed_at?.toDate ? m.completed_at.toDate() : m.completed_at ? new Date(m.completed_at) : null,
+        order: m.order || 0,
+        created_at: m.created_at?.toDate ? m.created_at.toDate() : m.created_at ? new Date(m.created_at) : new Date(),
+      }
+    })
   }
 
   // Milestone Management Methods
@@ -798,21 +903,25 @@ export class GoalService {
     userId: string,
     goalId: string,
     createMilestoneDto: CreateMilestoneDto,
+    encryptionKey?: Buffer,
   ): Promise<Milestone> {
     try {
       // Verify goal ownership
-      const goal = await this.getGoalById(userId, goalId)
+      const goal = await this.getGoalById(userId, goalId, encryptionKey)
 
       const firestore = this.firebaseService.getFirestore()
       const goalRef = firestore.collection(this.goalsCollection).doc(goalId)
       
       const now = new Date()
-      const milestones = goal.milestones || []
-      const maxOrder = milestones.length > 0 
-        ? Math.max(...milestones.map(m => m.order))
+      
+      // Get raw milestones from Firestore (encrypted)
+      const goalDoc = await firestore.collection(this.goalsCollection).doc(goalId).get()
+      const rawMilestones = goalDoc.data()?.milestones || []
+      const maxOrder = rawMilestones.length > 0 
+        ? Math.max(...rawMilestones.map((m: any) => m.order || 0))
         : 0
 
-      const newMilestone = {
+      const newMilestone: any = {
         id: firestore.collection('_').doc().id, // Generate unique ID
         title: createMilestoneDto.title,
         due_date: createMilestoneDto.due_date ? new Date(createMilestoneDto.due_date) : null,
@@ -822,19 +931,22 @@ export class GoalService {
         created_at: now,
       }
 
+      // Encrypt milestone title before storing
+      const encryptedMilestone = this.encryptMilestone(newMilestone, encryptionKey)
+
       // Add milestone to array
       await goalRef.update({
-        milestones: [...milestones, newMilestone],
+        milestones: [...rawMilestones, encryptedMilestone],
         last_activity: now,
         updated_at: now,
       })
 
       // Recalculate progress
-      await this.calculateProgress(userId, goalId)
+      await this.calculateProgress(userId, goalId, encryptionKey)
 
       this.logger.log(`Milestone added: ${newMilestone.id} to goal: ${goalId}`)
 
-      // Generate embedding for the milestone (async, non-blocking)
+      // Generate embedding for the milestone (async, non-blocking) - use plaintext
       this.ragService.embedContent({
         userId,
         contentType: 'milestone',
@@ -865,10 +977,10 @@ export class GoalService {
     }
   }
 
-  async getMilestones(userId: string, goalId: string): Promise<Milestone[]> {
+  async getMilestones(userId: string, goalId: string, encryptionKey?: Buffer): Promise<Milestone[]> {
     try {
       // Verify goal ownership
-      const goal = await this.getGoalById(userId, goalId)
+      const goal = await this.getGoalById(userId, goalId, encryptionKey)
 
       // Return milestones sorted by order
       return (goal.milestones || []).sort((a, b) => a.order - b.order)
@@ -886,10 +998,11 @@ export class GoalService {
     goalId: string,
     milestoneId: string,
     updateMilestoneDto: UpdateMilestoneDto,
+    encryptionKey?: Buffer,
   ): Promise<Milestone> {
     try {
       // Verify goal ownership
-      const goal = await this.getGoalById(userId, goalId)
+      const goal = await this.getGoalById(userId, goalId, encryptionKey)
 
       const milestones = goal.milestones || []
       const milestoneIndex = milestones.findIndex(m => m.id === milestoneId)
@@ -912,9 +1025,12 @@ export class GoalService {
       // Update the milestones array
       milestones[milestoneIndex] = milestone
 
+      // Encrypt milestones before saving
+      const encryptedMilestones = milestones.map(m => this.encryptMilestone(m, encryptionKey))
+
       const now = new Date()
       await this.firebaseService.updateDocument(this.goalsCollection, goalId, {
-        milestones,
+        milestones: encryptedMilestones,
         last_activity: now,
         updated_at: now,
       })
@@ -958,10 +1074,11 @@ export class GoalService {
     userId: string,
     goalId: string,
     milestoneId: string,
+    encryptionKey?: Buffer,
   ): Promise<Milestone> {
     try {
       // Verify goal ownership
-      const goal = await this.getGoalById(userId, goalId)
+      const goal = await this.getGoalById(userId, goalId, encryptionKey)
 
       const milestones = goal.milestones || []
       const milestoneIndex = milestones.findIndex(m => m.id === milestoneId)
@@ -981,14 +1098,17 @@ export class GoalService {
       // Update the milestones array
       milestones[milestoneIndex] = milestone
 
+      // Encrypt milestones before saving
+      const encryptedMilestones = milestones.map(m => this.encryptMilestone(m, encryptionKey))
+
       await this.firebaseService.updateDocument(this.goalsCollection, goalId, {
-        milestones,
+        milestones: encryptedMilestones,
         last_activity: now,
         updated_at: now,
       })
 
       // Recalculate progress
-      await this.calculateProgress(userId, goalId)
+      await this.calculateProgress(userId, goalId, encryptionKey)
 
       this.logger.log(`Milestone toggled: ${milestoneId} in goal: ${goalId} to ${newCompletedStatus}`)
 
@@ -1053,12 +1173,12 @@ export class GoalService {
     }
   }
 
-  async calculateProgress(userId: string, goalId: string): Promise<number> {
+  async calculateProgress(userId: string, goalId: string, encryptionKey?: Buffer): Promise<number> {
     try {
       // Verify goal ownership
-      await this.getGoalById(userId, goalId)
+      await this.getGoalById(userId, goalId, encryptionKey)
 
-      const milestones = await this.getMilestones(userId, goalId)
+      const milestones = await this.getMilestones(userId, goalId, encryptionKey)
 
       let progressPercentage = 0
 
@@ -1090,20 +1210,24 @@ export class GoalService {
     userId: string,
     goalId: string,
     createProgressDto: CreateProgressDto,
+    encryptionKey?: Buffer,
   ): Promise<ProgressUpdate> {
     try {
       // Verify goal ownership
-      await this.getGoalById(userId, goalId)
+      await this.getGoalById(userId, goalId, encryptionKey)
 
       const firestore = this.firebaseService.getFirestore()
       const progressRef = firestore.collection(`${this.goalsCollection}/${goalId}/progress_updates`)
       
       const now = new Date()
-      const progressData: any = {
+      let progressData: any = {
         goal_id: goalId,
         content: createProgressDto.content,
         created_at: now,
       }
+
+      // Encrypt progress data before saving
+      progressData = this.encryptProgress(progressData, encryptionKey)
 
       const docRef = await progressRef.add(progressData)
 
@@ -1146,10 +1270,10 @@ export class GoalService {
     }
   }
 
-  async getProgressUpdates(userId: string, goalId: string): Promise<ProgressUpdate[]> {
+  async getProgressUpdates(userId: string, goalId: string, encryptionKey?: Buffer): Promise<ProgressUpdate[]> {
     try {
       // Verify goal ownership
-      await this.getGoalById(userId, goalId)
+      await this.getGoalById(userId, goalId, encryptionKey)
 
       const firestore = this.firebaseService.getFirestore()
       const progressRef = firestore.collection(`${this.goalsCollection}/${goalId}/progress_updates`)
@@ -1159,12 +1283,14 @@ export class GoalService {
 
       return snapshot.docs.map((doc) => {
         const data = doc.data()
-        return {
+        const progressUpdate = {
           id: doc.id,
           goal_id: goalId,
           content: data.content,
           created_at: data.created_at?.toDate() || new Date(),
         }
+        // Decrypt progress update
+        return this.decryptProgress(progressUpdate, encryptionKey)
       })
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
