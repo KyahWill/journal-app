@@ -198,12 +198,8 @@ export interface CoachPersonality {
   style: CoachingStyle
   systemPrompt: string
   firstMessage?: string
-  voiceId?: string
-  voiceStability?: number
-  voiceSimilarityBoost?: number
   language?: string
   isDefault: boolean
-  elevenLabsAgentId?: string
   created_at: string | Date
   updated_at: string | Date
 }
@@ -214,9 +210,6 @@ export interface CreateCoachPersonalityData {
   style: CoachingStyle
   systemPrompt: string
   firstMessage?: string
-  voiceId?: string
-  voiceStability?: number
-  voiceSimilarityBoost?: number
   language?: string
   isDefault?: boolean
 }
@@ -227,9 +220,6 @@ export interface UpdateCoachPersonalityData {
   style?: CoachingStyle
   systemPrompt?: string
   firstMessage?: string
-  voiceId?: string
-  voiceStability?: number
-  voiceSimilarityBoost?: number
   language?: string
   isDefault?: boolean
 }

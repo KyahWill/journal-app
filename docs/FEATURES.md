@@ -4,7 +4,7 @@
 
 ---
 
-**Last Updated**: December 2025  
+**Last Updated**: January 2026  
 **Status**: Current
 
 ---
@@ -28,14 +28,13 @@ This document provides a comprehensive catalog of all features available in the 
 2. [Goal Setting & Tracking](#goal-setting--tracking)
 3. [Journal Entries](#journal-entries)
 4. [AI Chat Coach](#ai-chat-coach)
-5. [Voice AI Coach](#voice-ai-coach)
-6. [RAG System](#rag-system)
-7. [Weekly Insights](#weekly-insights)
-8. [Google Calendar Integration](#google-calendar-integration)
-9. [Theming System](#theming-system)
-10. [Custom Categories](#custom-categories)
-11. [Platform Features](#platform-features)
-12. [Progressive Web App (PWA)](#progressive-web-app-pwa)
+5. [RAG System](#rag-system)
+6. [Weekly Insights](#weekly-insights)
+7. [Google Calendar Integration](#google-calendar-integration)
+8. [Theming System](#theming-system)
+9. [Custom Categories](#custom-categories)
+10. [Platform Features](#platform-features)
+11. [Progressive Web App (PWA)](#progressive-web-app-pwa)
 
 ---
 
@@ -220,13 +219,6 @@ Full-featured journaling system with rich text support, search, and real-time sy
 - Multi-device sync support
 - Auto-refresh on changes
 
-#### Voice Input
-- Speech-to-text for title field
-- Speech-to-text for content field
-- Speech-to-text for mood field
-- ElevenLabs integration
-- Visual recording indicators
-
 ### Technical Implementation
 
 **Database**:
@@ -240,7 +232,6 @@ Full-featured journaling system with rich text support, search, and real-time sy
 - Entry detail view
 - Entry form (create/edit)
 - Search interface
-- Voice input controls
 
 **API Endpoints**:
 - `/journal` - CRUD operations
@@ -271,9 +262,8 @@ Context-aware AI coaching powered by Google Gemini with journal entry integratio
 - Streaming responses
 
 #### AI Integration
-- Google Gemini 2.5 Pro LLM
+- Google Gemini LLM
 - Temperature: 0.7 (balanced creativity)
-- LangChain framework
 - Context-aware coaching
 - Error handling for API failures
 
@@ -304,26 +294,23 @@ Context-aware AI coaching powered by Google Gemini with journal entry integratio
 - Clear chat history button
 - Start fresh conversation
 - Preserves journal context
-- Text-to-speech for AI responses
 
 ### Technical Implementation
 
 **AI Stack**:
-- Google Gemini 2.5 Pro
-- LangChain for orchestration
+- Google Gemini
 - Streaming responses via SSE
 - Context builder service
 
 **Components**:
 - Chat interface with message bubbles
-- Message input with voice support
+- Message input
 - Streaming message display
-- Text-to-speech controls
 
 **API Endpoints**:
-- `/chat/stream` - Streaming chat responses
-- `/chat/history` - Get conversation history
-- `/chat/clear` - Clear conversation
+- `/chat/message/stream` - Streaming chat responses
+- `/chat/sessions` - Get conversation history
+- `/chat/session/:id` - Get specific session
 
 ### Related Documentation
 - [Chat Feature Details](./features/chat.md)
@@ -363,12 +350,11 @@ Retrieval-Augmented Generation system for semantic search and context-aware AI r
 
 #### Context Integration
 - Relevant journal entries for chat
-- Relevant entries for voice coach
 - Context-aware responses
 - Dynamic context building
 
 #### Performance
-- Rate limiting (10 requests/minute)
+- Rate limiting
 - Caching for frequent queries
 - Batch embedding generation
 - Optimized vector search
@@ -382,7 +368,7 @@ Retrieval-Augmented Generation system for semantic search and context-aware AI r
 - Firestore for storage
 
 **Database**:
-- Firestore collection: `journal_embeddings`
+- Firestore collection: `rag_embeddings`
 - Vector field with 768 dimensions
 - Indexes for performance
 - Security rules for data protection
@@ -390,13 +376,11 @@ Retrieval-Augmented Generation system for semantic search and context-aware AI r
 **Components**:
 - RAG service for embeddings
 - Vector store service for search
-- Context builder service
 - Migration service for existing data
 
 **API Endpoints**:
-- `/rag/embed` - Generate embeddings
-- `/rag/search` - Semantic search
-- `/rag/migrate` - Migrate existing entries
+- `/rag/health` - Health check
+- `/rag/metrics` - Performance metrics
 
 ### Related Documentation
 - [RAG System Details](./features/rag-system.md)
@@ -442,7 +426,7 @@ AI-powered weekly analysis of journal entries that provides personalized reflect
 ### Technical Implementation
 
 **AI Stack**:
-- Google Gemini 2.5 Pro for insight generation
+- Google Gemini for insight generation
 - Streaming via Server-Sent Events (SSE)
 - Context-aware prompts based on entry content
 - Markdown output with structured sections
@@ -824,7 +808,6 @@ Full Progressive Web App implementation enabling installation as a native app on
 #### External Integrations
 - Firebase Authentication
 - Google Gemini AI
-- ElevenLabs Voice AI
 - Firebase vector search
 
 #### API Features
@@ -895,13 +878,6 @@ Full Progressive Web App implementation enabling installation as a native app on
 - 📋 Progress analytics
 - 📋 Habit tracking suggestions
 
-#### Voice Coach Enhancements
-- 📋 Voice cloning for personalized coaching
-- 📋 Multi-language support
-- 📋 Voice sample previews
-- 📋 Personality effectiveness scoring
-- 📋 Adaptive personality switching
-
 ### Phase 3 (Future)
 
 #### Collaboration Features
@@ -940,7 +916,6 @@ Full Progressive Web App implementation enabling installation as a native app on
 - **Language**: TypeScript
 - **Database**: Firestore + Firebase
 - **AI**: Google Gemini + LangChain
-- **Voice**: ElevenLabs Conversational AI
 
 ### Infrastructure
 - **Hosting**: Google Cloud Run
@@ -969,4 +944,3 @@ Full Progressive Web App implementation enabling installation as a native app on
 ---
 
 **For detailed information about specific features, see the [features/](./features/) directory.**
-

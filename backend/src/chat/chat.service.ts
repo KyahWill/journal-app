@@ -64,6 +64,34 @@ export class ChatService {
       // Retrieve RAG context using semantic search
       const { ragContext, warning: ragWarning } = await this.retrieveRagContext(userId, message)
 
+      // Get custom prompt from coach personality if specified
+      let customPromptText: string | undefined
+      if (sessionPersonalityId && this.coachPersonalityService) {
+        try {
+          const personality = await this.coachPersonalityService.findOne(userId, sessionPersonalityId)
+          customPromptText = personality.systemPrompt
+        } catch (error) {
+          this.logger.warn(`Could not load personality ${sessionPersonalityId}, using default`)
+          try {
+            const defaultPersonality = await this.coachPersonalityService.findDefault(userId)
+            if (defaultPersonality) {
+              customPromptText = defaultPersonality.systemPrompt
+            }
+          } catch (defaultError) {
+            this.logger.warn('Could not load default personality, using built-in default')
+          }
+        }
+      } else if (this.coachPersonalityService) {
+        try {
+          const defaultPersonality = await this.coachPersonalityService.findDefault(userId)
+          if (defaultPersonality) {
+            customPromptText = defaultPersonality.systemPrompt
+          }
+        } catch (error) {
+          this.logger.debug('No default personality found, using built-in default')
+        }
+      }
+
       // Create user message
       const userMessage: ChatMessage = {
         id: uuidv4(),
@@ -77,7 +105,7 @@ export class ChatService {
         message,
         journalEntries,
         session.messages,
-        undefined, // customPromptText
+        customPromptText,
         goalContext,
         ragContext,
       )

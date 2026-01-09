@@ -1,6 +1,6 @@
 # Setup and Configuration Guide
 
-**Last Updated**: December 2025
+**Last Updated**: January 2026
 
 This guide provides comprehensive instructions for setting up and configuring the Journal application, including both the web frontend and backend API.
 
@@ -35,7 +35,6 @@ Before you begin, ensure you have the following installed and configured:
   - Authentication enabled (Email/Password provider)
   - Service account key generated
 - **Google Gemini API Key** - For AI coaching features
-- **ElevenLabs API Key** (Optional) - For voice coaching features
 - **Firebase Account** - For database and vector storage
 
 **→ [Detailed Prerequisites Guide](setup/prerequisites.md)**
@@ -132,9 +131,6 @@ GEMINI_API_KEY=your_gemini_api_key
 
 # Backend API URL
 NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
-
-# Feature Flags (optional)
-NEXT_PUBLIC_FEATURE_VOICE_COACH=true
 ```
 
 ### Development
@@ -199,14 +195,6 @@ FIREBASE_DATABASE_ID=(default)
 
 # Google Gemini API
 GEMINI_API_KEY=your_gemini_api_key
-
-# ElevenLabs API (Optional - for voice features)
-ELEVEN_LABS_API_KEY=your_elevenlabs_api_key
-ELEVENLABS_AGENT_ID=your_elevenlabs_agent_id
-
-# Voice Coach Configuration
-VOICE_COACH_RATE_LIMIT_PER_HOUR=10
-VOICE_COACH_SESSION_MAX_DURATION=1800
 
 # RAG Configuration
 RAG_ENABLED=true
@@ -294,7 +282,6 @@ The application uses Firebase Firestore for data storage with the following coll
 - **goal_journal_links** - Links between goals and journal entries
 - **chat_sessions** - AI coach chat sessions
 - **weekly_insights** - AI-generated weekly journal analysis
-- **voice_sessions** - Voice coach sessions
 - **coach_personalities** - Coach personality configurations
 - **custom_categories** - User-defined categories
 - **themes** - User theme preferences
@@ -346,7 +333,6 @@ cd web
 | `FIREBASE_SERVICE_ACCOUNT_KEY` | Firebase service account JSON (stringified) | Yes |
 | `GEMINI_API_KEY` | Google Gemini API key | Yes |
 | `NEXT_PUBLIC_API_URL` | Backend API URL | Yes |
-| `NEXT_PUBLIC_FEATURE_VOICE_COACH` | Enable voice coach feature | No |
 
 ### Backend API Variables
 
@@ -358,10 +344,6 @@ cd web
 | `FIREBASE_PROJECT_ID` | Firebase project ID | Yes | - |
 | `FIREBASE_DATABASE_ID` | Firestore database ID | No | (default) |
 | `GEMINI_API_KEY` | Google Gemini API key | Yes | - |
-| `ELEVEN_LABS_API_KEY` | ElevenLabs API key | No | - |
-| `ELEVENLABS_AGENT_ID` | ElevenLabs agent ID | No | - |
-| `VOICE_COACH_RATE_LIMIT_PER_HOUR` | Voice coach rate limit | No | 10 |
-| `VOICE_COACH_SESSION_MAX_DURATION` | Max session duration (seconds) | No | 1800 |
 | `RAG_ENABLED` | Enable RAG features | No | true |
 | `RAG_EMBEDDING_MODEL` | Gemini embedding model | No | text-embedding-004 |
 | `RAG_EMBEDDING_DIMENSIONS` | Vector dimensions | No | 768 |

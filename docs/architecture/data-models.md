@@ -4,7 +4,7 @@
 
 ---
 
-**Last Updated**: November 2024  
+**Last Updated**: January 2026  
 **Status**: Current
 
 ---
@@ -90,7 +90,7 @@ match /journal_entries/{entryId} {
 
 ### goals
 
-User goals and objectives with optional habit tracking.
+User goals and objectives.
 
 ```typescript
 {
@@ -99,7 +99,7 @@ User goals and objectives with optional habit tracking.
   title: string                 // Goal title
   description: string           // Goal description
   category: string              // Goal category (default or custom category ID)
-  target_date: Timestamp        // Target completion date (far future for habits)
+  target_date: Timestamp        // Target completion date
   status: 'not_started' | 'in_progress' | 'completed' | 'abandoned'
   created_at: Timestamp         // Creation date
   updated_at: Timestamp         // Last update date
@@ -108,12 +108,6 @@ User goals and objectives with optional habit tracking.
   last_activity: Timestamp      // Last activity date
   progress_percentage: number   // Progress (0-100)
   milestones: Milestone[]       // Embedded milestones array
-  
-  // Habit fields
-  is_habit: boolean             // Whether this is a recurring habit
-  habit_frequency?: 'daily' | 'weekly' | 'monthly'  // Habit frequency
-  habit_streak: number          // Current streak count
-  habit_completed_dates: string[] // ISO dates (YYYY-MM-DD) when completed
 }
 
 interface Milestone {
@@ -130,42 +124,10 @@ interface Milestone {
 **Indexes**:
 - Composite: `user_id` (ASC) + `status` (ASC) + `created_at` (DESC)
 - Composite: `user_id` (ASC) + `category` (ASC)
-- Composite: `user_id` (ASC) + `is_habit` (ASC)
 
 **Security Rules**:
 ```javascript
 match /goals/{goalId} {
-  allow read, write: if request.auth.uid == resource.data.user_id;
-}
-```
-
----
-
-### milestones
-
-Goal milestones and sub-tasks.
-
-```typescript
-{
-  id: string                    // Auto-generated document ID
-  goal_id: string               // Parent goal ID
-  user_id: string               // User UID
-  title: string                 // Milestone title
-  description: string           // Milestone description
-  completed: boolean            // Completion status
-  completed_at?: Timestamp      // Completion date (if completed)
-  created_at: Timestamp         // Creation date
-  updated_at: Timestamp         // Last update date
-}
-```
-
-**Indexes**:
-- Composite: `goal_id` (ASC) + `completed` (ASC)
-- Composite: `user_id` (ASC) + `goal_id` (ASC)
-
-**Security Rules**:
-```javascript
-match /milestones/{milestoneId} {
   allow read, write: if request.auth.uid == resource.data.user_id;
 }
 ```
@@ -209,13 +171,14 @@ AI coach chat sessions.
   id: string                    // Auto-generated document ID
   user_id: string               // User UID
   messages: Message[]           // Array of messages
+  personality_id?: string       // Optional coach personality ID
   created_at: Timestamp         // Session creation date
   updated_at: Timestamp         // Last message date
 }
 
 interface Message {
   id: string                    // Message ID
-  role: 'user' | 'assistant'    // Message sender
+  role: 'user' | 'assistant' | 'system' // Message role
   content: string               // Message content
   timestamp: Date               // Message timestamp
 }
@@ -233,49 +196,6 @@ match /chat_sessions/{sessionId} {
 
 ---
 
-### voice_sessions
-
-Voice AI coach sessions.
-
-```typescript
-{
-  id: string                    // Auto-generated document ID
-  user_id: string               // User UID
-  personality_id: string        // Coach personality ID
-  conversation: Conversation[]  // Array of conversation turns
-  metrics: SessionMetrics       // Session metrics
-  created_at: Timestamp         // Session creation date
-  updated_at: Timestamp         // Last interaction date
-}
-
-interface Conversation {
-  id: string                    // Turn ID
-  user_input: string            // User's spoken input
-  assistant_response: string    // AI's text response
-  audio_url?: string            // Audio file URL (if stored)
-  timestamp: Date               // Turn timestamp
-}
-
-interface SessionMetrics {
-  total_turns: number           // Number of conversation turns
-  total_duration_ms: number     // Total session duration
-  avg_response_time_ms: number  // Average response time
-}
-```
-
-**Indexes**:
-- Composite: `user_id` (ASC) + `updated_at` (DESC)
-- Composite: `user_id` (ASC) + `personality_id` (ASC)
-
-**Security Rules**:
-```javascript
-match /voice_sessions/{sessionId} {
-  allow read, write: if request.auth.uid == resource.data.user_id;
-}
-```
-
----
-
 ### coach_personalities
 
 AI coach personality configurations.
@@ -283,10 +203,13 @@ AI coach personality configurations.
 ```typescript
 {
   id: string                    // Auto-generated document ID
+  user_id: string               // User UID
   name: string                  // Personality name
   description: string           // Personality description
-  voice_id: string              // ElevenLabs voice ID
+  style: string                 // Coaching style
   system_prompt: string         // AI system prompt
+  first_message?: string        // Initial greeting message
+  language?: string             // Language code
   is_default: boolean           // Default personality flag
   created_at: Timestamp         // Creation date
   updated_at: Timestamp         // Last update date
@@ -294,13 +217,12 @@ AI coach personality configurations.
 ```
 
 **Indexes**:
-- Single field: `is_default` (ASC)
+- Composite: `user_id` (ASC) + `is_default` (ASC)
 
 **Security Rules**:
 ```javascript
 match /coach_personalities/{personalityId} {
-  allow read: if request.auth != null;
-  allow write: if false; // Admin only
+  allow read, write: if request.auth.uid == resource.data.user_id;
 }
 ```
 
@@ -419,12 +341,10 @@ RAG vector embeddings for semantic search.
   id: string                    // Auto-generated document ID
   user_id: string               // User UID
   content_type: 'journal' | 'goal' | 'milestone' | 'progress'
-  content_id: string            // Original content document ID
-  content_text: string          // Text content
+  document_id: string           // Original content document ID
   embedding: number[]           // 768-dimensional vector
+  text_snippet: string          // Preview text
   metadata: {
-    title?: string              // Content title
-    created_at: Date            // Original content creation date
     [key: string]: any          // Additional metadata
   }
   created_at: Timestamp         // Embedding creation date
@@ -434,7 +354,7 @@ RAG vector embeddings for semantic search.
 
 **Indexes**:
 - Composite: `user_id` (ASC) + `content_type` (ASC) + `created_at` (DESC)
-- Composite: `user_id` (ASC) + `content_id` (ASC)
+- Composite: `user_id` (ASC) + `document_id` (ASC)
 
 **Security Rules**:
 ```javascript
@@ -455,26 +375,17 @@ User (Firebase Auth)
   │
   ├─► goals (1:many)
   │     │
-  │     ├─► milestones (1:many)
-  │     │
   │     └─► progress_updates (1:many)
   │
   ├─► chat_sessions (1:many)
   │
-  ├─► voice_sessions (1:many)
-  │     │
-  │     └─► coach_personalities (many:1)
+  ├─► coach_personalities (1:many)
   │
   ├─► user_themes (1:many)
   │
   ├─► custom_categories (1:many)
   │
   └─► rag_embeddings (1:many)
-        │
-        ├─► journal_entries (many:1)
-        ├─► goals (many:1)
-        ├─► milestones (many:1)
-        └─► progress_updates (many:1)
 ```
 
 ---
@@ -506,14 +417,6 @@ Defined in `firestore.indexes.json`:
       ]
     },
     {
-      "collectionGroup": "milestones",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "goal_id", "order": "ASCENDING" },
-        { "fieldPath": "completed", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "chat_sessions",
       "queryScope": "COLLECTION",
       "fields": [
@@ -534,72 +437,17 @@ Defined in `firestore.indexes.json`:
 }
 ```
 
-### Index Deployment
-
-```bash
-# Deploy indexes
-firebase deploy --only firestore:indexes
-
-# Verify indexes
-firebase firestore:indexes
-```
-
 ---
 
 ## RAG Vector Store
 
 ### Embedding Generation
 
-Content is converted to 768-dimensional vectors using Gemini's `text-embedding-004` model:
-
-```typescript
-async function generateEmbedding(text: string): Promise<number[]> {
-  const result = await geminiService.generateEmbedding(text)
-  return result // 768-dimensional vector
-}
-```
+Content is converted to 768-dimensional vectors using Gemini's `text-embedding-004` model.
 
 ### Semantic Search
 
-Cosine similarity is used to find relevant content:
-
-```typescript
-function cosineSimilarity(a: number[], b: number[]): number {
-  const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0)
-  const magnitudeA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0))
-  const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0))
-  return dotProduct / (magnitudeA * magnitudeB)
-}
-
-async function semanticSearch(
-  query: string,
-  userId: string,
-  limit: number = 5,
-  threshold: number = 0.7
-): Promise<SearchResult[]> {
-  // Generate query embedding
-  const queryEmbedding = await generateEmbedding(query)
-  
-  // Get all user embeddings
-  const embeddings = await firestore
-    .collection('rag_embeddings')
-    .where('user_id', '==', userId)
-    .get()
-  
-  // Calculate similarities
-  const results = embeddings.docs.map(doc => {
-    const data = doc.data()
-    const similarity = cosineSimilarity(queryEmbedding, data.embedding)
-    return { ...data, similarity }
-  })
-  
-  // Filter and sort
-  return results
-    .filter(r => r.similarity >= threshold)
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, limit)
-}
-```
+Cosine similarity is used to find relevant content by comparing query embeddings with stored document embeddings.
 
 ---
 
@@ -607,58 +455,11 @@ async function semanticSearch(
 
 ### DTO Validation
 
-Data Transfer Objects use class-validator for validation:
-
-```typescript
-import { IsString, IsOptional, IsArray, MinLength, MaxLength } from 'class-validator'
-
-export class CreateJournalEntryDto {
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
-  title: string
-  
-  @IsString()
-  @MinLength(1)
-  @MaxLength(50000)
-  content: string
-  
-  @IsOptional()
-  @IsString()
-  mood?: string
-  
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  tags?: string[]
-}
-```
+Data Transfer Objects use class-validator for validation in the backend.
 
 ### Firestore Validation
 
-Security rules provide server-side validation:
-
-```javascript
-function isValidEntry(entry) {
-  return entry.keys().hasAll(['user_id', 'title', 'content', 'created_at', 'updated_at'])
-    && entry.user_id is string
-    && entry.title is string
-    && entry.title.size() > 0
-    && entry.title.size() <= 200
-    && entry.content is string
-    && entry.content.size() > 0
-    && entry.content.size() <= 50000
-    && entry.created_at is timestamp
-    && entry.updated_at is timestamp;
-}
-
-match /journal_entries/{entryId} {
-  allow create: if request.auth.uid == request.resource.data.user_id
-                && isValidEntry(request.resource.data);
-  allow update: if request.auth.uid == resource.data.user_id
-                && isValidEntry(request.resource.data);
-}
-```
+Security rules provide server-side validation for all Firestore operations.
 
 ---
 
@@ -671,5 +472,4 @@ match /journal_entries/{entryId} {
 
 ---
 
-**Last Updated**: November 2024  
-**Status**: Current
+**Last Updated**: January 2026

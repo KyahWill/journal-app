@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Edit, Trash2, Star, Loader2, Mic, Bot, Volume2, Calendar, CheckCircle2, XCircle, Link2 } from 'lucide-react'
+import { Plus, Edit, Trash2, Star, Loader2, Bot, Calendar, CheckCircle2, XCircle, Link2 } from 'lucide-react'
 
 const COACHING_STYLES: { value: CoachingStyle; label: string; description: string }[] = [
   { value: 'supportive', label: 'Supportive', description: 'Warm, encouraging, and nurturing approach' },
@@ -35,30 +35,6 @@ const COACHING_STYLES: { value: CoachingStyle; label: string; description: strin
   { value: 'motivational', label: 'Motivational', description: 'Energizing, inspiring, and action-oriented' },
   { value: 'analytical', label: 'Analytical', description: 'Logical, detailed, and systematic' },
   { value: 'empathetic', label: 'Empathetic', description: 'Understanding, compassionate, and validating' },
-]
-
-// Popular ElevenLabs voices - these are pre-made voices available to all users
-const ELEVENLABS_VOICES: { id: string; name: string; description: string; gender: string }[] = [
-  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', description: 'Deep, clear, professional', gender: 'Male' },
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella', description: 'Warm, friendly, conversational', gender: 'Female' },
-  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', description: 'Calm, soothing, empathetic', gender: 'Female' },
-  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi', description: 'Energetic, enthusiastic', gender: 'Female' },
-  { id: 'MF3mGyEYCl7XYWbV9V6O', name: 'Elli', description: 'Young, bright, cheerful', gender: 'Female' },
-  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh', description: 'Casual, friendly, approachable', gender: 'Male' },
-  { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold', description: 'Deep, authoritative, confident', gender: 'Male' },
-  { id: 'pqHfZKP75CvOlQylNhV4', name: 'Bill', description: 'Trustworthy, wise, mature', gender: 'Male' },
-  { id: 'nPczCjzI2devNBz1zQrb', name: 'Brian', description: 'Articulate, professional', gender: 'Male' },
-  { id: 'N2lVS1w4EtoT3dr4eOWO', name: 'Callum', description: 'Intense, dramatic', gender: 'Male' },
-  { id: 'IKne3meq5aSn9XLyUdCD', name: 'Charlie', description: 'Natural, conversational', gender: 'Male' },
-  { id: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte', description: 'Warm, nurturing', gender: 'Female' },
-  { id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel', description: 'Authoritative, British', gender: 'Male' },
-  { id: 'cjVigY5qzO86Huf0OWal', name: 'Eric', description: 'Friendly, American', gender: 'Male' },
-  { id: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica', description: 'Expressive, American', gender: 'Female' },
-  { id: 'FGY2WhTYpPnrIDTdsKH5', name: 'Laura', description: 'Upbeat, American', gender: 'Female' },
-  { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', description: 'Articulate, American', gender: 'Male' },
-  { id: 'XrExE9yKIg1WjnnlVkGX', name: 'Lily', description: 'Warm, British', gender: 'Female' },
-  { id: 'bIHbv24MWmeRgasZH58o', name: 'Will', description: 'Friendly, American', gender: 'Male' },
-  { id: 'EkK5I93ZUQCD4DQCPO0C', name: 'Sarah', description: 'Soft, gentle', gender: 'Female' },
 ]
 
 function SettingsContent() {
@@ -94,9 +70,6 @@ function SettingsContent() {
   const [style, setStyle] = useState<CoachingStyle>('supportive')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [firstMessage, setFirstMessage] = useState('')
-  const [voiceId, setVoiceId] = useState('pNInz6obpgDQGcFmaJgB') // Default to Adam voice
-  const [voiceStability, setVoiceStability] = useState(0.5)
-  const [voiceSimilarityBoost, setVoiceSimilarityBoost] = useState(0.75)
   const [language, setLanguage] = useState('en')
   const [isDefault, setIsDefault] = useState(false)
   
@@ -142,9 +115,6 @@ function SettingsContent() {
       setStyle(personality.style)
       setSystemPrompt(personality.systemPrompt)
       setFirstMessage(personality.firstMessage || '')
-      setVoiceId(personality.voiceId || 'pNInz6obpgDQGcFmaJgB')
-      setVoiceStability(personality.voiceStability ?? 0.5)
-      setVoiceSimilarityBoost(personality.voiceSimilarityBoost ?? 0.75)
       setLanguage(personality.language || 'en')
       setIsDefault(personality.isDefault)
     } else {
@@ -154,9 +124,6 @@ function SettingsContent() {
       setStyle('supportive')
       setSystemPrompt('')
       setFirstMessage('')
-      setVoiceId('pNInz6obpgDQGcFmaJgB') // Default to Adam voice
-      setVoiceStability(0.5)
-      setVoiceSimilarityBoost(0.75)
       setLanguage('en')
       setIsDefault(false)
     }
@@ -181,9 +148,6 @@ function SettingsContent() {
         style,
         systemPrompt,
         firstMessage: firstMessage || undefined,
-        voiceId: voiceId || undefined,
-        voiceStability,
-        voiceSimilarityBoost,
         language,
         isDefault,
       }
@@ -349,7 +313,7 @@ function SettingsContent() {
             Coach Personalities
           </h2>
           <p className="text-sm sm:text-base text-gray-600 mt-1">
-            Customize your AI coach for both text chat and voice conversations
+            Customize your AI coach personality and behavior
           </p>
         </div>
         <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
@@ -393,19 +357,10 @@ function SettingsContent() {
                     {personality.description}
                   </p>
                   
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    {personality.elevenLabsAgentId && (
-                      <span className="flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                        <Mic className="h-3 w-3" />
-                        Voice Ready
-                      </span>
-                    )}
-                    {personality.voiceId && (
-                      <span className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                        <Volume2 className="h-3 w-3" />
-                        Custom Voice
-                      </span>
-                    )}
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full capitalize">
+                      {personality.style}
+                    </span>
                   </div>
 
                   <div className="flex gap-2">
@@ -469,7 +424,7 @@ function SettingsContent() {
               {editingPersonality ? 'Edit Coach Personality' : 'Create New Coach Personality'}
             </DialogTitle>
             <DialogDescription>
-              Define your AI coach&apos;s personality for both text chat and voice conversations
+              Define your AI coach&apos;s personality and behavior for text chat
             </DialogDescription>
           </DialogHeader>
 
@@ -542,47 +497,15 @@ function SettingsContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="firstMessage">First Message (Voice)</Label>
+                <Label htmlFor="firstMessage">First Message (Optional)</Label>
                 <Textarea
                   id="firstMessage"
-                  placeholder="The greeting message when starting a voice conversation..."
+                  placeholder="The greeting message when starting a conversation..."
                   value={firstMessage}
                   onChange={(e) => setFirstMessage(e.target.value)}
                   rows={2}
                   maxLength={500}
                 />
-              </div>
-            </div>
-
-            {/* Voice Settings */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2 flex items-center gap-2">
-                <Mic className="h-4 w-4" />
-                Voice Settings (ElevenLabs)
-              </h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="voiceId">Voice</Label>
-                <Select value={voiceId || 'pNInz6obpgDQGcFmaJgB'} onValueChange={setVoiceId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a voice..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ELEVENLABS_VOICES.map((voice) => (
-                      <SelectItem key={voice.id} value={voice.id}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{voice.name}</span>
-                          <span className="text-xs text-gray-500">
-                            ({voice.gender}) - {voice.description}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500">
-                  Choose a voice for your AI coach
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -603,46 +526,6 @@ function SettingsContent() {
                     <SelectItem value="zh">Chinese</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="voiceStability">
-                    Voice Stability: {voiceStability.toFixed(2)}
-                  </Label>
-                  <input
-                    type="range"
-                    id="voiceStability"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={voiceStability}
-                    onChange={(e) => setVoiceStability(parseFloat(e.target.value))}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Higher = more consistent, Lower = more expressive
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="voiceSimilarityBoost">
-                    Similarity Boost: {voiceSimilarityBoost.toFixed(2)}
-                  </Label>
-                  <input
-                    type="range"
-                    id="voiceSimilarityBoost"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={voiceSimilarityBoost}
-                    onChange={(e) => setVoiceSimilarityBoost(parseFloat(e.target.value))}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Higher = closer to original voice
-                  </p>
-                </div>
               </div>
             </div>
 

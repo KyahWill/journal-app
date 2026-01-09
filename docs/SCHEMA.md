@@ -13,8 +13,8 @@ The application uses the following top-level Firestore collections:
 5. **user_themes** - Custom UI themes
 6. **custom_categories** - User-defined goal categories
 7. **goal_journal_links** - Links between goals and journal entries
-8. **coach_personalities** - AI coach personality configurations (unified for text and voice)
-9. **embeddings** - Vector embeddings for RAG (Retrieval-Augmented Generation)
+8. **coach_personalities** - AI coach personality configurations
+9. **rag_embeddings** - Vector embeddings for RAG (Retrieval-Augmented Generation)
 10. **user_usage** - Rate limiting and usage tracking
 
 ---
@@ -332,7 +332,7 @@ Links journal entries to goals for cross-referencing.
 
 ## 8. coach_personalities
 
-Stores voice coach personality configurations for ElevenLabs integration.
+Stores AI coach personality configurations.
 
 ### Fields
 
@@ -344,13 +344,9 @@ Stores voice coach personality configurations for ElevenLabs integration.
 | `description` | string | Personality description |
 | `style` | string | Coaching style: `supportive`, `direct`, `motivational`, `analytical`, `empathetic` |
 | `system_prompt` | string | AI system prompt for this personality |
-| `voice_id` | string \| undefined | ElevenLabs voice ID |
-| `voice_stability` | number \| undefined | Voice stability (0-1) |
-| `voice_similarity_boost` | number \| undefined | Voice similarity boost (0-1) |
 | `first_message` | string \| undefined | Initial greeting message |
 | `language` | string \| undefined | Language code (default: 'en') |
 | `is_default` | boolean | Whether this is the user's default personality |
-| `elevenlabs_agent_id` | string \| undefined | Generated ElevenLabs agent ID |
 | `created_at` | timestamp | Creation timestamp |
 | `updated_at` | timestamp | Last update timestamp |
 
@@ -361,7 +357,7 @@ Stores voice coach personality configurations for ElevenLabs integration.
 
 ---
 
-## 9. embeddings
+## 9. rag_embeddings
 
 Stores vector embeddings for semantic search and RAG functionality.
 
@@ -379,58 +375,6 @@ Stores vector embeddings for semantic search and RAG functionality.
 | `created_at` | timestamp | Creation timestamp |
 | `updated_at` | timestamp | Last update timestamp |
 
-### Metadata Object Examples
-
-**Journal Entry:**
-```typescript
-{
-  mood?: string,
-  tags?: string[]
-}
-```
-
-**Goal:**
-```typescript
-{
-  category: string,
-  status: string,
-  target_date: string
-}
-```
-
-**Milestone:**
-```typescript
-{
-  goal_id: string,
-  due_date: string | null,
-  completed: boolean,
-  order: number
-}
-```
-
-**Progress Update:**
-```typescript
-{
-  goal_id: string,
-  created_at: string
-}
-```
-
-**Routine:**
-```typescript
-{
-  frequency: string,
-  group: string | null,
-  step_count: number
-}
-```
-
-### Indexes Required
-
-- `user_id` (ascending) + `content_type` (ascending)
-- `user_id` (ascending) + `document_id` (ascending)
-- `user_id` (ascending) + `created_at` (descending)
-
 ---
 
 ## 10. user_usage
@@ -447,13 +391,11 @@ Path: `user_usage/{userId}/daily/{YYYY-MM-DD}`
 |-------|------|-------------|
 | `chat_count` | number | Number of chat messages sent |
 | `insights_count` | number | Number of AI insights generated |
-| `tts_count` | number | Number of text-to-speech uses |
 | `prompt_suggestions_count` | number | Number of prompt suggestions generated |
 | `goal_suggestions_count` | number | Number of goal suggestions generated |
 | `goal_insights_count` | number | Number of goal insights generated |
 | `rag_embedding_count` | number | Number of embeddings generated |
 | `rag_search_count` | number | Number of semantic searches performed |
-| `voice_coach_session_count` | number | Number of voice coaching sessions |
 | `last_updated` | timestamp | Last update timestamp |
 
 ### Rate Limits (Daily)
@@ -462,13 +404,11 @@ Path: `user_usage/{userId}/daily/{YYYY-MM-DD}`
 |---------|-------|
 | Chat messages | 20 |
 | AI insights | 25 |
-| Text-to-speech | 5 |
 | Prompt suggestions | 20 |
 | Goal suggestions | 10 |
 | Goal insights | 10 |
 | RAG embeddings | 100 |
 | RAG searches | 200 |
-| Voice coach sessions | 10 |
 
 ---
 
@@ -611,9 +551,6 @@ Batch operations are supported for:
 5. **Routine Reminders**: Notification system for routine completion
 6. **Routine Analytics**: Track completion rates and patterns over time
 
-### Scalability Considerations
+---
 
-1. **Sharding**: Consider sharding large collections by date ranges
-2. **Archival**: Move old data to cold storage after 1 year
-3. **Aggregations**: Pre-compute statistics for dashboard views
-4. **Search Indexes**: Consider Algolia/Elasticsearch for full-text search
+**Last Updated**: January 2026

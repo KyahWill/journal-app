@@ -43,7 +43,7 @@ The Journal application is a full-stack web application for personal journaling 
 │  │  • Real-time Streaming (SSE)                                     │   │
 │  │  • HTTP-only Session Cookies                                     │   │
 │  │  • Tailwind CSS + shadcn/ui                                      │   │
-│  └──────────────────────────────────────────────────────────────────┘   │
+│  │  └──────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────┬───────────────────────────────────────┘
                                   │
                     ┌─────────────┼─────────────┐
@@ -65,18 +65,18 @@ The Journal application is a full-stack web application for personal journaling 
 │  │  │  Module  │ │  Module  │ │  Module  │ │  Module  │ │ Module │  │   │
 │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └────────┘  │   │
 │  │                                                                  │   │
-│  │  ┌──────────┐ ┌───────────┐ ┌──────────┐ ┌────────┐              │   │
-│  │  │  Voice   │ │  Coach    │ │ Category │ │ Prompt │              │   │
-│  │  │  Coach   │ │Personality│ │  Module  │ │ Module │              │   │
-│  │  └──────────┘ └───────────┘ └──────────┘ └────────┘              │   │
+│  │  ┌───────────┐ ┌──────────┐ ┌────────┐                           │   │
+│  │  │  Coach    │ │ Category │ │ Prompt │                           │   │
+│  │  │Personality│ │  Module  │ │ Module │                           │   │
+│  │  └───────────┘ └──────────┘ └────────┘                           │   │
 │  │                                                                  │   │
 │  │  ┌──────────────────────────────────────────────────────────┐    │   │
 │  │  │              Core Services Layer                         │    │   │
 │  │  │                                                          │    │   │
-│  │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐     │    │   │
-│  │  │  │ Firebase │ │  Gemini  │ │ElevenLabs│ │   Rate   │     │    │   │
-│  │  │  │ Service  │ │ Service  │ │ Service  │ │  Limit   │     │    │   │
-│  │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘     │    │   │
+│  │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐                  │    │   │
+│  │  │  │ Firebase │ │  Gemini  │ │   Rate   │                  │    │   │
+│  │  │  │ Service  │ │ Service  │ │  Limit   │                  │    │   │
+│  │  │  └──────────┘ └──────────┘ └──────────┘                  │    │   │
 │  │  └──────────────────────────────────────────────────────────┘    │   │
 │  └──────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────┬───────────────────────────────────────┘
@@ -85,13 +85,13 @@ The Journal application is a full-stack web application for personal journaling 
                     │             │             │
                     ▼             ▼             ▼
          ┌──────────────┐  ┌──────────┐  ┌──────────────┐
-         │   Firebase   │  │  Google  │  │  ElevenLabs  │
-         │    Cloud     │  │  Gemini  │  │  Voice API   │
+         │   Firebase   │  │  Google  │  │    Search    │
+         │    Cloud     │  │  Gemini  │  │    Engine    │
          │              │  │    AI    │  │              │
-         │ • Firestore  │  │          │  │ • Text-to-   │
-         │ • Auth       │  │ • Gemini │  │   Speech     │
-         │ • Storage    │  │   2.0    │  │ • Voice      │
-         │ • Real-time  │  │ • Flash  │  │   Cloning    │
+         │ • Firestore  │  │          │  │ • Semantic   │
+         │ • Auth       │  │ • Gemini │  │   Search     │
+         │ • Storage    │  │   2.0    │  │ • Vector     │
+         │ • Real-time  │  │ • Flash  │  │   Embeddings │
          └──────────────┘  │ • Embed  │  └──────────────┘
                            └──────────┘
 ```
@@ -102,7 +102,6 @@ The Journal application is a full-stack web application for personal journaling 
 - **Web App → Firebase**: Direct client SDK for real-time listeners (optional)
 - **Backend → Firebase**: Firebase Admin SDK for all database operations
 - **Backend → Gemini AI**: AI coaching, insights, embeddings, and recommendations
-- **Backend → ElevenLabs**: Voice synthesis for voice coach feature
 - **Streaming**: Server-Sent Events (SSE) for real-time AI response streaming
 
 ---
@@ -131,7 +130,6 @@ The Journal application is a full-stack web application for personal journaling 
 | **TypeScript** | 5.3.3 | Type safety |
 | **Firebase Admin** | 13.0.1 | Firebase server SDK |
 | **Google Generative AI** | 0.21.0 | Gemini AI integration |
-| **ElevenLabs** | 1.59.0 | Voice synthesis |
 | **class-validator** | 0.14.0 | DTO validation |
 | **class-transformer** | 0.5.1 | Object transformation |
 | **RxJS** | 7.8.1 | Reactive programming |
@@ -145,7 +143,6 @@ The Journal application is a full-stack web application for personal journaling 
 | **Firebase Authentication** | User authentication |
 | **Firebase Storage** | File storage |
 | **Google Gemini AI** | AI coaching and embeddings |
-| **ElevenLabs** | Voice synthesis |
 | **Google Cloud Run** | Container hosting |
 | **Docker** | Containerization |
 
@@ -199,8 +196,7 @@ web/app/
 │   │   ├── [id]/page.tsx      # Goal details
 │   │   └── settings/page.tsx  # Goal categories
 │   │
-│   ├── coach/page.tsx         # AI text coach
-│   ├── ai-agent/page.tsx      # Voice AI coach
+│   ├── coach/page.tsx         # AI coach
 │   │
 │   └── settings/              # User settings
 │       └── page.tsx           # Settings home
@@ -310,17 +306,10 @@ backend/src/
 │   ├── goal.service.ts
 │   └── goal.module.ts
 │
-├── chat/                      # AI text coach
+├── chat/                      # AI coach
 │   ├── chat.controller.ts
 │   ├── chat.service.ts
 │   └── chat.module.ts
-│
-├── voice-coach/               # Voice AI coach
-│   ├── voice-coach.controller.ts
-│   ├── voice-coach.service.ts
-│   ├── context-builder.service.ts
-│   ├── metrics.service.ts
-│   └── voice-coach.module.ts
 │
 ├── coach-personality/         # Coach personalities
 │   ├── coach-personality.controller.ts
@@ -350,10 +339,6 @@ backend/src/
 ├── gemini/                    # Google Gemini AI
 │   ├── gemini.service.ts
 │   └── gemini.module.ts
-│
-├── elevenlabs/                # Voice synthesis
-│   ├── elevenlabs.service.ts
-│   └── elevenlabs.module.ts
 │
 └── common/                    # Shared resources
     ├── dto/                   # Data Transfer Objects
@@ -838,21 +823,15 @@ firestore/
 │       ├── created_at: Timestamp
 │       └── updated_at: Timestamp
 │
-├── voice_sessions/                    # Voice coach sessions
-│   └── {sessionId}/
-│       ├── user_id: string
-│       ├── personality_id: string
-│       ├── conversation: Conversation[]
-│       ├── metrics: SessionMetrics
-│       ├── created_at: Timestamp
-│       └── updated_at: Timestamp
-│
 ├── coach_personalities/               # Coach personalities
 │   └── {personalityId}/
+│       ├── user_id: string
 │       ├── name: string
 │       ├── description: string
-│       ├── voice_id: string
+│       ├── style: string              # supportive, direct, motivational, analytical, empathetic
 │       ├── system_prompt: string
+│       ├── first_message?: string
+│       ├── language?: string
 │       ├── is_default: boolean
 │       ├── created_at: Timestamp
 │       └── updated_at: Timestamp
@@ -866,31 +845,14 @@ firestore/
 │       ├── created_at: Timestamp
 │       └── updated_at: Timestamp
 │
-├── rag_embeddings/                    # RAG vector embeddings
-│   └── {embeddingId}/
-│       ├── user_id: string
-│       ├── content_type: string
-│       ├── content_id: string
-│       ├── content_text: string
-│       ├── embedding: number[]
-│       ├── metadata: object
-│       ├── created_at: Timestamp
-│       └── updated_at: Timestamp
-│
-└── coach_personalities/               # AI coach personalities (unified for text & voice)
-    └── {personalityId}/
+└── rag_embeddings/                    # RAG vector embeddings
+    └── {embeddingId}/
         ├── user_id: string
-        ├── name: string
-        ├── description: string
-        ├── style: string              # supportive, direct, motivational, analytical, empathetic
-        ├── system_prompt: string
-        ├── voice_id?: string          # ElevenLabs voice ID
-        ├── voice_stability?: number
-        ├── voice_similarity_boost?: number
-        ├── first_message?: string
-        ├── language?: string
-        ├── is_default: boolean
-        ├── elevenlabs_agent_id?: string
+        ├── content_type: string
+        ├── content_id: string
+        ├── content_text: string
+        ├── embedding: number[]
+        ├── metadata: object
         ├── created_at: Timestamp
         └── updated_at: Timestamp
 ```
@@ -911,10 +873,6 @@ User (Firebase Auth)
   │     └─► progress_updates (1:many)
   │
   ├─► chat_sessions (1:many)
-  │     │
-  │     └─► coach_personalities (many:1)
-  │
-  ├─► voice_sessions (1:many)
   │     │
   │     └─► coach_personalities (many:1)
   │
@@ -1091,11 +1049,6 @@ service cloud.firestore {
       allow read, write: if isOwner(resource.data.user_id);
     }
     
-    // Voice sessions
-    match /voice_sessions/{sessionId} {
-      allow read, write: if isOwner(resource.data.user_id);
-    }
-    
     // Custom categories
     match /custom_categories/{categoryId} {
       allow read, write: if isOwner(resource.data.user_id);
@@ -1106,7 +1059,7 @@ service cloud.firestore {
       allow read, write: if isOwner(resource.data.user_id);
     }
     
-    // Coach personalities (user-owned, unified for text & voice)
+    // Coach personalities
     match /coach_personalities/{personalityId} {
       allow read, write: if isOwner(resource.data.user_id);
     }
@@ -1121,7 +1074,6 @@ The backend implements rate limiting to prevent abuse:
 **Limits**:
 - **Chat Messages**: 50 per hour per user
 - **Insights Generation**: 10 per hour per user
-- **Voice Sessions**: 20 per hour per user
 - **RAG Queries**: 100 per hour per user
 
 **Implementation**:
@@ -1171,7 +1123,7 @@ Both web and backend applications are deployed as containerized services on Goog
 │  │              Secret Manager                          │   │
 │  │                                                      │   │
 │  │  • Firebase service account keys                     │   │
-│  │  • API keys (Gemini, ElevenLabs)                     │   │
+│  │  • API keys (Gemini)                                 │   │
 │  │  • Environment variables                             │   │
 │  └──────────────────────────────────────────────────────┘   │
 │                                                             │
@@ -1182,10 +1134,10 @@ Both web and backend applications are deployed as containerized services on Goog
 ┌─────────────────────────────────────────────────────────────┐
 │                    External Services                        │
 │                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   Firebase   │  │    Gemini    │  │  ElevenLabs  │      │
-│  │    Cloud     │  │      AI      │  │   Voice API  │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│  ┌──────────────┐  ┌──────────────┐                         │
+│  │   Firebase   │  │    Gemini    │                         │
+│  │    Cloud     │  │      AI      │                         │
+│  └──────────────┘  └──────────────┘                         │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -1316,11 +1268,13 @@ For more detailed information on specific architectural components, see:
 
 ### Feature Documentation
 
-- **[Features Overview](FEATURES.md)** - Complete feature catalog
-- **[Authentication](features/authentication.md)** - Auth system details
-- **[Goals](features/goals.md)** - Goal tracking system
-- **[Voice Coach](features/voice-coach.md)** - Voice AI coach
-- **[RAG System](features/rag-system.md)** - Semantic search and embeddings
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **[Authentication](features/authentication.md)** | User authentication and session management | ✅ |
+| **[Journaling](features/journal.md)** | Daily journal entries with mood and tags | ✅ |
+| **[AI Coach](features/chat.md)** | Real-time AI coaching based on journal context | ✅ |
+| **[Goal Tracking](features/goals.md)** | Create and track progress on personal goals | ✅ |
+| **[RAG System](features/rag-system.md)** | Semantic search across all user content | ✅ |
 
 ### Setup and Deployment
 
@@ -1338,8 +1292,8 @@ For more detailed information on specific architectural components, see:
 
 ---
 
-**Last Updated**: November 2024  
-**Version**: 2.0  
+**Last Updated**: January 2026  
+**Version**: 2.1  
 **Status**: Current
 
 This architecture documentation provides a comprehensive overview of the Journal application's system design, technology stack, and implementation details. For specific implementation guidance, refer to the related documentation links above.

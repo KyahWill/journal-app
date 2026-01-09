@@ -30,27 +30,11 @@ export class CreateCoachPersonalityDto {
 
   @IsOptional()
   @IsString()
-  voiceId?: string
-
-  @IsOptional()
-  @IsNumber()
-  voiceStability?: number
-
-  @IsOptional()
-  @IsNumber()
-  voiceSimilarityBoost?: number
-
-  @IsOptional()
-  @IsString()
   language?: string
 
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean
-
-  @IsOptional()
-  @IsString()
-  elevenLabsAgentId?: string
 }
 
 export class UpdateCoachPersonalityDto {
@@ -79,26 +63,10 @@ export class UpdateCoachPersonalityDto {
 
   @IsOptional()
   @IsString()
-  voiceId?: string
-
-  @IsOptional()
-  @IsNumber()
-  voiceStability?: number
-
-  @IsOptional()
-  @IsNumber()
-  voiceSimilarityBoost?: number
-
-  @IsOptional()
-  @IsString()
   language?: string
 
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean
-
-  @IsOptional()
-  @IsString()
-  elevenLabsAgentId?: string
 }
 

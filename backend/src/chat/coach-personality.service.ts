@@ -10,12 +10,8 @@ export interface CoachPersonality {
   style: string
   systemPrompt: string
   firstMessage?: string
-  voiceId?: string
-  voiceStability?: number
-  voiceSimilarityBoost?: number
   language?: string
   isDefault: boolean
-  elevenLabsAgentId?: string
   created_at: Date
   updated_at: Date
 }
@@ -112,12 +108,8 @@ export class CoachPersonalityService {
         style: dto.style,
         systemPrompt: dto.systemPrompt,
         firstMessage: dto.firstMessage,
-        voiceId: dto.voiceId,
-        voiceStability: dto.voiceStability,
-        voiceSimilarityBoost: dto.voiceSimilarityBoost,
         language: dto.language || 'en',
         isDefault: dto.isDefault || false,
-        elevenLabsAgentId: dto.elevenLabsAgentId,
       }
 
       const result = await this.firebaseService.addDocument(this.collectionName, personalityData)
@@ -159,12 +151,8 @@ export class CoachPersonalityService {
       if (dto.style !== undefined) updateData.style = dto.style
       if (dto.systemPrompt !== undefined) updateData.systemPrompt = dto.systemPrompt
       if (dto.firstMessage !== undefined) updateData.firstMessage = dto.firstMessage
-      if (dto.voiceId !== undefined) updateData.voiceId = dto.voiceId
-      if (dto.voiceStability !== undefined) updateData.voiceStability = dto.voiceStability
-      if (dto.voiceSimilarityBoost !== undefined) updateData.voiceSimilarityBoost = dto.voiceSimilarityBoost
       if (dto.language !== undefined) updateData.language = dto.language
       if (dto.isDefault !== undefined) updateData.isDefault = dto.isDefault
-      if (dto.elevenLabsAgentId !== undefined) updateData.elevenLabsAgentId = dto.elevenLabsAgentId
 
       await this.firebaseService.updateDocument(this.collectionName, id, updateData)
 
@@ -275,12 +263,8 @@ export class CoachPersonalityService {
       style: doc.style,
       systemPrompt: doc.systemPrompt,
       firstMessage: doc.firstMessage,
-      voiceId: doc.voiceId,
-      voiceStability: doc.voiceStability,
-      voiceSimilarityBoost: doc.voiceSimilarityBoost,
       language: doc.language || 'en',
       isDefault: doc.isDefault || false,
-      elevenLabsAgentId: doc.elevenLabsAgentId,
       created_at: doc.created_at?.toDate() || new Date(),
       updated_at: doc.updated_at?.toDate() || new Date(),
     }

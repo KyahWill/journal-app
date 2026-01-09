@@ -1,10 +1,10 @@
 # API Reference
 
-**Last Updated**: December 2025
+**Last Updated**: January 2026
 
 ## Overview
 
-The Journal API is a RESTful API built with NestJS that provides endpoints for managing goals, journal entries, AI chat coaching, voice coaching, and more. The API uses Firebase Authentication for user management and authorization.
+The Journal API is a RESTful API built with NestJS that provides endpoints for managing goals, journal entries, AI chat coaching, and more. The API uses Firebase Authentication for user management and authorization.
 
 ## Base URL
 
@@ -154,7 +154,6 @@ The API implements rate limiting to ensure fair usage:
 
 - **General Endpoints**: 100 requests per minute per user
 - **AI/RAG Endpoints**: 20 requests per minute per user
-- **Voice Coach**: 10 sessions per hour per user
 
 ### Rate Limit Headers
 
@@ -264,24 +263,6 @@ AI-powered chat coaching with streaming support.
 
 [View detailed documentation →](./api/chat-api.md)
 
-### Voice Coach API
-
-Voice-based AI coaching with ElevenLabs integration.
-
-**Base Path**: `/voice-coach`
-
-**Endpoints**:
-- `POST /voice-coach/session` - Create voice session
-- `GET /voice-coach/signed-url` - Get ElevenLabs signed URL
-- `POST /voice-coach/conversation` - Save conversation transcript
-- `GET /voice-coach/history` - Get conversation history
-- `GET /voice-coach/conversation/:id` - Get conversation by ID
-- `DELETE /voice-coach/conversation/:id` - Delete conversation
-- `GET /voice-coach/health` - Health check with metrics
-- `GET /voice-coach/metrics` - Get detailed metrics
-
-[View detailed documentation →](./api/voice-coach-api.md)
-
 ### RAG API
 
 Retrieval-Augmented Generation system health and metrics.
@@ -313,20 +294,15 @@ Custom category management for goals.
 
 Manage AI coach personality configurations.
 
-**Base Path**: `/coach-personalities`
+**Base Path**: `/chat/personalities`
 
 **Endpoints**:
-- `POST /coach-personalities` - Create personality
-- `GET /coach-personalities` - List all personalities
-- `GET /coach-personalities/default` - Get default personality
-- `GET /coach-personalities/:id` - Get personality by ID
-- `PUT /coach-personalities/:id` - Update personality
-- `DELETE /coach-personalities/:id` - Delete personality
-- `POST /coach-personalities/:id/link-agent` - Link ElevenLabs agent
-- `POST /coach-personalities/:id/generate-agent` - Auto-generate agent
-- `POST /coach-personalities/initialize` - Initialize default personalities
-
-[View detailed documentation →](./api/coach-personalities-api.md)
+- `POST /chat/personalities` - Create personality
+- `GET /chat/personalities` - List all personalities
+- `GET /chat/personalities/:id` - Get personality by ID
+- `PUT /chat/personalities/:id` - Update personality
+- `PATCH /chat/personalities/:id/default` - Set as default
+- `DELETE /chat/personalities/:id` - Delete personality
 
 ### Google Calendar API
 
@@ -479,7 +455,6 @@ Returns overall API health status.
 ### Service-Specific Health
 
 - `GET /rag/health` - RAG system health
-- `GET /voice-coach/health` - Voice coach service health
 
 ## Best Practices
 
@@ -529,14 +504,13 @@ Currently, the API is accessed directly via HTTP requests. Official client libra
 
 ## Changelog
 
-### Version 1.0.0 (November 2025)
+### Version 1.0.0 (January 2026)
 
 - Initial API release
 - Authentication endpoints
 - Goals management with milestones and progress
 - Journal entries with search
 - AI chat coaching with streaming
-- Voice coach integration
 - RAG system
 - Custom categories
 - Coach personalities

@@ -1,5 +1,4 @@
 FEATURE ROADMAP
-- [ ] MCP Server Integration with ElevenLabs Conversation Agents.
 - [ ] Improve UI for Goal Settings.
 - [ ] Routines instead of Habits.
 - [ ] Notes Application.

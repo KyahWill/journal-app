@@ -6,8 +6,6 @@
  * 
  * For each user_prompt, it creates a corresponding coach_personality with:
  * - The prompt text as the systemPrompt
- * - Default voice settings
- * - An auto-generated ElevenLabs agent
  * 
  * Run with: npx ts-node -r tsconfig-paths/register src/firebase/migrations/migrate-prompts-to-personalities.ts
  */
@@ -69,9 +67,6 @@ interface CoachPersonalityData {
   description: string;
   style: string;
   system_prompt: string;
-  voice_id: string;
-  voice_stability: number;
-  voice_similarity_boost: number;
   first_message: string;
   language: string;
   is_default: boolean;
@@ -80,10 +75,6 @@ interface CoachPersonalityData {
   updated_at: admin.firestore.FieldValue;
 }
 
-// Default voice settings for migrated prompts
-const DEFAULT_VOICE_ID = 'pNInz6obpgDQGcFmaJgB'; // Adam voice
-const DEFAULT_VOICE_STABILITY = 0.6;
-const DEFAULT_VOICE_SIMILARITY_BOOST = 0.75;
 const DEFAULT_FIRST_MESSAGE = "Hello! I'm your AI coach. How can I help you today?";
 
 // Infer coaching style from prompt content
@@ -166,9 +157,6 @@ async function migratePromptsToPersonalities(dryRun: boolean = true) {
           description,
           style,
           system_prompt: prompt.prompt_text,
-          voice_id: DEFAULT_VOICE_ID,
-          voice_stability: DEFAULT_VOICE_STABILITY,
-          voice_similarity_boost: DEFAULT_VOICE_SIMILARITY_BOOST,
           first_message: DEFAULT_FIRST_MESSAGE,
           language: 'en',
           is_default: prompt.is_default,
@@ -185,9 +173,6 @@ async function migratePromptsToPersonalities(dryRun: boolean = true) {
         if (!dryRun) {
           const docRef = await db.collection('coach_personalities').add(personalityData);
           console.log(`   ✅ Created coach_personality: ${docRef.id}`);
-          
-          // Note: ElevenLabs agent creation is handled separately to avoid rate limits
-          // You can run a separate script to generate agents for migrated personalities
         } else {
           console.log(`   🔍 [DRY RUN] Would create coach_personality`);
         }
@@ -212,9 +197,8 @@ async function migratePromptsToPersonalities(dryRun: boolean = true) {
     } else {
       console.log('\n✅ Migration completed!');
       console.log('\nNext steps:');
-      console.log('1. Run the ElevenLabs agent generation script for migrated personalities');
-      console.log('2. Verify the migrated personalities in Firestore');
-      console.log('3. Test the unified coach system');
+      console.log('1. Verify the migrated personalities in Firestore');
+      console.log('2. Test the unified coach system');
     }
   } catch (error) {
     console.error('\n❌ Migration failed:', error);

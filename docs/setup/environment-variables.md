@@ -1,6 +1,6 @@
 # Environment Variables Reference
 
-**Last Updated**: November 2025
+**Last Updated**: January 2026
 
 Complete reference for all environment variables used in the Journal application.
 
@@ -59,36 +59,6 @@ Environment variables for the Next.js web application (`.env.local` file).
 **Development:** `http://localhost:3001/api/v1`  
 **Production:** Your deployed backend URL
 
-### Feature Flags
-
-| Variable | Description | Required | Default | Example |
-|----------|-------------|----------|---------|---------|
-| `NEXT_PUBLIC_FEATURE_VOICE_COACH` | Enable voice coach feature | No | `true` | `true` or `false` |
-
-### Complete Web .env.local Example
-
-```env
-# Firebase Configuration
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789012
-NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789012:web:abcdef123456
-
-# Firebase Admin SDK (server-side only)
-FIREBASE_SERVICE_ACCOUNT_KEY='{"type":"service_account","project_id":"your-project","private_key_id":"abc123","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n","client_email":"firebase-adminsdk@your-project.iam.gserviceaccount.com","client_id":"123456789012","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk%40your-project.iam.gserviceaccount.com","universe_domain":"googleapis.com"}'
-
-# Google Gemini API (server-side only)
-GEMINI_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-
-# Backend API URL
-NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
-
-# Feature Flags (optional)
-NEXT_PUBLIC_FEATURE_VOICE_COACH=true
-```
-
 ---
 
 ## Backend API Variables
@@ -116,22 +86,6 @@ Environment variables for the NestJS backend API (`.env` file).
 |----------|-------------|----------|---------|---------|
 | `GEMINI_API_KEY` | Google Gemini API key | Yes | - | `AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX` |
 
-### ElevenLabs API (Optional)
-
-| Variable | Description | Required | Default | Example |
-|----------|-------------|----------|---------|---------|
-| `ELEVEN_LABS_API_KEY` | ElevenLabs API key | No | - | `your_elevenlabs_api_key` |
-| `ELEVENLABS_AGENT_ID` | ElevenLabs agent ID | No | - | `your_elevenlabs_agent_id` |
-
-**Where to find:** [ElevenLabs](https://elevenlabs.io/) → Profile → API Keys
-
-### Voice Coach Configuration
-
-| Variable | Description | Required | Default | Example |
-|----------|-------------|----------|---------|---------|
-| `VOICE_COACH_RATE_LIMIT_PER_HOUR` | Max sessions per hour per user | No | `10` | `10` |
-| `VOICE_COACH_SESSION_MAX_DURATION` | Max session duration (seconds) | No | `1800` | `1800` (30 minutes) |
-
 ### Google Calendar Integration (Optional)
 
 | Variable | Description | Required | Default | Example |
@@ -142,13 +96,6 @@ Environment variables for the NestJS backend API (`.env` file).
 | `FRONTEND_URL` | Frontend URL for OAuth redirect | No | `http://localhost:3000` | `https://your-app.com` |
 
 **Where to find:** [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → Create OAuth 2.0 Client ID
-
-**Setup Steps:**
-1. Go to Google Cloud Console
-2. Enable Google Calendar API
-3. Create OAuth 2.0 Client ID (Web application)
-4. Add authorized redirect URI: `{BACKEND_URL}/api/v1/calendar/callback`
-5. Copy Client ID and Client Secret to your `.env` file
 
 ### RAG Configuration
 
@@ -162,16 +109,6 @@ Environment variables for the NestJS backend API (`.env` file).
 | `RAG_CACHE_TTL_SECONDS` | Cache TTL in seconds | No | `3600` | `3600` (1 hour) |
 | `RAG_BATCH_SIZE` | Batch size for embeddings | No | `50` | `50` |
 
-**RAG Configuration Guide:**
-
-- **RAG_ENABLED:** Feature flag to enable/disable RAG globally
-- **RAG_EMBEDDING_MODEL:** Use `text-embedding-004` (recommended)
-- **RAG_EMBEDDING_DIMENSIONS:** Must match model (768 for text-embedding-004)
-- **RAG_SIMILARITY_THRESHOLD:** Higher = more relevant results (0.6-0.8 recommended)
-- **RAG_MAX_RETRIEVED_DOCS:** Balance between context and performance (3-10 recommended)
-- **RAG_CACHE_TTL_SECONDS:** Cache embeddings to reduce API calls (1800-7200 recommended)
-- **RAG_BATCH_SIZE:** Batch embedding generation for efficiency (25-100 recommended)
-
 ### CORS Configuration
 
 | Variable | Description | Required | Default | Example |
@@ -183,51 +120,6 @@ Environment variables for the NestJS backend API (`.env` file).
 | Variable | Description | Required | Default | Example |
 |----------|-------------|----------|---------|---------|
 | `API_PREFIX` | API route prefix | No | `api/v1` | `api/v1` |
-
-### Complete Backend .env Example
-
-```env
-# Server Configuration
-PORT=3001
-NODE_ENV=development
-
-# Firebase Admin SDK
-FIREBASE_SERVICE_ACCOUNT_KEY='{"type":"service_account","project_id":"your-project","private_key_id":"abc123","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n","client_email":"firebase-adminsdk@your-project.iam.gserviceaccount.com","client_id":"123456789012","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk%40your-project.iam.gserviceaccount.com","universe_domain":"googleapis.com"}'
-FIREBASE_PROJECT_ID=your-project
-FIREBASE_DATABASE_ID=(default)
-
-# Google Gemini API
-GEMINI_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-
-# ElevenLabs API (Optional)
-ELEVEN_LABS_API_KEY=your_elevenlabs_api_key
-ELEVENLABS_AGENT_ID=your_elevenlabs_agent_id
-
-# Voice Coach Configuration
-VOICE_COACH_RATE_LIMIT_PER_HOUR=10
-VOICE_COACH_SESSION_MAX_DURATION=1800
-
-# RAG Configuration
-RAG_ENABLED=true
-RAG_EMBEDDING_MODEL=text-embedding-004
-RAG_EMBEDDING_DIMENSIONS=768
-RAG_SIMILARITY_THRESHOLD=0.7
-RAG_MAX_RETRIEVED_DOCS=5
-RAG_CACHE_TTL_SECONDS=3600
-RAG_BATCH_SIZE=50
-
-# Google Calendar Integration (Optional)
-GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxx
-GOOGLE_REDIRECT_URI=http://localhost:3001/api/v1/calendar/callback
-FRONTEND_URL=http://localhost:3000
-
-# CORS Origins
-CORS_ORIGINS=http://localhost:3000,http://localhost:3001
-
-# API Configuration
-API_PREFIX=api/v1
-```
 
 ---
 
@@ -275,21 +167,10 @@ serviceAccount.json
 
 **Development:**
 - Use `.env.local` files (never commit)
-- Use environment variable managers (e.g., direnv)
 
 **Production:**
 - Use secret management services:
   - Google Cloud Secret Manager
-  - AWS Secrets Manager
-  - Azure Key Vault
-  - HashiCorp Vault
-
-### Monitor Usage
-
-- Set up billing alerts
-- Monitor API usage
-- Track authentication attempts
-- Review security logs regularly
 
 ---
 
@@ -300,7 +181,6 @@ serviceAccount.json
 ```env
 # Web (.env.local)
 NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
-NEXT_PUBLIC_FEATURE_VOICE_COACH=true
 
 # Backend (.env)
 NODE_ENV=development
@@ -309,26 +189,11 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:3001
 RAG_ENABLED=true
 ```
 
-### Staging
-
-```env
-# Web (.env.local)
-NEXT_PUBLIC_API_URL=https://api-staging.your-app.com/api/v1
-NEXT_PUBLIC_FEATURE_VOICE_COACH=true
-
-# Backend (.env)
-NODE_ENV=production
-PORT=8080
-CORS_ORIGINS=https://staging.your-app.com
-RAG_ENABLED=true
-```
-
 ### Production
 
 ```env
 # Web (.env.local)
 NEXT_PUBLIC_API_URL=https://api.your-app.com/api/v1
-NEXT_PUBLIC_FEATURE_VOICE_COACH=true
 
 # Backend (.env)
 NODE_ENV=production
@@ -337,92 +202,6 @@ CORS_ORIGINS=https://your-app.com
 RAG_ENABLED=true
 RAG_CACHE_TTL_SECONDS=7200
 ```
-
-### Docker
-
-Use environment variables in docker-compose.yml:
-
-```yaml
-version: '3.8'
-services:
-  web:
-    build: ./web
-    environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-    env_file:
-      - ./web/.env.local
-
-  backend:
-    build: ./backend
-    environment:
-      - PORT=3001
-      - NODE_ENV=production
-    env_file:
-      - ./backend/.env
-```
-
-### Cloud Run
-
-Set environment variables:
-
-```bash
-# Set individual variables
-gcloud run services update journal-web \
-  --set-env-vars="GEMINI_API_KEY=your_key"
-
-# Use Secret Manager
-gcloud secrets create gemini-api-key --data-file=-
-gcloud run services update journal-web \
-  --set-secrets="GEMINI_API_KEY=gemini-api-key:latest"
-```
-
----
-
-## Troubleshooting
-
-### Variables Not Loading
-
-**Issue:** Environment variables are `undefined`
-
-**Solutions:**
-1. Ensure file is named correctly (`.env.local` for web, `.env` for backend)
-2. Restart development server after changes
-3. Check variables start with `NEXT_PUBLIC_` for client-side access (web only)
-4. Verify no syntax errors in env file
-5. Check for extra spaces or quotes
-
-### Firebase Configuration Errors
-
-**Issue:** Firebase initialization fails
-
-**Solutions:**
-1. Verify all Firebase variables are set
-2. Check for typos in API key
-3. Ensure service account key is properly stringified
-4. Verify no extra spaces or newlines
-5. Check project ID matches Firebase Console
-
-### CORS Errors
-
-**Issue:** Frontend can't connect to backend
-
-**Solutions:**
-1. Add frontend URL to `CORS_ORIGINS` in backend `.env`
-2. Restart backend server
-3. Verify `NEXT_PUBLIC_API_URL` is correct
-4. Check for trailing slashes in URLs
-
-### RAG Not Working
-
-**Issue:** RAG features not functioning
-
-**Solutions:**
-1. Verify `RAG_ENABLED=true`
-2. Check Gemini API key is valid
-3. Ensure embeddings are generated (run migration)
-4. Verify Firestore indexes are deployed
-5. Check backend logs for RAG errors
 
 ---
 
