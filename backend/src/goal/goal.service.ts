@@ -401,7 +401,7 @@ export class GoalService {
 
           const goalCategory = this.categoryService.isDefaultCategory(goal.category)?
             goal.category:
-            await this.categoryService.getCategoryById(userId, goal.category)
+            await this.categoryService.getCategoryById(userId, goal.category, encryptionKey)
 
           return {
             id: goal.id,
@@ -458,7 +458,7 @@ export class GoalService {
 
       goal.category = this.categoryService.isDefaultCategory(goal.category)?
         goal.category:
-        await this.categoryService.getCategoryById(userId, goal.category)
+        await this.categoryService.getCategoryById(userId, goal.category, encryptionKey)
 
       return {
         id: goal.id,

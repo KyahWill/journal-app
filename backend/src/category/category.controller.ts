@@ -13,7 +13,7 @@ import {
 import { CategoryService } from './category.service'
 import { CreateCategoryDto, UpdateCategoryDto } from '@/common/dto/category.dto'
 import { AuthGuard } from '@/common/guards/auth.guard'
-import { CurrentUser } from '@/common/decorators/user.decorator'
+import { CurrentUser, EncryptionKey } from '@/common/decorators/user.decorator'
 
 @Controller('category')
 @UseGuards(AuthGuard)
@@ -27,13 +27,20 @@ export class CategoryController {
   }
 
   @Get()
-  async findAll(@CurrentUser() user: any) {
-    return this.categoryService.getCategories(user.uid)
+  async findAll(
+    @CurrentUser() user: any,
+    @EncryptionKey() encryptionKey?: Buffer,
+  ) {
+    return this.categoryService.getCategories(user.uid, encryptionKey)
   }
 
   @Get(':id')
-  async findOne(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.categoryService.getCategoryById(user.uid, id)
+  async findOne(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @EncryptionKey() encryptionKey?: Buffer,
+  ) {
+    return this.categoryService.getCategoryById(user.uid, id, encryptionKey)
   }
 
   @Put(':id')

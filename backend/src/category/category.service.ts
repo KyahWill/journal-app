@@ -89,7 +89,7 @@ export class CategoryService {
     }
   }
 
-  async getCategories(userId: string): Promise<CategoryWithType[]> {
+  async getCategories(userId: string, encryptionKey?: Buffer): Promise<CategoryWithType[]> {
     try {
       // Get custom categories
       const conditions = [{ field: 'user_id', operator: '==' as const, value: userId }]
@@ -100,16 +100,20 @@ export class CategoryService {
         'asc'
       )
 
-      const mappedCustom: CategoryWithType[] = customCategories.map((cat: any) => ({
-        id: cat.id,
-        user_id: cat.user_id,
-        name: cat.name,
-        color: cat.color || undefined,
-        icon: cat.icon || undefined,
-        created_at: cat.created_at?.toDate() || new Date(),
-        updated_at: cat.updated_at?.toDate() || new Date(),
-        is_default: false,
-      }))
+      const mappedCustom: CategoryWithType[] = customCategories.map((cat: any) => {
+        // Decrypt category fields
+        const decrypted = this.decryptCategory(cat, encryptionKey)
+        return {
+          id: cat.id,
+          user_id: cat.user_id,
+          name: decrypted.name,
+          color: cat.color || undefined,
+          icon: cat.icon || undefined,
+          created_at: cat.created_at?.toDate() || new Date(),
+          updated_at: cat.updated_at?.toDate() || new Date(),
+          is_default: false,
+        }
+      })
 
       // Add default categories
       const defaultCats: CategoryWithType[] = this.defaultCategories.map((name) => ({
@@ -128,7 +132,7 @@ export class CategoryService {
     }
   }
 
-  async getCategoryById(userId: string, categoryId: string): Promise<CustomCategory> {
+  async getCategoryById(userId: string, categoryId: string, encryptionKey?: Buffer): Promise<CustomCategory> {
     try {
       const category = await this.firebaseService.getDocument(this.categoriesCollection, categoryId)
       if (!category) {
@@ -139,10 +143,13 @@ export class CategoryService {
         throw new ForbiddenException('You do not have access to this category')
       }
 
+      // Decrypt category fields
+      const decrypted = this.decryptCategory(category, encryptionKey)
+
       return {
         id: category.id,
         user_id: category.user_id,
-        name: category.name,
+        name: decrypted.name,
         color: category.color || undefined,
         icon: category.icon || undefined,
         created_at: category.created_at?.toDate() || new Date(),
