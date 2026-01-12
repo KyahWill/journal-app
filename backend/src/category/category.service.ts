@@ -48,16 +48,16 @@ export class CategoryService {
     return this.encryptionService.decryptFields(category, ENCRYPTED_FIELDS, encryptionKey)
   }
 
-  async createCategory(userId: string, createCategoryDto: CreateCategoryDto): Promise<CustomCategory> {
+  async createCategory(userId: string, createCategoryDto: CreateCategoryDto, encryptionKey?: Buffer): Promise<CustomCategory> {
     try {
       // Check if category name already exists for this user
-      const existing = await this.getCategoryByName(userId, createCategoryDto.name)
+      const existing = await this.getCategoryByName(userId, createCategoryDto.name, encryptionKey)
       if (existing) {
         throw new BadRequestException('A category with this name already exists')
       }
 
       const now = new Date()
-      const data: any = {
+      let data: any = {
         user_id: userId,
         name: createCategoryDto.name,
         color: createCategoryDto.color || null,
@@ -65,6 +65,9 @@ export class CategoryService {
         created_at: now,
         updated_at: now,
       }
+
+      // Encrypt data before saving
+      data = this.encryptCategory(data, encryptionKey)
 
       this.logger.log(`Creating custom category for user: ${userId}`)
       const result = await this.firebaseService.addDocument(this.categoriesCollection, data)
@@ -74,9 +77,9 @@ export class CategoryService {
       return {
         id: result.id,
         user_id: userId,
-        name: data.name,
-        color: data.color,
-        icon: data.icon,
+        name: createCategoryDto.name,
+        color: createCategoryDto.color || undefined,
+        icon: createCategoryDto.icon || undefined,
         created_at: result.created_at.toDate(),
         updated_at: result.updated_at.toDate(),
       }
@@ -164,11 +167,12 @@ export class CategoryService {
     }
   }
 
-  async getCategoryByName(userId: string, name: string): Promise<CustomCategory | null> {
+  async getCategoryByName(userId: string, name: string, encryptionKey?: Buffer): Promise<CustomCategory | null> {
     try {
+      // Note: We need to fetch all user categories and decrypt them to find by name
+      // since encrypted names can't be queried directly
       const conditions = [
         { field: 'user_id', operator: '==' as const, value: userId },
-        { field: 'name', operator: '==' as const, value: name },
       ]
       
       const categories = await this.firebaseService.getCollection(
@@ -180,16 +184,23 @@ export class CategoryService {
         return null
       }
 
-      const cat = categories[0]
-      return {
-        id: cat.id,
-        user_id: cat.user_id,
-        name: cat.name,
-        color: cat.color || undefined,
-        icon: cat.icon || undefined,
-        created_at: cat.created_at?.toDate() || new Date(),
-        updated_at: cat.updated_at?.toDate() || new Date(),
+      // Decrypt and find matching category
+      for (const cat of categories) {
+        const decrypted = this.decryptCategory(cat, encryptionKey)
+        if (decrypted.name === name) {
+          return {
+            id: cat.id,
+            user_id: cat.user_id,
+            name: decrypted.name,
+            color: cat.color || undefined,
+            icon: cat.icon || undefined,
+            created_at: cat.created_at?.toDate() || new Date(),
+            updated_at: cat.updated_at?.toDate() || new Date(),
+          }
+        }
       }
+
+      return null
     } catch (error) {
       this.logger.error('Error fetching category by name', error)
       throw error
@@ -200,20 +211,21 @@ export class CategoryService {
     userId: string,
     categoryId: string,
     updateCategoryDto: UpdateCategoryDto,
+    encryptionKey?: Buffer,
   ): Promise<CustomCategory> {
     try {
       // Verify ownership
-      await this.getCategoryById(userId, categoryId)
+      await this.getCategoryById(userId, categoryId, encryptionKey)
 
       // Check if new name conflicts with existing category
       if (updateCategoryDto.name) {
-        const existing = await this.getCategoryByName(userId, updateCategoryDto.name)
+        const existing = await this.getCategoryByName(userId, updateCategoryDto.name, encryptionKey)
         if (existing && existing.id !== categoryId) {
           throw new BadRequestException('A category with this name already exists')
         }
       }
 
-      const updateData: any = {
+      let updateData: any = {
         updated_at: new Date(),
       }
 
@@ -229,11 +241,14 @@ export class CategoryService {
         updateData.icon = updateCategoryDto.icon
       }
 
+      // Encrypt data before updating
+      updateData = this.encryptCategory(updateData, encryptionKey)
+
       await this.firebaseService.updateDocument(this.categoriesCollection, categoryId, updateData)
 
       this.logger.log(`Category updated: ${categoryId} for user: ${userId}`)
 
-      return this.getCategoryById(userId, categoryId)
+      return this.getCategoryById(userId, categoryId, encryptionKey)
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof BadRequestException) {
         throw error
@@ -243,10 +258,10 @@ export class CategoryService {
     }
   }
 
-  async deleteCategory(userId: string, categoryId: string): Promise<{ success: boolean; message: string; goalsAffected: number }> {
+  async deleteCategory(userId: string, categoryId: string, encryptionKey?: Buffer): Promise<{ success: boolean; message: string; goalsAffected: number }> {
     try {
       // Verify ownership
-      await this.getCategoryById(userId, categoryId)
+      await this.getCategoryById(userId, categoryId, encryptionKey)
 
       // Check how many goals use this category
       const firestore = this.firebaseService.getFirestore()

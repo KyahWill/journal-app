@@ -22,8 +22,12 @@ export class CategoryController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@CurrentUser() user: any, @Body() createCategoryDto: CreateCategoryDto) {
-    return this.categoryService.createCategory(user.uid, createCategoryDto)
+  async create(
+    @CurrentUser() user: any,
+    @Body() createCategoryDto: CreateCategoryDto,
+    @EncryptionKey() encryptionKey?: Buffer,
+  ) {
+    return this.categoryService.createCategory(user.uid, createCategoryDto, encryptionKey)
   }
 
   @Get()
@@ -48,13 +52,18 @@ export class CategoryController {
     @CurrentUser() user: any,
     @Param('id') id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
+    @EncryptionKey() encryptionKey?: Buffer,
   ) {
-    return this.categoryService.updateCategory(user.uid, id, updateCategoryDto)
+    return this.categoryService.updateCategory(user.uid, id, updateCategoryDto, encryptionKey)
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  async remove(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.categoryService.deleteCategory(user.uid, id)
+  async remove(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @EncryptionKey() encryptionKey?: Buffer,
+  ) {
+    return this.categoryService.deleteCategory(user.uid, id, encryptionKey)
   }
 }

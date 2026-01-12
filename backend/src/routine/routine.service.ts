@@ -58,7 +58,7 @@ export class RoutineService {
     return decrypted
   }
 
-  async createRoutine(userId: string, createRoutineDto: CreateRoutineDto): Promise<Routine> {
+  async createRoutine(userId: string, createRoutineDto: CreateRoutineDto, encryptionKey?: Buffer): Promise<Routine> {
     try {
       const now = new Date()
       
@@ -70,7 +70,7 @@ export class RoutineService {
         order: step.order !== undefined ? step.order : index,
       }))
 
-      const data: any = {
+      let data: any = {
         user_id: userId,
         title: createRoutineDto.title,
         description: createRoutineDto.description || '',
@@ -84,18 +84,23 @@ export class RoutineService {
         updated_at: now,
       }
 
+      // Encrypt data before saving
+      data = this.encryptRoutine(data, encryptionKey)
+
       this.logger.log(`Creating routine for user: ${userId}`)
       const result = await this.firebaseService.addDocument(this.routinesCollection, data)
 
       this.logger.log(`Routine created: ${result.id} for user: ${userId}`)
-      return this.convertToRoutine({ id: result.id, ...data })
+      
+      // Return decrypted version
+      return this.convertToRoutine({ id: result.id, ...data }, encryptionKey)
     } catch (error) {
       this.logger.error('Error creating routine', error)
       throw error
     }
   }
 
-  async getRoutines(userId: string): Promise<Routine[]> {
+  async getRoutines(userId: string, encryptionKey?: Buffer): Promise<Routine[]> {
     try {
       const conditions = [{ field: 'user_id', operator: '==' as const, value: userId }]
       const routines = await this.firebaseService.getCollection(
@@ -105,14 +110,14 @@ export class RoutineService {
         'desc',
       )
 
-      return routines.map(routine => this.convertToRoutine(routine))
+      return routines.map(routine => this.convertToRoutine(routine, encryptionKey))
     } catch (error) {
       this.logger.error('Error getting routines', error)
       throw error
     }
   }
 
-  async getRoutineById(userId: string, routineId: string): Promise<Routine> {
+  async getRoutineById(userId: string, routineId: string, encryptionKey?: Buffer): Promise<Routine> {
     try {
       const routine = await this.firebaseService.getDocument(this.routinesCollection, routineId)
 
@@ -124,7 +129,7 @@ export class RoutineService {
         throw new ForbiddenException('Access denied to this routine')
       }
 
-      return this.convertToRoutine(routine)
+      return this.convertToRoutine(routine, encryptionKey)
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error
@@ -134,12 +139,12 @@ export class RoutineService {
     }
   }
 
-  async updateRoutine(userId: string, routineId: string, updateRoutineDto: UpdateRoutineDto): Promise<Routine> {
+  async updateRoutine(userId: string, routineId: string, updateRoutineDto: UpdateRoutineDto, encryptionKey?: Buffer): Promise<Routine> {
     try {
       // Verify ownership
-      await this.getRoutineById(userId, routineId)
+      await this.getRoutineById(userId, routineId, encryptionKey)
 
-      const updateData: any = { ...updateRoutineDto }
+      let updateData: any = { ...updateRoutineDto }
       
       // If steps are being updated, ensure they have IDs
       if (updateData.steps) {
@@ -153,10 +158,13 @@ export class RoutineService {
       
       updateData.updated_at = new Date()
 
+      // Encrypt data before updating
+      updateData = this.encryptRoutine(updateData, encryptionKey)
+
       await this.firebaseService.updateDocument(this.routinesCollection, routineId, updateData)
 
       this.logger.log(`Routine updated: ${routineId} for user: ${userId}`)
-      return this.getRoutineById(userId, routineId)
+      return this.getRoutineById(userId, routineId, encryptionKey)
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error
@@ -166,9 +174,9 @@ export class RoutineService {
     }
   }
 
-  async toggleStepCompletion(userId: string, routineId: string, stepId: string): Promise<Routine> {
+  async toggleStepCompletion(userId: string, routineId: string, stepId: string, encryptionKey?: Buffer): Promise<Routine> {
     try {
-      const routine = await this.getRoutineById(userId, routineId)
+      const routine = await this.getRoutineById(userId, routineId, encryptionKey)
 
       // Find the step and toggle its completion
       const steps = routine.steps.map(step => {
@@ -178,15 +186,18 @@ export class RoutineService {
         return step
       })
 
-      const updateData = {
+      let updateData: any = {
         steps,
         updated_at: new Date(),
       }
 
+      // Encrypt step data
+      updateData = this.encryptRoutine(updateData, encryptionKey)
+
       await this.firebaseService.updateDocument(this.routinesCollection, routineId, updateData)
 
       this.logger.log(`Toggled step ${stepId} for routine: ${routineId}`)
-      return this.getRoutineById(userId, routineId)
+      return this.getRoutineById(userId, routineId, encryptionKey)
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error
@@ -196,9 +207,9 @@ export class RoutineService {
     }
   }
 
-  async completeRoutine(userId: string, routineId: string): Promise<Routine> {
+  async completeRoutine(userId: string, routineId: string, encryptionKey?: Buffer): Promise<Routine> {
     try {
-      const routine = await this.getRoutineById(userId, routineId)
+      const routine = await this.getRoutineById(userId, routineId, encryptionKey)
       const today = format(new Date(), 'yyyy-MM-dd')
 
       // Check if already completed today
@@ -215,7 +226,7 @@ export class RoutineService {
       // Calculate new streak
       const streak = this.calculateStreak(completed_dates, routine.frequency)
 
-      const updateData = {
+      let updateData: any = {
         steps,
         completed_dates,
         streak,
@@ -223,10 +234,13 @@ export class RoutineService {
         updated_at: new Date(),
       }
 
+      // Encrypt step data
+      updateData = this.encryptRoutine(updateData, encryptionKey)
+
       await this.firebaseService.updateDocument(this.routinesCollection, routineId, updateData)
 
       this.logger.log(`Routine completed: ${routineId} for user: ${userId}`)
-      return this.getRoutineById(userId, routineId)
+      return this.getRoutineById(userId, routineId, encryptionKey)
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof BadRequestException) {
         throw error
@@ -236,22 +250,25 @@ export class RoutineService {
     }
   }
 
-  async resetRoutineSteps(userId: string, routineId: string): Promise<Routine> {
+  async resetRoutineSteps(userId: string, routineId: string, encryptionKey?: Buffer): Promise<Routine> {
     try {
-      const routine = await this.getRoutineById(userId, routineId)
+      const routine = await this.getRoutineById(userId, routineId, encryptionKey)
 
       // Reset all steps to uncompleted
       const steps = routine.steps.map(step => ({ ...step, completed: false }))
 
-      const updateData = {
+      let updateData: any = {
         steps,
         updated_at: new Date(),
       }
 
+      // Encrypt step data
+      updateData = this.encryptRoutine(updateData, encryptionKey)
+
       await this.firebaseService.updateDocument(this.routinesCollection, routineId, updateData)
 
       this.logger.log(`Reset steps for routine: ${routineId}`)
-      return this.getRoutineById(userId, routineId)
+      return this.getRoutineById(userId, routineId, encryptionKey)
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error
@@ -261,10 +278,10 @@ export class RoutineService {
     }
   }
 
-  async deleteRoutine(userId: string, routineId: string): Promise<void> {
+  async deleteRoutine(userId: string, routineId: string, encryptionKey?: Buffer): Promise<void> {
     try {
       // Verify ownership
-      await this.getRoutineById(userId, routineId)
+      await this.getRoutineById(userId, routineId, encryptionKey)
 
       await this.firebaseService.deleteDocument(this.routinesCollection, routineId)
 
@@ -278,9 +295,9 @@ export class RoutineService {
     }
   }
 
-  async getRoutineGroups(userId: string): Promise<string[]> {
+  async getRoutineGroups(userId: string, encryptionKey?: Buffer): Promise<string[]> {
     try {
-      const routines = await this.getRoutines(userId)
+      const routines = await this.getRoutines(userId, encryptionKey)
       
       // Extract unique groups
       const groups = new Set<string>()
@@ -386,20 +403,23 @@ export class RoutineService {
     return streak
   }
 
-  private convertToRoutine(data: any): Routine {
+  private convertToRoutine(data: any, encryptionKey?: Buffer): Routine {
+    // Decrypt the data
+    const decrypted = this.decryptRoutine(data, encryptionKey)
+    
     return {
-      id: data.id,
-      user_id: data.user_id,
-      title: data.title,
-      description: data.description || '',
-      group: data.group || null,
-      frequency: data.frequency,
-      steps: data.steps || [],
-      completed_dates: data.completed_dates || [],
-      streak: data.streak || 0,
-      last_completed_at: data.last_completed_at?.toDate?.() || data.last_completed_at || null,
-      created_at: data.created_at?.toDate?.() || data.created_at,
-      updated_at: data.updated_at?.toDate?.() || data.updated_at,
+      id: decrypted.id,
+      user_id: decrypted.user_id,
+      title: decrypted.title,
+      description: decrypted.description || '',
+      group: decrypted.group || null,
+      frequency: decrypted.frequency,
+      steps: decrypted.steps || [],
+      completed_dates: decrypted.completed_dates || [],
+      streak: decrypted.streak || 0,
+      last_completed_at: decrypted.last_completed_at?.toDate?.() || decrypted.last_completed_at || null,
+      created_at: decrypted.created_at?.toDate?.() || decrypted.created_at,
+      updated_at: decrypted.updated_at?.toDate?.() || decrypted.updated_at,
     }
   }
 }

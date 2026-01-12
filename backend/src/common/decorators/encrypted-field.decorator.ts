@@ -52,3 +52,5 @@ export function getEncryptedFields(target: Function): EncryptedFieldConfig[] {
   return Reflect.getMetadata(ENCRYPTED_FIELDS_KEY, target) || []
 }
 
+
+
