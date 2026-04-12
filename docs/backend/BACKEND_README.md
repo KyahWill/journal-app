@@ -467,7 +467,7 @@ gcloud builds submit --tag gcr.io/PROJECT_ID/journal-backend
 gcloud run deploy journal-backend \
   --image gcr.io/PROJECT_ID/journal-backend \
   --platform managed \
-  --region us-central1 \
+  --region asia-southeast1 \
   --allow-unauthenticated
 ```
 
